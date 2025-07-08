@@ -44,14 +44,14 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   });
 
   return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative h-24 flex items-center justify-center w-full">
+    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative flex items-center justify-center w-full aspect-square">
       <input {...getInputProps()} />
       {preview ? (
         <Image src={preview} alt="Preview" fill className="object-contain rounded-md" />
       ) : (
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Upload className="h-6 w-6" />
-          <p className="text-xs">{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
+          <Upload className="h-8 w-8" />
+          <p className="text-sm">{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
         </div>
       )}
     </div>
@@ -126,7 +126,7 @@ export default function AdminProductsPage() {
                   <DialogTitle>{t('admin_create_product_title')}</DialogTitle>
                   <DialogDescription>{t('admin_create_product_desc')}</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="flex flex-col gap-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">{t('admin_product_name')}</Label>
                     <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
