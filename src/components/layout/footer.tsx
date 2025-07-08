@@ -2,7 +2,7 @@
 
 import { useLanguage } from '@/hooks/use-language';
 import Link from 'next/link';
-import { Container } from 'lucide-react';
+import { Container, Phone } from 'lucide-react';
 
 export function Footer() {
   const { t } = useLanguage();
@@ -15,9 +15,15 @@ export function Footer() {
             <Container className="h-6 w-6 text-primary" />
             <span className="font-bold font-headline">{t('app_name')}</span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} {t('footer_rights')}
-          </p>
+          <div className="flex flex-col items-center gap-2 text-center">
+             <p className="text-sm text-muted-foreground">
+               &copy; {new Date().getFullYear()} {t('footer_rights')}
+             </p>
+            <a href="tel:+998901234567" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+                <Phone className="h-4 w-4" />
+                +998 90 123 45 67
+            </a>
+          </div>
           <div className="flex items-center gap-4">
             <Link href="#" className="text-sm text-muted-foreground hover:text-primary">
               {t('footer_privacy')}

@@ -20,7 +20,6 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: t('nav_home') },
-    { href: '/products', label: t('nav_products') },
   ];
 
   const NavItems = ({ isMobile = false }: { isMobile?: boolean }) => (
