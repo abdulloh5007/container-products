@@ -10,7 +10,6 @@ import { PlusCircle, Edit, Trash2, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,6 +29,14 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
     }
   }, [setFile]);
 
+  // Reset preview when the file is cleared externally
+  React.useEffect(() => {
+    if (!file) {
+      setPreview(null);
+    }
+  }, [file]);
+
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
@@ -37,14 +44,14 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   });
 
   return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors relative aspect-video flex items-center justify-center">
+    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative h-24 flex items-center justify-center w-full">
       <input {...getInputProps()} />
       {preview ? (
         <Image src={preview} alt="Preview" fill className="object-contain rounded-md" />
       ) : (
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Upload className="h-8 w-8" />
-          <p>{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
+          <Upload className="h-6 w-6" />
+          <p className="text-xs">{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
         </div>
       )}
     </div>
@@ -58,19 +65,19 @@ export default function AdminProductsPage() {
   
   // Dummy data
   const products = [
-    { name: t('product_1_title'), description: t('product_1_desc') },
-    { name: t('product_2_title'), description: t('product_2_desc') },
-    { name: t('product_3_title'), description: t('product_3_desc') },
+    { name: t('product_1_title') },
+    { name: t('product_2_title') },
+    { name: t('product_3_title') },
   ];
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [newProductName, setNewProductName] = useState('');
-  const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductQuantity, setNewProductQuantity] = useState(1);
   const [newProductImage, setNewProductImage] = useState<File | null>(null);
 
   const handleCreateProduct = () => {
     // In a real app, you would upload the image and send data to an API
-    if (!newProductName || !newProductDesc || !newProductImage) {
+    if (!newProductName || newProductQuantity < 1 || !newProductImage) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -78,13 +85,20 @@ export default function AdminProductsPage() {
       });
       return;
     }
-    console.log({ name: newProductName, description: newProductDesc, image: newProductImage });
+    console.log({ name: newProductName, quantity: newProductQuantity, image: newProductImage });
     toast({ title: "Product Created", description: `${newProductName} has been created.` });
-    setNewProductName('');
-    setNewProductDesc('');
-    setNewProductImage(null);
-    setModalOpen(false);
+    onModalOpenChange(false); // Close and reset modal
   };
+
+  const onModalOpenChange = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      // Reset state when modal is closed
+      setNewProductName('');
+      setNewProductQuantity(1);
+      setNewProductImage(null);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -100,32 +114,30 @@ export default function AdminProductsPage() {
               <CardTitle>{t('admin_sidebar_products')}</CardTitle>
               <CardDescription>{t('admin_products_desc')}</CardDescription>
             </div>
-            <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
+            <Dialog open={isModalOpen} onOpenChange={onModalOpenChange}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   {t('admin_products_add')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                   <DialogTitle>{t('admin_create_product_title')}</DialogTitle>
                   <DialogDescription>{t('admin_create_product_desc')}</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">{t('admin_product_name')}</Label>
-                    <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-3" />
+                <div className="grid grid-cols-1 md:grid-cols-5 items-end gap-4 py-4">
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="name">{t('admin_product_name')}</Label>
+                    <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">{t('admin_product_desc')}</Label>
-                    <Textarea id="description" value={newProductDesc} onChange={e => setNewProductDesc(e.target.value)} className="col-span-3" />
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                    <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
                   </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                     <Label htmlFor="image" className="text-right pt-2">{t('admin_product_image')}</Label>
-                     <div className="col-span-3">
-                        <ImageUploader file={newProductImage} setFile={setNewProductImage} />
-                     </div>
+                  <div className="md:col-span-2 space-y-2">
+                     <Label>{t('admin_product_image')}</Label>
+                     <ImageUploader file={newProductImage} setFile={setNewProductImage} />
                   </div>
                 </div>
                 <DialogFooter>
@@ -143,7 +155,6 @@ export default function AdminProductsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('admin_products_table_name')}</TableHead>
-                <TableHead>{t('admin_products_table_desc')}</TableHead>
                 <TableHead className="text-right">{t('admin_products_table_actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -151,7 +162,6 @@ export default function AdminProductsPage() {
               {products.map((product, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.description}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="icon">
                       <Edit className="h-4 w-4" />
