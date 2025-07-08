@@ -121,13 +121,13 @@ export default function AdminProductsPage() {
                   {t('admin_products_add')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-4xl">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>{t('admin_create_product_title')}</DialogTitle>
                   <DialogDescription>{t('admin_create_product_desc')}</DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-5 items-end gap-4 py-4">
-                  <div className="md:col-span-2 space-y-2">
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
                     <Label htmlFor="name">{t('admin_product_name')}</Label>
                     <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
                   </div>
@@ -135,7 +135,7 @@ export default function AdminProductsPage() {
                     <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
                     <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
                   </div>
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="space-y-2">
                      <Label>{t('admin_product_image')}</Label>
                      <ImageUploader file={newProductImage} setFile={setNewProductImage} />
                   </div>
