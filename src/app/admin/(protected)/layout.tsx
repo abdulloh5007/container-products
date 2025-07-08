@@ -6,20 +6,24 @@ import { useAuth } from '@/contexts/auth-context';
 import { Sidebar } from '@/components/admin/sidebar';
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If not authenticated, redirect to the login page.
-    // We also check this on the server in a real app using middleware.
-    if (!isAuthenticated) {
+    // Wait until loading is finished before checking auth
+    if (!isLoading && !isAuthenticated) {
       router.replace('/admin/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
-  // Don't render anything until the auth check is complete.
+  // While loading auth state, show nothing or a loader
+  if (isLoading) {
+    return null; // or a loading spinner component
+  }
+
+  // If not authenticated after loading, the redirect is in flight, so render nothing.
   if (!isAuthenticated) {
-    return null; 
+    return null;
   }
 
   return (

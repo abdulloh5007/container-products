@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -13,18 +13,24 @@ import { Container } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/admin/containers');
+    }
+  }, [isAuthenticated, router]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, you'd call an API. Here, we'll use hardcoded credentials.
     if (username === 'admin' && password === 'password') {
       login();
-      router.push('/admin/containers');
+      // The redirect is now handled by the ProtectedAdminLayout
     } else {
       toast({
         variant: 'destructive',
@@ -33,6 +39,12 @@ export default function LoginPage() {
       });
     }
   };
+  
+  // Don't render if the user is already authenticated and redirect is in progress
+  if (isAuthenticated) {
+    return null;
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary">
