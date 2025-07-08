@@ -23,9 +23,9 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   }
 
   return (
-    <div className="flex min-h-screen bg-secondary">
+    <div className="flex flex-col min-h-screen bg-secondary">
       <Sidebar />
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-6 md:p-8">
         {children}
       </main>
     </div>
