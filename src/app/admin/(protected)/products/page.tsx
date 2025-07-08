@@ -44,7 +44,7 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   });
 
   return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative flex items-center justify-center w-full aspect-square">
+    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative flex items-center justify-center w-40 h-40 mx-auto">
       <input {...getInputProps()} />
       {preview ? (
         <Image src={preview} alt="Preview" fill className="object-contain rounded-md" />
