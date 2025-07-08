@@ -10,7 +10,6 @@ import { Container, Package, LogOut, Box, Menu } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -48,7 +47,7 @@ export function Sidebar() {
                   <span className="sr-only">Open navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="flex w-[280px] flex-col p-4">
+              <SheetContent side="right" className="flex w-auto flex-col p-4">
                  <SheetHeader className="border-b pb-4 mb-4">
                    <SheetTitle>
                      <Link href="/admin/containers" onClick={closeSheet} className="flex items-center gap-2 font-semibold">
@@ -57,34 +56,26 @@ export function Sidebar() {
                      </Link>
                    </SheetTitle>
                  </SheetHeader>
-                 <TooltipProvider>
-                    <nav className="flex flex-row gap-2">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = pathname.startsWith(item.href);
-                        return (
-                        <Tooltip key={item.href}>
-                            <TooltipTrigger asChild>
-                            <Link
-                                href={item.href}
-                                onClick={closeSheet}
-                                className={cn(
-                                'flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary hover:bg-secondary',
-                                isActive && 'bg-secondary text-primary'
-                                )}
-                            >
-                                <Icon className="h-5 w-5" />
-                                <span className="sr-only">{item.label}</span>
-                            </Link>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                            <p>{item.label}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        );
-                    })}
-                    </nav>
-                 </TooltipProvider>
+                <nav className="flex flex-row gap-4">
+                {navItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname.startsWith(item.href);
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={closeSheet}
+                            className={cn(
+                            'flex h-24 w-24 flex-col items-center justify-center gap-2 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary',
+                            isActive && 'bg-secondary text-primary'
+                            )}
+                        >
+                            <Icon className="h-8 w-8" />
+                            <span className="text-center text-xs font-medium">{item.label}</span>
+                        </Link>
+                    );
+                })}
+                </nav>
                  <div className="mt-auto border-t pt-4">
                    <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
                      <LogOut className="h-4 w-4" />
