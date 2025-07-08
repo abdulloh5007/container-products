@@ -49,13 +49,10 @@ export default function Home() {
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Button asChild size="lg">
-                <Link href="/containers">
-                  {t('hero_cta_button')}
+                <Link href="/products">
+                  {t('hero_secondary_button')}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
-              </Button>
-              <Button asChild variant="link" size="lg" className="text-primary-foreground">
-                <Link href="/products">{t('hero_secondary_button')} <span aria-hidden="true" className="ml-1">→</span></Link>
               </Button>
             </div>
           </div>
@@ -100,7 +97,7 @@ export default function Home() {
               </p>
               <div className="mt-8">
                 <Button asChild size="lg">
-                  <Link href="/containers">
+                  <Link href="/products">
                     {t('cta_section_button')}
                   </Link>
                 </Button>
