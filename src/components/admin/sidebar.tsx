@@ -68,10 +68,10 @@ export function Sidebar() {
                             href={item.href}
                             onClick={closeSheet}
                             className={cn(
-                                'flex h-24 flex-1 flex-col items-center justify-center gap-2 rounded-lg p-2 transition-colors',
+                                'flex h-24 flex-1 flex-col items-center justify-center gap-2 rounded-lg p-2 transition-all',
                                 isActive
                                     ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground hover:bg-secondary'
+                                    : 'bg-card text-muted-foreground hover:brightness-95'
                             )}
                         >
                             <Icon className="h-8 w-8" />
