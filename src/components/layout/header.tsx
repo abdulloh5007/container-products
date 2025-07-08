@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Container, Menu, X } from 'lucide-react';
+import { Container, Menu, X, UserCog } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 export function Header() {
   const { t } = useLanguage();
@@ -39,6 +41,11 @@ export function Header() {
       ))}
     </>
   );
+  
+  // Hide header on admin pages
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -57,6 +64,23 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end gap-2">
           <LanguageSwitcher />
 
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="ghost" size="icon">
+                  <Link href="/admin">
+                    <UserCog className="h-[1.2rem] w-[1.2rem]" />
+                    <span className="sr-only">{t('nav_admin')}</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{t('nav_admin')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+
           <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -64,7 +88,7 @@ export function Header() {
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[80vw]" hideClose>
+            <SheetContent side="right" className="w-[80vw]">
               <SheetTitle className="sr-only">{t('mobile_menu_title')}</SheetTitle>
               <SheetDescription className="sr-only">{t('mobile_menu_desc')}</SheetDescription>
               <div className="flex flex-col h-full">
