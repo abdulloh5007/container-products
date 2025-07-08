@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
-import { PlusCircle, Edit, Trash2, Upload } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UploadCloud } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,27 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 
 function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: File | null) => void }) {
   const { t } = useLanguage();
-  const [preview, setPreview] = useState<string | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const currentFile = acceptedFiles[0];
     if (currentFile) {
       setFile(currentFile);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(currentFile);
     }
   }, [setFile]);
-
-  // Reset preview when the file is cleared externally
-  React.useEffect(() => {
-    if (!file) {
-      setPreview(null);
-    }
-  }, [file]);
-
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -44,16 +29,19 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   });
 
   return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors relative flex items-center justify-center w-40 h-40 mx-auto">
+    <div
+      {...getRootProps()}
+      className={`w-full rounded-lg border-2 border-dashed border-muted-foreground/50 p-8 text-center transition-colors hover:border-primary ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+    >
       <input {...getInputProps()} />
-      {preview ? (
-        <Image src={preview} alt="Preview" fill className="object-contain rounded-md" />
-      ) : (
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Upload className="h-8 w-8" />
-          <p className="text-sm">{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
-        </div>
-      )}
+      <div className="flex flex-col items-center justify-center gap-2">
+        <UploadCloud className="h-10 w-10 text-muted-foreground" />
+        <p className="font-semibold text-foreground">
+          {t('admin_product_image_drop')}
+        </p>
+        <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+        {file && <p className="mt-2 text-sm font-medium text-emerald-600">{file.name}</p>}
+      </div>
     </div>
   );
 }
@@ -121,12 +109,12 @@ export default function AdminProductsPage() {
                   {t('admin_products_add')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{t('admin_create_product_title')}</DialogTitle>
                   <DialogDescription>{t('admin_create_product_desc')}</DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col gap-4 py-4">
+                <div className="grid gap-6 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">{t('admin_product_name')}</Label>
                     <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
