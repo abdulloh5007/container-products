@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetC
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 
 export function Header() {
@@ -62,6 +63,7 @@ export function Header() {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-2">
+          <ThemeSwitcher />
           <LanguageSwitcher />
 
           <TooltipProvider>
