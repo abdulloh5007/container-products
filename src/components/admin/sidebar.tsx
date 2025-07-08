@@ -10,6 +10,7 @@ import { Container, Package, LogOut, Box, Menu } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -39,6 +40,7 @@ export function Sidebar() {
           </Link>
           
           <div className="flex items-center gap-2">
+            <ThemeSwitcher />
             <LanguageSwitcher />
             <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
@@ -47,7 +49,7 @@ export function Sidebar() {
                   <span className="sr-only">Open navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="flex w-auto flex-col p-4">
+              <SheetContent side="right" className="flex w-[320px] flex-col p-4">
                  <SheetHeader className="border-b pb-4 mb-4">
                    <SheetTitle>
                      <Link href="/admin/containers" onClick={closeSheet} className="flex items-center gap-2 font-semibold">
