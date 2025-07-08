@@ -109,7 +109,7 @@ export default function AdminProductsPage() {
                   {t('admin_products_add')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
+              <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                   <DialogTitle>{t('admin_create_product_title')}</DialogTitle>
                   <DialogDescription>{t('admin_create_product_desc')}</DialogDescription>
