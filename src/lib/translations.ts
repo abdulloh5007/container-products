@@ -55,6 +55,8 @@ export const translations = {
     footer_rights: "Все права защищены.",
     footer_privacy: "Политика конфиденциальности",
     footer_terms: "Условия использования",
+    mobile_menu_title: "Мобильное меню",
+    mobile_menu_desc: "Навигационные ссылки для перемещения по сайту.",
   },
   uz: {
     app_name: "Konteyner Yechimlari Markazi",
@@ -112,6 +114,8 @@ export const translations = {
     footer_rights: "Barcha huquqlar himoyalangan.",
     footer_privacy: "Maxfiylik siyosati",
     footer_terms: "Foydalanish shartlari",
+    mobile_menu_title: "Mobil menyu",
+    mobile_menu_desc: "Sayt bo'ylab harakatlanish uchun navigatsiya havolalari.",
   },
 };
 

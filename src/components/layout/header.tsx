@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Container, Menu, X } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 
@@ -64,17 +64,21 @@ export function Header() {
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[80vw]">
+            <SheetContent side="right" className="w-[80vw]" hideClose>
+              <SheetTitle className="sr-only">{t('mobile_menu_title')}</SheetTitle>
+              <SheetDescription className="sr-only">{t('mobile_menu_desc')}</SheetDescription>
               <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center border-b pb-4">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                     <Container className="h-6 w-6 text-primary" />
                     <span className="font-bold font-headline">{t('app_name')}</span>
                   </Link>
-                  <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                    <X className="h-6 w-6" />
-                    <span className="sr-only">Close menu</span>
-                  </Button>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon">
+                      <X className="h-6 w-6" />
+                      <span className="sr-only">Close menu</span>
+                    </Button>
+                  </SheetClose>
                 </div>
                 <nav className="flex flex-col items-start gap-4 mt-8">
                   <NavItems isMobile />
