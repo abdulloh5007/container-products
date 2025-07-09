@@ -7,56 +7,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { PlusCircle, Edit, Trash2, UploadCloud } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-  } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
+import { db, storage } from '@/lib/firebase';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
-    id: number;
+    id: string; // Firestore document ID
     name: string;
     quantity: number;
-    image: File;
     imageUrl: string;
 }
 
-function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: File | null) => void }) {
+function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
   const { t } = useLanguage();
-  const [preview, setPreview] = useState<string | null>(null);
+  const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
       setFile(acceptedFiles[0]);
+      const newPreview = URL.createObjectURL(acceptedFiles[0]);
+      setCurrentPreview(newPreview);
     }
   }, [setFile]);
 
   useEffect(() => {
-    if (file) {
-      const newPreview = URL.createObjectURL(file);
-      setPreview(newPreview);
-      return () => URL.revokeObjectURL(newPreview);
+    if (!file && previewUrl) {
+      setCurrentPreview(previewUrl);
+    } else if (!file && !previewUrl) {
+      setCurrentPreview(null);
     }
-    setPreview(null);
-  }, [file]);
-  
+  }, [file, previewUrl]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
@@ -66,12 +54,12 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   return (
     <div
       {...getRootProps()}
-      className={`w-full h-32 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+      className={`w-full aspect-square rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary flex items-center justify-center ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
     >
       <input {...getInputProps()} />
-      {preview ? (
+      {currentPreview ? (
         <div className="relative h-full w-full">
-            <Image src={preview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
+            <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
@@ -92,6 +80,8 @@ export default function AdminProductsPage() {
   const { toast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -99,64 +89,110 @@ export default function AdminProductsPage() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
   const [newProductImage, setNewProductImage] = useState<File | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const q = query(collection(db, "products"), orderBy("name"));
+      const querySnapshot = await getDocs(q);
+      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setProducts(productsData);
+    } catch (error) {
+      console.error("Error fetching products: ", error);
+      toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [t, toast]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const resetForm = () => {
+      setNewProductName('');
+      setNewProductQuantity(1);
+      setNewProductImage(null);
+      setProductToEdit(null);
+      setExistingImageUrl(null);
+  }
 
   const onModalOpenChange = (open: boolean) => {
     if (!open) {
-      setProductToEdit(null); // Reset edit state on close
+      resetForm();
     }
     setModalOpen(open);
   }
 
-  // Effect to populate form when editing
   useEffect(() => {
     if (productToEdit) {
       setNewProductName(productToEdit.name);
       setNewProductQuantity(productToEdit.quantity);
-      setNewProductImage(productToEdit.image);
+      setExistingImageUrl(productToEdit.imageUrl);
+      setNewProductImage(null); // Clear file input
     } else {
-      setNewProductName('');
-      setNewProductQuantity(1);
-      setNewProductImage(null);
+      resetForm();
     }
-  }, [productToEdit, isModalOpen]);
+  }, [productToEdit]);
 
-  const handleSaveProduct = () => {
-    if (!newProductName || newProductQuantity < 1 || !newProductImage) {
-      toast({
-        variant: 'destructive',
-        title: t('admin_form_error_title'),
-        description: t('admin_form_error_desc'),
-      });
+  const handleSaveProduct = async () => {
+    if (!newProductName || newProductQuantity < 1) {
+      toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
       return;
     }
 
-    if (productToEdit) {
-      const isImageUpdated = productToEdit.image !== newProductImage;
-      const newImageUrl = isImageUpdated && newProductImage ? URL.createObjectURL(newProductImage) : productToEdit.imageUrl;
-      
-      setProducts(products.map(p => 
-        p.id === productToEdit.id 
-        ? { ...p, name: newProductName, quantity: newProductQuantity, image: newProductImage as File, imageUrl: newImageUrl } 
-        : p
-      ));
-      
-      if (isImageUpdated) {
-        URL.revokeObjectURL(productToEdit.imageUrl);
-      }
-      toast({ title: t('admin_product_update_success_title'), description: t('admin_product_update_success_desc', { productName: newProductName }) });
-    } else {
-      const newProduct: Product = {
-        id: Date.now(),
-        name: newProductName,
-        quantity: newProductQuantity,
-        image: newProductImage,
-        imageUrl: URL.createObjectURL(newProductImage),
-      };
-      setProducts(prev => [...prev, newProduct]);
-      toast({ title: t('admin_product_create_success_title'), description: t('admin_product_create_success_desc', { productName: newProductName }) });
+    // A new image is required for new products
+    if (!productToEdit && !newProductImage) {
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
+        return;
     }
+    
+    setIsSubmitting(true);
+    
+    try {
+        let imageUrl = productToEdit ? productToEdit.imageUrl : '';
 
-    onModalOpenChange(false);
+        // If a new image is uploaded, handle the upload process
+        if (newProductImage) {
+            // Delete old image if we are editing and uploading a new one
+            if (productToEdit && productToEdit.imageUrl) {
+                try {
+                    const oldImageRef = ref(storage, productToEdit.imageUrl);
+                    await deleteObject(oldImageRef);
+                } catch (deleteError) {
+                    // Log error but don't block the update process
+                    console.error("Failed to delete old image: ", deleteError);
+                }
+            }
+            const storageRef = ref(storage, `products/${Date.now()}_${newProductImage.name}`);
+            await uploadBytes(storageRef, newProductImage);
+            imageUrl = await getDownloadURL(storageRef);
+        }
+
+        const productData = {
+            name: newProductName,
+            quantity: newProductQuantity,
+            imageUrl: imageUrl
+        };
+
+        if (productToEdit) {
+            const productDoc = doc(db, 'products', productToEdit.id);
+            await updateDoc(productDoc, productData);
+            toast({ title: t('admin_product_update_success_title'), description: t('admin_product_update_success_desc', { productName: newProductName }) });
+        } else {
+            await addDoc(collection(db, 'products'), productData);
+            toast({ title: t('admin_product_create_success_title'), description: t('admin_product_create_success_desc', { productName: newProductName }) });
+        }
+
+        fetchProducts(); // Refresh data
+        onModalOpenChange(false);
+    } catch (error) {
+        console.error("Error saving product: ", error);
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
   const handleOpenModalForEdit = (product: Product) => {
@@ -169,12 +205,26 @@ export default function AdminProductsPage() {
     setModalOpen(true);
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!productToDelete) return;
-    URL.revokeObjectURL(productToDelete.imageUrl);
-    setProducts(products.filter(p => p.id !== productToDelete.id));
-    toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
-    setProductToDelete(null);
+    try {
+        // Delete image from storage
+        if (productToDelete.imageUrl) {
+            const imageRef = ref(storage, productToDelete.imageUrl);
+            await deleteObject(imageRef);
+        }
+
+        // Delete document from firestore
+        await deleteDoc(doc(db, "products", productToDelete.id));
+
+        toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
+        fetchProducts(); // Refresh data
+    } catch (error) {
+        console.error("Error deleting product: ", error);
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
+    } finally {
+        setProductToDelete(null);
+    }
   }
 
   return (
@@ -203,12 +253,24 @@ export default function AdminProductsPage() {
               <TableRow>
                 <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                 <TableHead>{t('admin_products_table_name')}</TableHead>
-                <TableHead className="w-[120px]">{t('admin_products_table_quantity')}</TableHead>
+                <TableHead className="w-[120px]">{t('admin_product_quantity')}</TableHead>
                 <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.length === 0 ? (
+              {isLoading ? (
+                 Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={index}>
+                        <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-32 rounded" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16 rounded" /></TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Skeleton className="h-10 w-10 rounded" />
+                            <Skeleton className="h-10 w-10 rounded" />
+                        </TableCell>
+                    </TableRow>
+                 ))
+              ) : products.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                         {t('admin_product_no_products')}
@@ -219,7 +281,7 @@ export default function AdminProductsPage() {
                     <TableRow key={product.id}>
                     <TableCell>
                         <Image
-                        src={product.imageUrl}
+                        src={product.imageUrl || 'https://placehold.co/64x64.png'}
                         alt={product.name}
                         width={64}
                         height={64}
@@ -250,23 +312,27 @@ export default function AdminProductsPage() {
             <DialogTitle>{productToEdit ? t('admin_products_edit_title') : t('admin_create_product_title')}</DialogTitle>
             <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="name">{t('admin_product_name')}</Label>
-                <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">{t('admin_product_name')}</Label>
+                    <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                    <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+                </div>
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
-                <ImageUploader file={newProductImage} setFile={setNewProductImage} />
+                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onModalOpenChange(false)}>{t('admin_cancel_button')}</Button>
-            <Button onClick={handleSaveProduct}>{productToEdit ? t('admin_save_changes_button') : t('admin_create_button')}</Button>
+            <Button variant="outline" onClick={() => onModalOpenChange(false)} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
+            <Button onClick={handleSaveProduct} disabled={isSubmitting}>
+              {isSubmitting ? t('admin_login_submitting') : (productToEdit ? t('admin_save_changes_button') : t('admin_create_button'))}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

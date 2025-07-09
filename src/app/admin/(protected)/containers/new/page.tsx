@@ -11,25 +11,23 @@ import { useLanguage } from '@/hooks/use-language';
 import { X, Upload, Plus, Minus } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
+import { db, storage } from '@/lib/firebase';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
+  quantity: number;
+  imageUrl: string;
 }
 
-interface IncludedProduct extends Product {
+interface IncludedProduct {
+  id: string;
+  name: string;
   quantity: number;
 }
-
-// Dummy data for available products
-const availableProductsData: Product[] = [
-  { id: 1, name: 'Container Offices' },
-  { id: 2, name: 'Residential Containers' },
-  { id: 3, name: 'Pop-up Stores' },
-  { id: 4, name: 'Storage Solutions' },
-  { id: 5, name: 'Standard 20ft' },
-  { id: 6, name: 'High Cube 40ft' },
-];
 
 interface ContainerData {
   id: string;
@@ -40,23 +38,25 @@ interface ContainerData {
 
 function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
   const { t } = useLanguage();
-  const [preview, setPreview] = useState<string | null>(previewUrl || null);
+  const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
+      const newPreview = URL.createObjectURL(acceptedFiles[0]);
       setFile(acceptedFiles[0]);
+      setCurrentPreview(newPreview);
     }
   }, [setFile]);
-
+  
   useEffect(() => {
     if (file) {
-      const newPreview = URL.createObjectURL(file);
-      setPreview(newPreview);
-      return () => URL.revokeObjectURL(newPreview);
+        const newPreview = URL.createObjectURL(file);
+        setCurrentPreview(newPreview);
+        return () => URL.revokeObjectURL(newPreview);
     } else if (previewUrl) {
-      setPreview(previewUrl)
+        setCurrentPreview(previewUrl)
     } else {
-        setPreview(null);
+        setCurrentPreview(null);
     }
   }, [file, previewUrl]);
   
@@ -69,9 +69,9 @@ function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFi
   return (
     <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors">
       <input {...getInputProps()} />
-      {preview ? (
+      {currentPreview ? (
         <div className="relative h-32 w-full">
-            <Image src={preview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
+            <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
         </div>
       ) : (
          <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -93,42 +93,64 @@ export default function NewContainerPage() {
   const [containerImage, setContainerImage] = useState<File | null>(null);
   const [containerImageUrl, setContainerImageUrl] = useState<string | null>(null);
   const [includedProducts, setIncludedProducts] = useState<IncludedProduct[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [containerId, setContainerId] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch available products
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    const id = searchParams.get('id');
-    if (id) {
-      setIsEditMode(true);
-      setContainerId(id);
-      
-      try {
-        const storedContainers = localStorage.getItem('containers');
-        const allContainers: ContainerData[] = storedContainers ? JSON.parse(storedContainers) : [];
-        const containerToEdit = allContainers.find(c => c.id === id);
-
-        if (containerToEdit) {
-          setContainerName(containerToEdit.name);
-          setIncludedProducts(containerToEdit.products);
-          setContainerImageUrl(containerToEdit.imageUrl || null);
-        } else {
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: "Container not found." });
-            router.push('/admin/containers');
+    const fetchProducts = async () => {
+        try {
+            const q = query(collection(db, "products"), orderBy("name"));
+            const querySnapshot = await getDocs(q);
+            const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            setAvailableProducts(productsData);
+        } catch (error) {
+            console.error("Error fetching available products: ", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
         }
-      } catch (error) {
-         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-         router.push('/admin/containers');
+    };
+    fetchProducts();
+  }, [t, toast]);
+
+
+  // Fetch container data if in edit mode
+  useEffect(() => {
+    const containerIdParam = searchParams.get('id');
+    if (containerIdParam) {
+      setIsEditMode(true);
+      setContainerId(containerIdParam);
+      
+      const fetchContainerData = async () => {
+        setIsLoading(true);
+        try {
+            const containerDocRef = doc(db, 'containers', containerIdParam);
+            const containerDocSnap = await getDoc(containerDocRef);
+
+            if (containerDocSnap.exists()) {
+                const containerData = containerDocSnap.data() as Omit<ContainerData, 'id'>;
+                setContainerName(containerData.name);
+                setIncludedProducts(containerData.products || []);
+                setContainerImageUrl(containerData.imageUrl || null);
+            } else {
+                toast({ variant: 'destructive', title: t('admin_form_error_title'), description: "Container not found." });
+                router.push('/admin/containers');
+            }
+        } catch (error) {
+           toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+           router.push('/admin/containers');
+        } finally {
+            setIsLoading(false);
+        }
       }
+      fetchContainerData();
+    } else {
+        setIsLoading(false); // Not in edit mode, so no data to load
     }
-  }, [searchParams, router, toast, isClient, t]);
+  }, [searchParams, router, toast, t]);
 
   const addProduct = (product: Product) => {
     setIncludedProducts(prev => {
@@ -136,15 +158,16 @@ export default function NewContainerPage() {
       if (existing) {
         return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p);
       }
-      return [...prev, { ...product, quantity: 1 }];
+      // Only include necessary fields
+      return [...prev, { id: product.id, name: product.name, quantity: 1 }];
     });
   };
 
-  const removeProduct = (productId: number) => {
+  const removeProduct = (productId: string) => {
     setIncludedProducts(prev => prev.filter(p => p.id !== productId));
   };
   
-  const updateQuantity = (productId: number, newQuantity: number) => {
+  const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity < 1) {
         removeProduct(productId);
         return;
@@ -152,60 +175,66 @@ export default function NewContainerPage() {
     setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
   };
   
-  const handleSave = () => {
-    if (!isClient || !containerName) {
-        toast({
-            variant: "destructive",
-            title: t('admin_form_error_title'),
-            description: t('admin_form_error_name_required'),
-        });
+  const handleSave = async () => {
+    if (!containerName) {
+        toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_form_error_name_required') });
         return;
     }
     
-    const imageUrl = containerImage ? URL.createObjectURL(containerImage) : containerImageUrl;
-
-    const newContainerData: Partial<ContainerData> = {
-        name: containerName,
-        imageUrl: imageUrl || '',
-        products: includedProducts,
-    };
+    setIsSubmitting(true);
 
     try {
-        const storedContainers = localStorage.getItem('containers');
-        let allContainers: ContainerData[] = storedContainers ? JSON.parse(storedContainers) : [];
+        let finalImageUrl = containerImageUrl || '';
+
+        if (containerImage) {
+            // Delete old image if editing
+            if (isEditMode && containerImageUrl) {
+                try {
+                    const oldImageRef = ref(storage, containerImageUrl);
+                    await deleteObject(oldImageRef);
+                } catch (e) { console.error("Failed to delete old image", e); }
+            }
+            const storageRef = ref(storage, `containers/${Date.now()}_${containerImage.name}`);
+            await uploadBytes(storageRef, containerImage);
+            finalImageUrl = await getDownloadURL(storageRef);
+        }
+
+        const containerData = {
+            name: containerName,
+            imageUrl: finalImageUrl,
+            products: includedProducts,
+        };
 
         if (isEditMode && containerId) {
-            allContainers = allContainers.map(c => 
-                c.id === containerId 
-                ? { ...c, ...newContainerData } 
-                : c
-            );
-            toast({
-                title: t('admin_container_update_success_title'),
-                description: t('admin_container_update_success_desc', { containerName }),
-            });
+            const containerDoc = doc(db, 'containers', containerId);
+            await updateDoc(containerDoc, containerData);
+            toast({ title: t('admin_container_update_success_title'), description: t('admin_container_update_success_desc', { containerName }) });
         } else {
-            const newContainer: ContainerData = { 
-                id: Date.now().toString(),
-                name: containerName,
-                imageUrl: imageUrl || '',
-                products: includedProducts
-            };
-            allContainers.push(newContainer);
-            toast({
-                title: t('admin_container_create_success_title'),
-                description: t('admin_container_create_success_desc', { containerName }),
-            });
+            await addDoc(collection(db, 'containers'), containerData);
+            toast({ title: t('admin_container_create_success_title'), description: t('admin_container_create_success_desc', { containerName }) });
         }
         
-        localStorage.setItem('containers', JSON.stringify(allContainers));
         router.push('/admin/containers');
     } catch(error) {
+        console.error("Error saving container", error);
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
+    } finally {
+        setIsSubmitting(false);
     }
   };
   
-  if (!isClient) return null;
+  if (isLoading) {
+      return (
+          <div className="space-y-8">
+              <Skeleton className="h-10 w-1/3" />
+              <Skeleton className="h-8 w-2/3" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <Skeleton className="lg:col-span-1 h-96" />
+                <Skeleton className="lg:col-span-2 h-[500px]" />
+              </div>
+          </div>
+      )
+  }
 
   return (
     <div className="space-y-8">
@@ -221,7 +250,8 @@ export default function NewContainerPage() {
             <CardTitle>{t('admin_available_products')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {availableProductsData.map(product => (
+            {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
+            {availableProducts.map(product => (
               <div key={product.id} className="flex items-center justify-between p-2 border rounded-lg">
                 <span>{product.name}</span>
                 <Button size="sm" onClick={() => addProduct(product)}>
@@ -274,7 +304,9 @@ export default function NewContainerPage() {
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={handleSave}>{isEditMode ? t('admin_save_changes_button') : t('admin_save_container_button')}</Button>
+                <Button onClick={handleSave} disabled={isSubmitting}>
+                  {isSubmitting ? t('admin_login_submitting') : (isEditMode ? t('admin_save_changes_button') : t('admin_save_container_button'))}
+                </Button>
             </div>
           </CardContent>
         </Card>

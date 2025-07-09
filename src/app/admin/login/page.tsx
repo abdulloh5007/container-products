@@ -10,14 +10,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container } from 'lucide-react';
+import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -25,18 +27,31 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd call an API. Here, we'll use hardcoded credentials.
-    if (username === 'admin' && password === 'password') {
-      login();
-      // The redirect is now handled by the ProtectedAdminLayout
-    } else {
+    setIsSubmitting(true);
+    try {
+      // In Firebase, phone number can be used as email for email/password auth
+      // For a real phone auth, you'd use phone number verification (SMS)
+      await login(phone, password);
+      // The redirect is now handled by the effect
+    } catch (error) {
+      console.error(error);
+      let description = t('admin_login_failure_desc');
+      if (error instanceof FirebaseError) {
+          if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+             description = t('admin_login_failure_desc');
+          } else if (error.code === 'auth/invalid-email') {
+             description = t('admin_login_failure_invalid_phone');
+          }
+      }
       toast({
         variant: 'destructive',
         title: t('admin_login_failure_title'),
-        description: t('admin_login_failure_desc'),
+        description,
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
   
@@ -59,13 +74,14 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">{t('admin_username')}</Label>
+              <Label htmlFor="phone">{t('admin_phone')}</Label>
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="phone"
+                type="text" // Use text to allow for various phone formats
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 required
+                placeholder="+998901234567"
               />
             </div>
             <div className="space-y-2">
@@ -78,8 +94,8 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              {t('admin_login_button')}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? t('admin_login_submitting') : t('admin_login_button')}
             </Button>
           </form>
         </CardContent>

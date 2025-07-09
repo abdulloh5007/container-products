@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -9,20 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { db, storage } from '@/lib/firebase';
+import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 // This structure needs to be consistent across pages
 interface IncludedProduct {
-  id: number;
+  id: string;
   name: string;
   quantity: number;
 }
@@ -38,49 +34,57 @@ export default function AdminContainersPage() {
   const { toast } = useToast();
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      try {
-        const storedContainers = localStorage.getItem('containers');
-        if (storedContainers) {
-          setContainers(JSON.parse(storedContainers));
-        }
-      } catch (error) {
-        console.error("Failed to parse containers from localStorage", error);
-        toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-      }
+  const fetchContainers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const q = query(collection(db, "containers"), orderBy("name"));
+      const querySnapshot = await getDocs(q);
+      const containersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Container));
+      setContainers(containersData);
+    } catch (error) {
+      console.error("Error fetching containers: ", error);
+      toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+    } finally {
+      setIsLoading(false);
     }
-  }, [isClient, t, toast]);
+  }, [t, toast]);
 
-  const handleDelete = () => {
-    if (!containerToDelete || !isClient) return;
+  useEffect(() => {
+    fetchContainers();
+  }, [fetchContainers]);
+
+  const handleDelete = async () => {
+    if (!containerToDelete) return;
 
     try {
-      const updatedContainers = containers.filter(c => c.id !== containerToDelete.id);
-      localStorage.setItem('containers', JSON.stringify(updatedContainers));
-      setContainers(updatedContainers);
+      // Delete image from storage if it exists
+      if (containerToDelete.imageUrl) {
+        try {
+            const imageRef = ref(storage, containerToDelete.imageUrl);
+            await deleteObject(imageRef);
+        } catch (deleteError) {
+            console.error("Failed to delete container image: ", deleteError);
+        }
+      }
+
+      // Delete the document from Firestore
+      await deleteDoc(doc(db, "containers", containerToDelete.id));
 
       toast({
         title: t('admin_container_delete_success_title'),
         description: t('admin_container_delete_success_desc', { containerName: containerToDelete.name }),
       });
+
+      fetchContainers(); // Refresh the list
     } catch (error) {
-       console.error("Failed to delete container from localStorage", error);
+       console.error("Failed to delete container: ", error);
        toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_save_error') });
     } finally {
         setContainerToDelete(null);
     }
   };
-
-  if (!isClient) {
-    return null; // Or a loading spinner
-  }
 
   return (
     <div className="space-y-8">
@@ -117,7 +121,19 @@ export default function AdminContainersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {containers.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={index}>
+                        <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-40 rounded" /></TableCell>
+                        <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto rounded" /></TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Skeleton className="h-10 w-10 inline-block rounded" />
+                            <Skeleton className="h-10 w-10 inline-block rounded" />
+                        </TableCell>
+                    </TableRow>
+                 ))
+              ) : containers.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                         {t('admin_container_no_containers')}
@@ -136,7 +152,7 @@ export default function AdminContainersPage() {
                         />
                     </TableCell>
                     <TableCell className="font-medium">{container.name}</TableCell>
-                    <TableCell className="text-center">{container.products.length}</TableCell>
+                    <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
                     <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="icon" asChild>
                             <Link href={`/admin/containers/new?id=${container.id}`}>
