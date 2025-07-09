@@ -16,9 +16,14 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // While loading auth state, show nothing or a loader
+  // While loading auth state, show a full-page loader or skeleton
   if (isLoading) {
-    return null; // or a loading spinner component
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        {/* You can replace this with a more sophisticated skeleton loader */}
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   // If not authenticated after loading, the redirect is in flight, so render nothing.
@@ -27,11 +32,9 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-secondary">
-      <Sidebar />
-      <main className="flex-1 p-4 sm:p-6 md:p-8">
-        {children}
-      </main>
+    <div className="flex min-h-screen flex-col bg-muted/40">
+        <Sidebar />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

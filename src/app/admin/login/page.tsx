@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container } from 'lucide-react';
-import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,18 +30,16 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // In Firebase, phone number can be used as email for email/password auth
-      // For a real phone auth, you'd use phone number verification (SMS)
       await login(phone, password);
-      // The redirect is now handled by the effect
+      // The redirect is handled by the effect
     } catch (error) {
       console.error(error);
       let description = t('admin_login_failure_desc');
-      if (error instanceof FirebaseError) {
-          if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error instanceof Error) {
+          if (error.message === 'Incorrect password' || error.message === 'User not found') {
              description = t('admin_login_failure_desc');
-          } else if (error.code === 'auth/invalid-email') {
-             description = t('admin_login_failure_invalid_phone');
+          } else {
+             description = error.message;
           }
       }
       toast({

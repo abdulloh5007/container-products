@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { updatePassword } from 'firebase/auth';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,12 +11,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FirebaseError } from 'firebase/app';
 
 export default function SettingsPage() {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { user, isLoading: isAuthLoading, updateUser } = useAuth();
     
     const [name, setName] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -26,42 +24,19 @@ export default function SettingsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (user && user.email) {
-                try {
-                    const userId = user.email.split('@')[0];
-                    const userDocRef = doc(db, 'users', userId);
-                    const userDocSnap = await getDoc(userDocRef);
-
-                    if (userDocSnap.exists()) {
-                        const userData = userDocSnap.data();
-                        setName(userData.Name || ''); // Use 'Name' field
-                    } else {
-                        // This is a fallback and should ideally not be hit if login logic is correct
-                        const phone = user.email.split('@')[0];
-                        await setDoc(doc(db, 'users', phone), { Name: 'Admin', phone: phone, role: 'admin' });
-                    }
-                } catch (error) {
-                    console.error("Error fetching user data: ", error);
-                    toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-                } finally {
-                    setIsLoading(false);
-                }
-            } else if (!user) {
-                // if user is null after initial load, stop loading
-                setIsLoading(false)
+        if (!isAuthLoading) {
+            if (user) {
+                setName(user.Name || '');
             }
-        };
-
-        fetchUserData();
-    }, [user, t, toast]);
+            setIsLoading(false);
+        }
+    }, [user, isAuthLoading]);
 
     const handleUpdate = async () => {
-        if (!user || !user.email) return;
+        if (!user || !user.phone) return;
 
         setIsSubmitting(true);
 
-        // Password validation
         if (newPassword && newPassword !== confirmPassword) {
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
             setIsSubmitting(false);
@@ -69,16 +44,21 @@ export default function SettingsPage() {
         }
 
         try {
-            const userId = user.email.split('@')[0];
+            const userId = user.phone.replace(/\D/g, '');
             const userDocRef = doc(db, 'users', userId);
 
-            // Update name in Firestore
-            await updateDoc(userDocRef, { Name: name });
+            const dataToUpdate: { Name: string; password?: string } = {
+                Name: name,
+            };
 
-            // Update password in Firebase Auth if a new one is provided
             if (newPassword) {
-                await updatePassword(user, newPassword);
+                dataToUpdate.password = newPassword;
             }
+
+            await updateDoc(userDocRef, dataToUpdate);
+
+            // Update user state in context
+            updateUser({ Name: name });
 
             toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
             setNewPassword('');
@@ -86,17 +66,15 @@ export default function SettingsPage() {
 
         } catch (error) {
             console.error("Error updating profile:", error);
-             let description = t('admin_data_save_error');
-            if (error instanceof FirebaseError && error.code === 'auth/requires-recent-login') {
-                description = t('admin_settings_update_error');
-            }
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description });
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
         } finally {
             setIsSubmitting(false);
         }
     };
+    
+    const totalLoading = isLoading || isAuthLoading;
 
-    if (isLoading) {
+    if (totalLoading) {
         return (
           <div className="space-y-8">
             <Skeleton className="h-10 w-1/3" />

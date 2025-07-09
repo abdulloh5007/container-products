@@ -1,60 +1,88 @@
 'use client';
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+
+// A simple user object, not the Firebase one
+interface AppUser {
+    phone: string;
+    Name: string;
+    role: string;
+}
 
 type AuthContextType = {
-  user: User | null;
+  user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (phone: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<AppUser>) => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check session storage on initial load
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsLoading(false);
-    });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    try {
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    } catch (error) {
+        console.error("Could not parse user from session storage", error);
+        sessionStorage.removeItem('user');
+    } finally {
+        setIsLoading(false);
+    }
   }, []);
 
   const login = async (phone: string, password: string) => {
-    // Sanitize phone number to get the numeric part, which will be the user ID
-    const userId = phone.replace(/\D/g, ''); // Removes all non-digit characters
-    const emailForAuth = `${userId}@container.app`; // The email to use for Firebase Auth
-
-    const userCredential = await signInWithEmailAndPassword(auth, emailForAuth, password);
+    const userId = phone.replace(/\D/g, ''); // Use phone number as user ID
+    if (!userId) {
+        throw new Error("Invalid phone number provided.");
+    }
     
-    // Ensure user document exists in Firestore with correct structure
-    if (userCredential.user) {
-        const userDocRef = doc(db, 'users', userId);
-        const userDocSnap = await getDoc(userDocRef);
-        if (!userDocSnap.exists()) {
-            // Create the user document on first login with default values
-            await setDoc(userDocRef, {
-                Name: 'Admin', // Using 'Name' as requested by the user
-                phone: phone, // Store the original phone number string
-                role: 'admin'
-                // We DO NOT store the password here for security reasons.
-            });
+    const userDocRef = doc(db, 'users', userId);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        if (userData.password === password) {
+            const appUser: AppUser = {
+                phone: userData.phone,
+                Name: userData.Name,
+                role: userData.role
+            };
+            setUser(appUser);
+            sessionStorage.setItem('user', JSON.stringify(appUser));
+        } else {
+            throw new Error('Incorrect password');
         }
+    } else {
+        throw new Error('User not found');
     }
   };
   
   const logout = () => {
-    signOut(auth);
+    setUser(null);
+    sessionStorage.removeItem('user');
+    // Also remove from router to login page
+    window.location.href = '/admin/login';
   };
+
+  const updateUser = (data: Partial<AppUser>) => {
+      setUser(prevUser => {
+          if (!prevUser) return null;
+          const newUser = { ...prevUser, ...data };
+          sessionStorage.setItem('user', JSON.stringify(newUser));
+          return newUser;
+      });
+  }
 
   const value = useMemo(() => ({
     user,
@@ -62,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     logout,
+    updateUser,
   }), [user, isLoading]);
 
   return (
