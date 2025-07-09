@@ -229,8 +229,8 @@ export default function NewContainerPage() {
               <Skeleton className="h-10 w-1/3" />
               <Skeleton className="h-8 w-2/3" />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <Skeleton className="lg:col-span-1 h-96" />
-                <Skeleton className="lg:col-span-2 h-[500px]" />
+                <Skeleton className="lg:col-span-2 h-96" />
+                <Skeleton className="lg:col-span-1 h-[500px]" />
               </div>
           </div>
       )
@@ -249,9 +249,9 @@ export default function NewContainerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Panel: Available Products */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t('admin_available_products')}</CardTitle>
           </CardHeader>
