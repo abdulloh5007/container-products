@@ -1,8 +1,10 @@
-
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow read/write for testing purposes since Firebase Auth is not used.
+    // For this test app, allow read/write access to all paths
+    // for any user. In a real production app, you would want to
+    // implement more granular security rules.
     match /{allPaths=**} {
       allow read, write: if true;
     }
