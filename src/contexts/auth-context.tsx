@@ -28,8 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // We use email/password auth, but treat email as the phone number for the UI
+  const login = async (phone: string, password: string) => {
+    // To use a phone number with email/password auth, we format it into a valid email.
+    // NOTE: The user in Firebase Auth must also be created with this email format.
+    const email = `${phone.replace(/\s+/g, '')}@container.app`;
     await signInWithEmailAndPassword(auth, email, password);
   };
   
