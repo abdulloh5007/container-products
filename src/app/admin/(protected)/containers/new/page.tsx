@@ -226,12 +226,32 @@ export default function NewContainerPage() {
   if (isLoading) {
       return (
           <div className="space-y-8">
-              <Skeleton className="h-10 w-1/3" />
-              <Skeleton className="h-8 w-2/3" />
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <Skeleton className="lg:col-span-2 h-96" />
-                <Skeleton className="lg:col-span-1 h-[500px]" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-72" />
               </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2"> <Skeleton className="h-4 w-20" /> <Skeleton className="h-10 w-full" /> </div>
+                  <div className="space-y-2"> <Skeleton className="h-4 w-24" /> <Skeleton className="h-32 w-full" /> </div>
+                  <div className="space-y-2"> <Skeleton className="h-6 w-1/3" /> <Skeleton className="h-16 w-full" /></div>
+                  <div className="flex justify-end"> <Skeleton className="h-10 w-32" /> </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
       )
   }
@@ -249,9 +269,9 @@ export default function NewContainerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Panel: Available Products */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>{t('admin_available_products')}</CardTitle>
           </CardHeader>
@@ -269,7 +289,7 @@ export default function NewContainerPage() {
         </Card>
 
         {/* Right Panel: Container Details */}
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle>{t('admin_container_details')}</CardTitle>
           </CardHeader>
@@ -311,7 +331,7 @@ export default function NewContainerPage() {
 
             <div className="flex justify-end">
                 <Button onClick={handleSave} disabled={isSubmitting}>
-                  {isSubmitting ? t('admin_login_submitting') : (isEditMode ? t('admin_save_changes_button') : t('admin_save_container_button'))}
+                  {isSubmitting ? t('admin_saving_text') : (isEditMode ? t('admin_save_changes_button') : t('admin_save_container_button'))}
                 </Button>
             </div>
           </CardContent>

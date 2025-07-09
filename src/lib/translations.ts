@@ -133,6 +133,12 @@ export const translations = {
     admin_back_button: "Назад",
     admin_settings_show_password: "Показать пароль",
     admin_settings_hide_password: "Скрыть пароль",
+    admin_saving_text: "Сохранение...",
+    admin_loading_text: "Загрузка...",
+    admin_phone_update_warning_title: "Внимание: Смена номера телефона",
+    admin_phone_update_warning_desc: "Вы собираетесь изменить свой основной идентификатор входа. После сохранения вам нужно будет использовать новый номер телефона для входа.",
+    admin_phone_update_success: "Профиль обновлен. Используйте новый номер для следующего входа.",
+    admin_phone_update_error: "Не удалось обновить номер. Пользователь с таким номером уже может существовать.",
   },
   uz: {
     app_name: "Konteyner Yechimlari Markazi",
@@ -268,6 +274,12 @@ export const translations = {
     admin_back_button: "Orqaga",
     admin_settings_show_password: "Parolni ko'rsatish",
     admin_settings_hide_password: "Parolni yashirish",
+    admin_saving_text: "Saqlanmoqda...",
+    admin_loading_text: "Yuklanmoqda...",
+    admin_phone_update_warning_title: "Diqqat: Telefon raqamini o'zgartirish",
+    admin_phone_update_warning_desc: "Siz asosiy kirish identifikatoringizni o'zgartirmoqchisiz. Saqlagandan so'ng, kirish uchun yangi telefon raqamidan foydalanishingiz kerak bo'ladi.",
+    admin_phone_update_success: "Profil yangilandi. Keyingi kirish uchun yangi raqamdan foydalaning.",
+    admin_phone_update_error: "Raqamni yangilab bo'lmadi. Bunday raqamli foydalanuvchi allaqachon mavjud bo'lishi mumkin.",
   },
 };
 

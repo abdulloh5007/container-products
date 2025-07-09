@@ -262,11 +262,11 @@ export default function AdminProductsPage() {
                  Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={index}>
                         <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-32 rounded" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-16 rounded" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                         <TableCell className="text-right space-x-2">
-                            <Skeleton className="h-10 w-10 rounded" />
-                            <Skeleton className="h-10 w-10 rounded" />
+                            <Skeleton className="h-10 w-10 inline-block" />
+                            <Skeleton className="h-10 w-10 inline-block" />
                         </TableCell>
                     </TableRow>
                  ))
@@ -307,29 +307,31 @@ export default function AdminProductsPage() {
       </Card>
       
       <Dialog open={isModalOpen} onOpenChange={onModalOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>{productToEdit ? t('admin_products_edit_title') : t('admin_create_product_title')}</DialogTitle>
             <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="name">{t('admin_product_name')}</Label>
-                <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">{t('admin_product_name')}</Label>
+              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-3" />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="quantity" className="text-right">{t('admin_product_quantity')}</Label>
+              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} className="col-span-3" />
             </div>
-            <div className="space-y-2">
-                <Label>{t('admin_product_image')}</Label>
-                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
+            <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">{t('admin_product_image')}</Label>
+                <div className="col-span-3">
+                  <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
+                </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => onModalOpenChange(false)} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
             <Button onClick={handleSaveProduct} disabled={isSubmitting}>
-              {isSubmitting ? t('admin_login_submitting') : (productToEdit ? t('admin_save_changes_button') : t('admin_create_button'))}
+              {isSubmitting ? t('admin_saving_text') : (productToEdit ? t('admin_save_changes_button') : t('admin_create_button'))}
             </Button>
           </DialogFooter>
         </DialogContent>

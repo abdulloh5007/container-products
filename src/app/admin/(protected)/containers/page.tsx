@@ -125,11 +125,11 @@ export default function AdminContainersPage() {
                 Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={index}>
                         <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-40 rounded" /></TableCell>
-                        <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto rounded" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                        <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
                         <TableCell className="text-right space-x-2">
-                            <Skeleton className="h-10 w-10 inline-block rounded" />
-                            <Skeleton className="h-10 w-10 inline-block rounded" />
+                            <Skeleton className="h-10 w-10 inline-block" />
+                            <Skeleton className="h-10 w-10 inline-block" />
                         </TableCell>
                     </TableRow>
                  ))
