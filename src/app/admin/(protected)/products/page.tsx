@@ -307,21 +307,19 @@ export default function AdminProductsPage() {
       </Card>
       
       <Dialog open={isModalOpen} onOpenChange={onModalOpenChange}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{productToEdit ? t('admin_products_edit_title') : t('admin_create_product_title')}</DialogTitle>
             <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="name">{t('admin_product_name')}</Label>
-                    <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                    <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
-                </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">{t('admin_product_name')}</Label>
+                <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
