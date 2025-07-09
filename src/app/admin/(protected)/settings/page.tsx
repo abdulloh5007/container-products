@@ -29,17 +29,17 @@ export default function SettingsPage() {
         const fetchUserData = async () => {
             if (user && user.email) {
                 try {
-                    const phone = user.email.split('@')[0];
-                    const userDocRef = doc(db, 'users', phone);
+                    const userId = user.email.split('@')[0];
+                    const userDocRef = doc(db, 'users', userId);
                     const userDocSnap = await getDoc(userDocRef);
 
                     if (userDocSnap.exists()) {
                         const userData = userDocSnap.data();
-                        setName(userData.name || '');
+                        setName(userData.Name || ''); // Use 'Name' field
                     } else {
-                        // If user doc doesn't exist, create one. This is a fallback.
+                        // This is a fallback and should ideally not be hit if login logic is correct
                         const phone = user.email.split('@')[0];
-                        await setDoc(doc(db, 'users', phone), { name: '', phone: phone });
+                        await setDoc(doc(db, 'users', phone), { Name: 'Admin', phone: phone, role: 'admin' });
                     }
                 } catch (error) {
                     console.error("Error fetching user data: ", error);
@@ -69,11 +69,11 @@ export default function SettingsPage() {
         }
 
         try {
-            const phone = user.email.split('@')[0];
-            const userDocRef = doc(db, 'users', phone);
+            const userId = user.email.split('@')[0];
+            const userDocRef = doc(db, 'users', userId);
 
             // Update name in Firestore
-            await updateDoc(userDocRef, { name });
+            await updateDoc(userDocRef, { Name: name });
 
             // Update password in Firebase Auth if a new one is provided
             if (newPassword) {

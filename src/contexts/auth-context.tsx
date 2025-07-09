@@ -30,18 +30,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (phone: string, password: string) => {
-    const sanitizedPhone = phone.replace(/\s+/g, '');
-    const email = `${sanitizedPhone}@container.app`;
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    // Sanitize phone number to get the numeric part, which will be the user ID
+    const userId = phone.replace(/\D/g, ''); // Removes all non-digit characters
+    const emailForAuth = `${userId}@container.app`; // The email to use for Firebase Auth
+
+    const userCredential = await signInWithEmailAndPassword(auth, emailForAuth, password);
     
-    // Ensure user document exists in Firestore
+    // Ensure user document exists in Firestore with correct structure
     if (userCredential.user) {
-        const userDocRef = doc(db, 'users', sanitizedPhone);
+        const userDocRef = doc(db, 'users', userId);
         const userDocSnap = await getDoc(userDocRef);
         if (!userDocSnap.exists()) {
+            // Create the user document on first login with default values
             await setDoc(userDocRef, {
-                name: '', // Initially empty
-                phone: sanitizedPhone
+                Name: 'Admin', // Using 'Name' as requested by the user
+                phone: phone, // Store the original phone number string
+                role: 'admin'
+                // We DO NOT store the password here for security reasons.
             });
         }
     }
