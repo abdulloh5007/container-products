@@ -38,10 +38,14 @@ function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFi
   }, [setFile]);
 
   useEffect(() => {
-    if (!file && previewUrl) {
-      setCurrentPreview(previewUrl);
-    } else if (!file && !previewUrl) {
-      setCurrentPreview(null);
+    if (file) {
+        const newPreview = URL.createObjectURL(file);
+        setCurrentPreview(newPreview);
+        return () => URL.revokeObjectURL(newPreview);
+    } else if (previewUrl) {
+        setCurrentPreview(previewUrl)
+    } else {
+        setCurrentPreview(null);
     }
   }, [file, previewUrl]);
 
@@ -313,19 +317,17 @@ export default function AdminProductsPage() {
             <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">{t('admin_product_name')}</Label>
-              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-3" />
+            <div className="space-y-2">
+              <Label htmlFor="name">{t('admin_product_name')}</Label>
+              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="quantity" className="text-right">{t('admin_product_quantity')}</Label>
-              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} className="col-span-3" />
+            <div className="space-y-2">
+              <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right pt-2">{t('admin_product_image')}</Label>
-                <div className="col-span-3">
-                  <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
-                </div>
+            <div className="space-y-2">
+                <Label>{t('admin_product_image')}</Label>
+                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
             </div>
           </div>
           <DialogFooter>
