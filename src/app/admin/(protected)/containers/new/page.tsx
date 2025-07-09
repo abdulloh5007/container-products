@@ -11,9 +11,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { X, Upload, Plus, Minus, ArrowLeft } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
@@ -35,6 +34,15 @@ interface ContainerData {
   imageUrl?: string;
   products: IncludedProduct[];
 }
+
+// Helper to convert a file to a Base64 data URI
+const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
+
 
 function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
   const { t } = useLanguage();
@@ -187,16 +195,7 @@ export default function NewContainerPage() {
         let finalImageUrl = containerImageUrl || '';
 
         if (containerImage) {
-            // Delete old image if editing
-            if (isEditMode && containerImageUrl) {
-                try {
-                    const oldImageRef = ref(storage, containerImageUrl);
-                    await deleteObject(oldImageRef);
-                } catch (e) { console.error("Failed to delete old image", e); }
-            }
-            const storageRef = ref(storage, `containers/${Date.now()}_${containerImage.name}`);
-            await uploadBytes(storageRef, containerImage);
-            finalImageUrl = await getDownloadURL(storageRef);
+            finalImageUrl = await fileToDataUri(containerImage);
         }
 
         const containerData = {

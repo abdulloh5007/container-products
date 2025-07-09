@@ -13,17 +13,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
     id: string; // Firestore document ID
     name: string;
     quantity: number;
-    imageUrl: string;
+    imageUrl: string; // Will store a Base64 Data URI
 }
+
+// Helper to convert a file to a Base64 data URI
+const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
+
 
 function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
   const { t } = useLanguage();
@@ -146,7 +154,6 @@ export default function AdminProductsPage() {
       return;
     }
 
-    // A new image is required for new products
     if (!productToEdit && !newProductImage) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
         return;
@@ -157,21 +164,8 @@ export default function AdminProductsPage() {
     try {
         let imageUrl = productToEdit ? productToEdit.imageUrl : '';
 
-        // If a new image is uploaded, handle the upload process
         if (newProductImage) {
-            // Delete old image if we are editing and uploading a new one
-            if (productToEdit && productToEdit.imageUrl) {
-                try {
-                    const oldImageRef = ref(storage, productToEdit.imageUrl);
-                    await deleteObject(oldImageRef);
-                } catch (deleteError) {
-                    // Log error but don't block the update process
-                    console.error("Failed to delete old image: ", deleteError);
-                }
-            }
-            const storageRef = ref(storage, `products/${Date.now()}_${newProductImage.name}`);
-            await uploadBytes(storageRef, newProductImage);
-            imageUrl = await getDownloadURL(storageRef);
+            imageUrl = await fileToDataUri(newProductImage);
         }
 
         const productData = {
@@ -212,13 +206,6 @@ export default function AdminProductsPage() {
   const confirmDelete = async () => {
     if (!productToDelete) return;
     try {
-        // Delete image from storage
-        if (productToDelete.imageUrl) {
-            const imageRef = ref(storage, productToDelete.imageUrl);
-            await deleteObject(imageRef);
-        }
-
-        // Delete document from firestore
         await deleteDoc(doc(db, "products", productToDelete.id));
 
         toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });

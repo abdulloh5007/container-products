@@ -10,9 +10,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -59,16 +58,6 @@ export default function AdminContainersPage() {
     if (!containerToDelete) return;
 
     try {
-      // Delete image from storage if it exists
-      if (containerToDelete.imageUrl) {
-        try {
-            const imageRef = ref(storage, containerToDelete.imageUrl);
-            await deleteObject(imageRef);
-        } catch (deleteError) {
-            console.error("Failed to delete container image: ", deleteError);
-        }
-      }
-
       // Delete the document from Firestore
       await deleteDoc(doc(db, "containers", containerToDelete.id));
 
