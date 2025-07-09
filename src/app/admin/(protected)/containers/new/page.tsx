@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,10 +31,37 @@ const availableProductsData: Product[] = [
   { id: 6, name: 'High Cube 40ft' },
 ];
 
-function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: File | null) => void }) {
+interface ContainerData {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  products: IncludedProduct[];
+}
+
+function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
   const { t } = useLanguage();
+  const [preview, setPreview] = useState<string | null>(previewUrl || null);
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles[0]) {
+      setFile(acceptedFiles[0]);
+    }
+  }, [setFile]);
+
+  useEffect(() => {
+    if (file) {
+      const newPreview = URL.createObjectURL(file);
+      setPreview(newPreview);
+      return () => URL.revokeObjectURL(newPreview);
+    } else if (previewUrl) {
+      setPreview(previewUrl)
+    } else {
+        setPreview(null);
+    }
+  }, [file, previewUrl]);
+  
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: acceptedFiles => setFile(acceptedFiles[0]),
+    onDrop,
     accept: { 'image/*': [] },
     maxFiles: 1,
   });
@@ -41,26 +69,66 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   return (
     <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors">
       <input {...getInputProps()} />
-      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-        <Upload className="h-8 w-8" />
-        {file ? (
-          <p>{file.name}</p>
-        ) : isDragActive ? (
-          <p>{t('admin_product_image_drop')}</p>
-        ) : (
-          <p>{t('admin_product_image_drop')}</p>
-        )}
-      </div>
+      {preview ? (
+        <div className="relative h-32 w-full">
+            <Image src={preview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
+        </div>
+      ) : (
+         <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Upload className="h-8 w-8" />
+          <p>{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function NewContainerPage() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
   const [containerName, setContainerName] = useState('');
   const [containerImage, setContainerImage] = useState<File | null>(null);
+  const [containerImageUrl, setContainerImageUrl] = useState<string | null>(null);
   const [includedProducts, setIncludedProducts] = useState<IncludedProduct[]>([]);
+  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [containerId, setContainerId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
+    const id = searchParams.get('id');
+    if (id) {
+      setIsEditMode(true);
+      setContainerId(id);
+      
+      try {
+        const storedContainers = localStorage.getItem('containers');
+        const allContainers: ContainerData[] = storedContainers ? JSON.parse(storedContainers) : [];
+        const containerToEdit = allContainers.find(c => c.id === id);
+
+        if (containerToEdit) {
+          setContainerName(containerToEdit.name);
+          setIncludedProducts(containerToEdit.products);
+          setContainerImageUrl(containerToEdit.imageUrl || null);
+        } else {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: "Container not found." });
+            router.push('/admin/containers');
+        }
+      } catch (error) {
+         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+         router.push('/admin/containers');
+      }
+    }
+  }, [searchParams, router, toast, isClient, t]);
 
   const addProduct = (product: Product) => {
     setIncludedProducts(prev => {
@@ -85,23 +153,65 @@ export default function NewContainerPage() {
   };
   
   const handleSave = () => {
-    // In a real app, you would send this data to your API
-    console.log({
+    if (!isClient || !containerName) {
+        toast({
+            variant: "destructive",
+            title: t('admin_form_error_title'),
+            description: t('admin_form_error_name_required'),
+        });
+        return;
+    }
+    
+    const imageUrl = containerImage ? URL.createObjectURL(containerImage) : containerImageUrl;
+
+    const newContainerData: Partial<ContainerData> = {
         name: containerName,
-        image: containerImage,
+        imageUrl: imageUrl || '',
         products: includedProducts,
-    });
-    toast({
-        title: "Container Saved",
-        description: `${containerName} has been saved successfully.`,
-    })
-  }
+    };
+
+    try {
+        const storedContainers = localStorage.getItem('containers');
+        let allContainers: ContainerData[] = storedContainers ? JSON.parse(storedContainers) : [];
+
+        if (isEditMode && containerId) {
+            allContainers = allContainers.map(c => 
+                c.id === containerId 
+                ? { ...c, ...newContainerData } 
+                : c
+            );
+            toast({
+                title: t('admin_container_update_success_title'),
+                description: t('admin_container_update_success_desc', { containerName }),
+            });
+        } else {
+            const newContainer: ContainerData = { 
+                id: Date.now().toString(),
+                name: containerName,
+                imageUrl: imageUrl || '',
+                products: includedProducts
+            };
+            allContainers.push(newContainer);
+            toast({
+                title: t('admin_container_create_success_title'),
+                description: t('admin_container_create_success_desc', { containerName }),
+            });
+        }
+        
+        localStorage.setItem('containers', JSON.stringify(allContainers));
+        router.push('/admin/containers');
+    } catch(error) {
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
+    }
+  };
+  
+  if (!isClient) return null;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_new_container_title')}</h1>
-        <p className="text-muted-foreground">{t('admin_new_container_desc')}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{isEditMode ? t('admin_edit_container_title') : t('admin_new_container_title')}</h1>
+        <p className="text-muted-foreground">{isEditMode ? t('admin_edit_container_desc') : t('admin_new_container_desc')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -135,13 +245,13 @@ export default function NewContainerPage() {
 
             <div className="space-y-2">
               <Label>{t('admin_container_image')}</Label>
-              <ImageUploader file={containerImage} setFile={setContainerImage} />
+              <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} />
             </div>
             
             <div className="space-y-4">
                 <h3 className="text-lg font-medium">{t('admin_included_products')}</h3>
                 <div className="space-y-2">
-                    {includedProducts.length === 0 && <p className="text-sm text-muted-foreground">No products added yet.</p>}
+                    {includedProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
                     {includedProducts.map(product => (
                         <div key={product.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
                             <span className="font-medium">{product.name}</span>
@@ -164,7 +274,7 @@ export default function NewContainerPage() {
             </div>
 
             <div className="flex justify-end">
-                <Button onClick={handleSave}>{t('admin_save_container_button')}</Button>
+                <Button onClick={handleSave}>{isEditMode ? t('admin_save_changes_button') : t('admin_save_container_button')}</Button>
             </div>
           </CardContent>
         </Card>
