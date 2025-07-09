@@ -1,10 +1,8 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // For this test app, allow read/write access to all collections
-    // for any user. In a real production app, you would want to
-    // implement more granular security rules.
+    // Allow read/write access to all documents to anyone
+    // for testing purposes.
     match /{document=**} {
       allow read, write: if true;
     }
