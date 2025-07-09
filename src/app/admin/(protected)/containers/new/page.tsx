@@ -243,9 +243,9 @@ export default function NewContainerPage() {
         <p className="text-muted-foreground">{isEditMode ? t('admin_edit_container_desc') : t('admin_new_container_desc')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Left Panel: Available Products */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{t('admin_available_products')}</CardTitle>
           </CardHeader>
@@ -263,7 +263,7 @@ export default function NewContainerPage() {
         </Card>
 
         {/* Right Panel: Container Details */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>{t('admin_container_details')}</CardTitle>
           </CardHeader>
