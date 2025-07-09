@@ -58,7 +58,7 @@ function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFi
   return (
     <div
       {...getRootProps()}
-      className={`w-full aspect-square rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary flex items-center justify-center ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary flex items-center justify-center ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
     >
       <input {...getInputProps()} />
       {currentPreview ? (
