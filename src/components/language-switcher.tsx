@@ -8,10 +8,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLanguage } from '@/hooks/use-language';
-import { Globe } from 'lucide-react';
+import { Globe, Check } from 'lucide-react';
 
 export function LanguageSwitcher() {
-  const { setLanguage } = useLanguage();
+  const { language, setLanguage } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -24,9 +24,11 @@ export function LanguageSwitcher() {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setLanguage('ru')}>
           Русский
+          {language === 'ru' && <Check className="ml-auto h-4 w-4" />}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setLanguage('uz')}>
           Oʻzbekcha
+          {language === 'uz' && <Check className="ml-auto h-4 w-4" />}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

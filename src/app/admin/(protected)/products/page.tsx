@@ -66,15 +66,15 @@ function ImageUploader({ file, setFile }: { file: File | null, setFile: (file: F
   return (
     <div
       {...getRootProps()}
-      className={`w-full rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+      className={`w-full h-32 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
     >
       <input {...getInputProps()} />
       {preview ? (
-        <div className="relative h-24 w-full">
+        <div className="relative h-full w-full">
             <Image src={preview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground py-6">
+        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
           <UploadCloud className="h-8 w-8" />
           <p className="font-semibold text-foreground">
             {t('admin_product_image_drop')}
@@ -124,8 +124,8 @@ export default function AdminProductsPage() {
     if (!newProductName || newProductQuantity < 1 || !newProductImage) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please fill all fields and upload an image.',
+        title: t('admin_form_error_title'),
+        description: t('admin_form_error_desc'),
       });
       return;
     }
@@ -143,7 +143,7 @@ export default function AdminProductsPage() {
       if (isImageUpdated) {
         URL.revokeObjectURL(productToEdit.imageUrl);
       }
-      toast({ title: "Product Updated", description: `'${newProductName}' has been updated.` });
+      toast({ title: t('admin_product_update_success_title'), description: t('admin_product_update_success_desc', { productName: newProductName }) });
     } else {
       const newProduct: Product = {
         id: Date.now(),
@@ -153,7 +153,7 @@ export default function AdminProductsPage() {
         imageUrl: URL.createObjectURL(newProductImage),
       };
       setProducts(prev => [...prev, newProduct]);
-      toast({ title: "Product Created", description: `'${newProductName}' has been created.` });
+      toast({ title: t('admin_product_create_success_title'), description: t('admin_product_create_success_desc', { productName: newProductName }) });
     }
 
     onModalOpenChange(false);
@@ -173,7 +173,7 @@ export default function AdminProductsPage() {
     if (!productToDelete) return;
     URL.revokeObjectURL(productToDelete.imageUrl);
     setProducts(products.filter(p => p.id !== productToDelete.id));
-    toast({ title: "Product Deleted", description: `'${productToDelete.name}' has been deleted.` });
+    toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
     setProductToDelete(null);
   }
 
@@ -201,9 +201,9 @@ export default function AdminProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Image</TableHead>
+                <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                 <TableHead>{t('admin_products_table_name')}</TableHead>
-                <TableHead className="w-[120px]">Quantity</TableHead>
+                <TableHead className="w-[120px]">{t('admin_products_table_quantity')}</TableHead>
                 <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -211,7 +211,7 @@ export default function AdminProductsPage() {
               {products.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                        No products have been added yet.
+                        {t('admin_product_no_products')}
                     </TableCell>
                 </TableRow>
               ) : (
@@ -245,19 +245,21 @@ export default function AdminProductsPage() {
       </Card>
       
       <Dialog open={isModalOpen} onOpenChange={onModalOpenChange}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{productToEdit ? 'Edit Product' : t('admin_create_product_title')}</DialogTitle>
-            <DialogDescription>{productToEdit ? 'Update the details for this product.' : t('admin_create_product_desc')}</DialogDescription>
+            <DialogTitle>{productToEdit ? t('admin_products_edit_title') : t('admin_create_product_title')}</DialogTitle>
+            <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('admin_product_name')}</Label>
-              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">{t('admin_product_name')}</Label>
+                    <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                    <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+                </div>
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
@@ -266,7 +268,7 @@ export default function AdminProductsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => onModalOpenChange(false)}>{t('admin_cancel_button')}</Button>
-            <Button onClick={handleSaveProduct}>{productToEdit ? 'Save Changes' : t('admin_create_button')}</Button>
+            <Button onClick={handleSaveProduct}>{productToEdit ? t('admin_save_changes_button') : t('admin_create_button')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -274,15 +276,15 @@ export default function AdminProductsPage() {
       <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t('admin_delete_confirm_title')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This will permanently delete the product "{productToDelete?.name}". This action cannot be undone.
+                    {t('admin_delete_confirm_desc', { productName: productToDelete?.name || '' })}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setProductToDelete(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
                 <AlertDialogAction onClick={confirmDelete} className={buttonVariants({ variant: "destructive" })}>
-                    Delete
+                    {t('admin_delete_button')}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
