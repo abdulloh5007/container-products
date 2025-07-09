@@ -130,6 +130,7 @@ export const translations = {
     admin_settings_update_success_desc: "Ваши данные были успешно обновлены.",
     admin_settings_password_mismatch: "Пароли не совпадают.",
     admin_settings_update_error: "Не удалось обновить профиль. Попробуйте войти снова.",
+    admin_back_button: "Назад",
   },
   uz: {
     app_name: "Konteyner Yechimlari Markazi",
@@ -262,6 +263,7 @@ export const translations = {
     admin_settings_update_success_desc: "Ma'lumotlaringiz muvaffaqiyatli yangilandi.",
     admin_settings_password_mismatch: "Parollar mos kelmadi.",
     admin_settings_update_error: "Profilni yangilab bo'lmadi. Qayta kirib ko'ring.",
+    admin_back_button: "Orqaga",
   },
 };
 

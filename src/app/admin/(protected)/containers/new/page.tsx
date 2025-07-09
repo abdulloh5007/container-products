@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { X, Upload, Plus, Minus } from 'lucide-react';
+import { X, Upload, Plus, Minus, ArrowLeft } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db, storage } from '@/lib/firebase';
@@ -238,9 +238,15 @@ export default function NewContainerPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{isEditMode ? t('admin_edit_container_title') : t('admin_new_container_title')}</h1>
-        <p className="text-muted-foreground">{isEditMode ? t('admin_edit_container_desc') : t('admin_new_container_desc')}</p>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="sr-only">{t('admin_back_button')}</span>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{isEditMode ? t('admin_edit_container_title') : t('admin_new_container_title')}</h1>
+          <p className="text-muted-foreground">{isEditMode ? t('admin_edit_container_desc') : t('admin_new_container_desc')}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

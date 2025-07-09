@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -11,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft } from 'lucide-react';
 
 export default function SettingsPage() {
     const { t } = useLanguage();
     const { toast } = useToast();
     const { user, isLoading: isAuthLoading, updateUser } = useAuth();
+    const router = useRouter();
     
     const [name, setName] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -107,9 +110,15 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
-                <p className="text-muted-foreground">{t('admin_settings_desc')}</p>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">{t('admin_back_button')}</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
+                    <p className="text-muted-foreground">{t('admin_settings_desc')}</p>
+                </div>
             </div>
 
             <Card className="max-w-2xl">
