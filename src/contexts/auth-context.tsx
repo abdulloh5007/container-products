@@ -9,6 +9,7 @@ interface AppUser {
     phone: string;
     Name: string;
     role: string;
+    password?: string;
 }
 
 type AuthContextType = {
@@ -56,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const appUser: AppUser = {
                 phone: userData.phone,
                 Name: userData.Name,
-                role: userData.role
+                role: userData.role,
+                password: userData.password,
             };
             setUser(appUser);
             sessionStorage.setItem('user', JSON.stringify(appUser));

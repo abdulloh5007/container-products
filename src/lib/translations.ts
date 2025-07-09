@@ -101,7 +101,7 @@ export const translations = {
     admin_product_delete_success_title: "Продукт удален",
     admin_product_delete_success_desc: "Продукт '{productName}' был удален.",
     admin_form_error_title: "Ошибка",
-    admin_form_error_desc: "Пожалуйста, заполните все поля и загрузите изображение.",
+    admin_form_error_desc: "Пожалуйста, заполните все обязательные поля.",
     theme_light: "Светлая",
     theme_dark: "Темная",
     theme_system: "Системная",
@@ -131,6 +131,8 @@ export const translations = {
     admin_settings_password_mismatch: "Пароли не совпадают.",
     admin_settings_update_error: "Не удалось обновить профиль. Попробуйте войти снова.",
     admin_back_button: "Назад",
+    admin_settings_show_password: "Показать пароль",
+    admin_settings_hide_password: "Скрыть пароль",
   },
   uz: {
     app_name: "Konteyner Yechimlari Markazi",
@@ -234,7 +236,7 @@ export const translations = {
     admin_product_delete_success_title: "Mahsulot o'chirildi",
     admin_product_delete_success_desc: "'{productName}' mahsuloti o'chirildi.",
     admin_form_error_title: "Xatolik",
-    admin_form_error_desc: "Iltimos, barcha maydonlarni to'ldiring va rasm yuklang.",
+    admin_form_error_desc: "Iltimos, barcha majburiy maydonlarni to'ldiring.",
     theme_light: "Yorug'",
     theme_dark: "Qorong'i",
     theme_system: "Tizim",
@@ -264,6 +266,8 @@ export const translations = {
     admin_settings_password_mismatch: "Parollar mos kelmadi.",
     admin_settings_update_error: "Profilni yangilab bo'lmadi. Qayta kirib ko'ring.",
     admin_back_button: "Orqaga",
+    admin_settings_show_password: "Parolni ko'rsatish",
+    admin_settings_hide_password: "Parolni yashirish",
   },
 };
 
