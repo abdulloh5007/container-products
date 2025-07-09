@@ -278,7 +278,16 @@ export default function NewContainerPage() {
             {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
             {availableProducts.map(product => (
               <div key={product.id} className="flex items-center justify-between p-2 border rounded-lg">
-                <span>{product.name}</span>
+                <div className="flex items-center gap-4">
+                  <Image
+                      src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                      alt={product.name}
+                      width={40}
+                      height={40}
+                      className="rounded-md object-cover h-10 w-10"
+                  />
+                  <span>{product.name}</span>
+                </div>
                 <Button size="sm" onClick={() => addProduct(product)}>
                   {t('admin_add_product_button')}
                 </Button>
