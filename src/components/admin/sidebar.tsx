@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { Container, Package, LogOut, Box, Menu } from 'lucide-react';
+import { Container, Package, LogOut, Box, Menu, Settings } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -71,7 +71,7 @@ export function Sidebar() {
                                 'flex h-24 flex-1 flex-col items-center justify-center gap-2 rounded-lg p-2 transition-all',
                                 isActive
                                     ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground hover:brightness-95'
+                                    : 'bg-card text-muted-foreground hover:bg-muted'
                             )}
                         >
                             <Icon className="h-8 w-8" />
@@ -81,6 +81,10 @@ export function Sidebar() {
                 })}
                 </nav>
                  <div className="mt-auto border-t pt-4">
+                   <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => { router.push('/admin/settings'); closeSheet(); }}>
+                     <Settings className="h-4 w-4" />
+                     {t('admin_sidebar_settings')}
+                   </Button>
                    <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
                      <LogOut className="h-4 w-4" />
                      {t('admin_logout')}
