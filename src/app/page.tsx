@@ -10,6 +10,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Product {
     id: string;
@@ -17,6 +18,13 @@ interface Product {
     quantity: number;
     imageUrl: string;
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
 
 export default function Home() {
   const { t } = useLanguage();
@@ -76,22 +84,34 @@ export default function Home() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <div className="relative w-full h-60">
-              <Image
-                src={product.imageUrl || 'https://placehold.co/600x400.png'}
-                alt={product.name}
-                fill
-                className="object-cover"
-              />
-            </div>
-            <CardHeader>
-              <CardTitle className="font-headline">{product.name}</CardTitle>
-              <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
-            </CardHeader>
-          </Card>
-        ))}
+        <AnimatePresence>
+          {filteredProducts.map((product) => (
+            <motion.div
+              key={product.id}
+              variants={cardVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.3 }}
+              layout
+            >
+              <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
+                <div className="relative w-full h-60">
+                  <Image
+                    src={product.imageUrl || 'https://placehold.co/600x400.png'}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <CardHeader>
+                  <CardTitle className="font-headline">{product.name}</CardTitle>
+                  <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
+                </CardHeader>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     );
   };
