@@ -112,57 +112,58 @@ export default function NewContainerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch available products
-  useEffect(() => {
-    const fetchProducts = async () => {
-        try {
-            const q = query(collection(db, "products"), orderBy("name"));
-            const querySnapshot = await getDocs(q);
-            const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-            setAvailableProducts(productsData);
-        } catch (error) {
-            console.error("Error fetching available products: ", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-        }
-    };
-    fetchProducts();
-  }, [t, toast]);
-
-
-  // Fetch container data if in edit mode
+  // Fetch all data on component mount
   useEffect(() => {
     const containerIdParam = searchParams.get('id');
-    if (containerIdParam) {
-      setIsEditMode(true);
+    const isEditing = !!containerIdParam;
+    
+    setIsEditMode(isEditing);
+    if(isEditing) {
       setContainerId(containerIdParam);
-      
-      const fetchContainerData = async () => {
+    }
+
+    const fetchAllData = async () => {
         setIsLoading(true);
         try {
-            const containerDocRef = doc(db, 'containers', containerIdParam);
-            const containerDocSnap = await getDoc(containerDocRef);
+            // 1. Fetch all available products
+            const productsQuery = query(collection(db, "products"), orderBy("name"));
+            const productsSnapshot = await getDocs(productsQuery);
+            const allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            setAvailableProducts(allProducts);
 
-            if (containerDocSnap.exists()) {
-                const containerData = containerDocSnap.data() as Omit<ContainerData, 'id'>;
-                setContainerName(containerData.name);
-                setIncludedProducts(containerData.products || []);
-                setContainerImageUrl(containerData.imageUrl || null);
-            } else {
-                toast({ variant: 'destructive', title: t('admin_form_error_title'), description: "Container not found." });
-                router.push('/admin/containers');
+            // 2. If in edit mode, fetch container data and validate its products
+            if (isEditing) {
+                const containerDocRef = doc(db, 'containers', containerIdParam);
+                const containerDocSnap = await getDoc(containerDocRef);
+
+                if (containerDocSnap.exists()) {
+                    const containerData = containerDocSnap.data() as Omit<ContainerData, 'id'>;
+                    setContainerName(containerData.name);
+                    setContainerImageUrl(containerData.imageUrl || null);
+
+                    // 3. Filter included products to ensure they still exist
+                    const existingProductIds = new Set(allProducts.map(p => p.id));
+                    const validIncludedProducts = (containerData.products || []).filter(p => existingProductIds.has(p.id));
+                    
+                    setIncludedProducts(validIncludedProducts);
+
+                } else {
+                    toast({ variant: 'destructive', title: t('admin_form_error_title'), description: "Container not found." });
+                    router.push('/admin/containers');
+                }
             }
         } catch (error) {
-           toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-           router.push('/admin/containers');
+            console.error("Error loading data:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+            if(isEditing) router.push('/admin/containers');
         } finally {
             setIsLoading(false);
         }
-      }
-      fetchContainerData();
-    } else {
-        setIsLoading(false); // Not in edit mode, so no data to load
-    }
-  }, [searchParams, router, toast, t]);
+    };
+    
+    fetchAllData();
+  }, [searchParams, router, t, toast]);
+
 
   const addProduct = (product: Product) => {
     setIncludedProducts(prev => {
