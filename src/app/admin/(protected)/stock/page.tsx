@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
@@ -81,10 +81,7 @@ export default function AdminStockPage() {
       </div>
       
       <Card>
-        <CardHeader>
-          <CardTitle>{t('admin_sidebar_stock')}</CardTitle>
-          <CardDescription>{t('admin_stock_desc')}</CardDescription>
-        </CardHeader>
+        <CardHeader></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>

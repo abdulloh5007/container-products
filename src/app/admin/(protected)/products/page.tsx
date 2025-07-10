@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { PlusCircle, Edit, Trash2, UploadCloud } from 'lucide-react';
@@ -222,24 +222,19 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_products_title')}</h1>
-        <p className="text-muted-foreground">{t('admin_products_desc')}</p>
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('admin_products_title')}</h1>
+            <p className="text-muted-foreground">{t('admin_products_desc')}</p>
+        </div>
+        <Button onClick={handleOpenModalForCreate}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {t('admin_products_add')}
+        </Button>
       </div>
       
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{t('admin_sidebar_products')}</CardTitle>
-              <CardDescription>{t('admin_products_desc')}</CardDescription>
-            </div>
-            <Button onClick={handleOpenModalForCreate}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t('admin_products_add')}
-            </Button>
-          </div>
-        </CardHeader>
+        <CardHeader></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>

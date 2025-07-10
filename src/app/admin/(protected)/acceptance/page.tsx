@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
@@ -90,10 +90,7 @@ export default function AdminAcceptancePage() {
       </div>
       
       <Card>
-        <CardHeader>
-            <CardTitle>{t('admin_acceptance_title')}</CardTitle>
-            <CardDescription>{t('admin_acceptance_desc')}</CardDescription>
-        </CardHeader>
+        <CardHeader></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
