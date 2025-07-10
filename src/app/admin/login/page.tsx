@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,6 +11,33 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container, Eye, EyeOff } from 'lucide-react';
+
+const formatPhoneNumberInput = (value: string): string => {
+    if (!value) return '';
+    const digits = value.replace(/\D/g, '');
+    
+    // Ensure it starts with 998 and limit to 12 digits total
+    let finalDigits = digits;
+    if (finalDigits.startsWith('998')) {
+        finalDigits = finalDigits.substring(0, 12);
+    } else {
+        finalDigits = `998${finalDigits}`.substring(0, 12);
+    }
+
+    const country = finalDigits.slice(0, 3);
+    const operator = finalDigits.slice(3, 5);
+    const part1 = finalDigits.slice(5, 8);
+    const part2 = finalDigits.slice(8, 10);
+    const part3 = finalDigits.slice(10, 12);
+    
+    let formatted = `+${country}`;
+    if (operator) formatted += ` (${operator}`;
+    if (part1) formatted += `) ${part1}`;
+    if (part2) formatted += `-${part2}`;
+    if (part3) formatted += `-${part3}`;
+    
+    return formatted;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,6 +54,12 @@ export default function LoginPage() {
       router.replace('/admin/containers');
     }
   }, [isAuthenticated, router]);
+  
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumberInput(e.target.value);
+    setPhone(formatted);
+  };
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +109,11 @@ export default function LoginPage() {
               <Label htmlFor="phone">{t('admin_phone')}</Label>
               <Input
                 id="phone"
-                type="text" // Use text to allow for various phone formats
+                type="text"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={handlePhoneChange}
                 required
-                placeholder="+998901234567"
+                placeholder="+998 (90) 123-45-67"
               />
             </div>
             <div className="space-y-2">
