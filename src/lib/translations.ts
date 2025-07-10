@@ -158,7 +158,9 @@ export const translations = {
     admin_acceptance_success_title: "Контейнер принят",
     admin_acceptance_success_desc: "Продукты из контейнера '{containerName}' добавлены на склад.",
     admin_acceptance_error_title: "Ошибка приёмки",
-    admin_acceptance_error_desc: "Не удалось обновить склад. Попробуйте еще раз."
+    admin_acceptance_error_desc: "Не удалось обновить склад. Попробуйте еще раз.",
+    admin_acceptance_confirm_title: "Подтвердить приемку",
+    admin_acceptance_confirm_desc: "Вы уверены, что хотите принять контейнер '{containerName}' и добавить его содержимое на склад?"
   },
   uz: {
     app_name: "Konteyner Yechimlari Markazi",
@@ -319,7 +321,9 @@ export const translations = {
     admin_acceptance_success_title: "Konteyner qabul qilindi",
     admin_acceptance_success_desc: "'{containerName}' konteyneridagi mahsulotlar omborga qo'shildi.",
     admin_acceptance_error_title: "Qabul qilishda xatolik",
-    admin_acceptance_error_desc: "Omborni yangilab bo'lmadi. Qayta urinib ko'ring."
+    admin_acceptance_error_desc: "Omborni yangilab bo'lmadi. Qayta urinib ko'ring.",
+    admin_acceptance_confirm_title: "Qabul qilishni tasdiqlang",
+    admin_acceptance_confirm_desc: "'{containerName}' konteynerini qabul qilib, uning tarkibini omborga qo'shmoqchimisiz?"
   },
 };
 

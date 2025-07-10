@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
@@ -12,6 +12,8 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, writeBatch, increment, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 interface IncludedProduct {
   id: string;
@@ -31,6 +33,7 @@ export default function AdminAcceptancePage() {
   const [containers, setContainers] = useState<Container[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingContainerId, setAcceptingContainerId] = useState<string | null>(null);
+  const [containerToAccept, setContainerToAccept] = useState<Container | null>(null);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -51,17 +54,20 @@ export default function AdminAcceptancePage() {
     fetchContainers();
   }, [fetchContainers]);
   
-  const handleAcceptContainer = async (container: Container) => {
-    if (!container.products || container.products.length === 0) {
+  const handleAcceptContainer = async () => {
+    if (!containerToAccept) return;
+
+    if (!containerToAccept.products || containerToAccept.products.length === 0) {
+        setContainerToAccept(null);
         return;
     }
     
-    setAcceptingContainerId(container.id);
+    setAcceptingContainerId(containerToAccept.id);
     
     try {
         const batch = writeBatch(db);
         
-        container.products.forEach(product => {
+        containerToAccept.products.forEach(product => {
             const productRef = doc(db, 'products', product.id);
             batch.update(productRef, { quantity: increment(product.quantity) });
         });
@@ -70,7 +76,7 @@ export default function AdminAcceptancePage() {
         
         toast({
             title: t('admin_acceptance_success_title'),
-            description: t('admin_acceptance_success_desc', { containerName: container.name }),
+            description: t('admin_acceptance_success_desc', { containerName: containerToAccept.name }),
         });
         
     } catch(error) {
@@ -78,6 +84,7 @@ export default function AdminAcceptancePage() {
         toast({ variant: 'destructive', title: t('admin_acceptance_error_title'), description: t('admin_acceptance_error_desc') });
     } finally {
         setAcceptingContainerId(null);
+        setContainerToAccept(null);
     }
   }
 
@@ -109,7 +116,7 @@ export default function AdminAcceptancePage() {
                         <TableCell><Skeleton className="h-6 w-40" /></TableCell>
                         <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
                         <TableCell className="text-right">
-                            <Skeleton className="h-10 w-32" />
+                            <Skeleton className="h-10 w-32 ml-auto" />
                         </TableCell>
                     </TableRow>
                  ))
@@ -135,7 +142,7 @@ export default function AdminAcceptancePage() {
                     <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
                     <TableCell className="text-right">
                         <Button 
-                            onClick={() => handleAcceptContainer(container)}
+                            onClick={() => setContainerToAccept(container)}
                             disabled={acceptingContainerId === container.id || !container.products || container.products.length === 0}
                         >
                             <CheckCircle className="mr-2 h-4 w-4" />
@@ -149,6 +156,36 @@ export default function AdminAcceptancePage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!containerToAccept} onOpenChange={(open) => !open && setContainerToAccept(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t('admin_acceptance_confirm_title')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {t('admin_acceptance_confirm_desc', { containerName: containerToAccept?.name || '' })}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            {containerToAccept && (
+              <div className="flex flex-col items-center text-center gap-4 my-4">
+                  <Image
+                    src={containerToAccept.imageUrl || 'https://placehold.co/128x128.png'}
+                    alt={containerToAccept.name}
+                    width={128}
+                    height={128}
+                    className="rounded-lg object-cover"
+                  />
+                  <p className="text-lg font-semibold">{containerToAccept.name}</p>
+              </div>
+            )}
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setContainerToAccept(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleAcceptContainer} className={buttonVariants({ variant: "default" })}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    {t('admin_acceptance_button')}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
