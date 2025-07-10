@@ -17,7 +17,7 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 
 interface Product {
     id: string;
@@ -244,10 +244,7 @@ export default function AdminStockPage() {
                                         )}
                                     </CarouselContent>
                                     {product.imageUrls && product.imageUrls.length > 1 && (
-                                        <>
-                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </>
+                                       <CarouselDots className="absolute bottom-2 left-1/2 -translate-x-1/2" />
                                     )}
                                 </Carousel>
                             </CardHeader>
@@ -336,5 +333,3 @@ export default function AdminStockPage() {
     </>
   );
 }
-
-    
