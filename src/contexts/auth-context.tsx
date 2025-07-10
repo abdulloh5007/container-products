@@ -3,7 +3,7 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 interface AppUser {
     phone: string;
@@ -46,11 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const userDocRef = doc(db, 'users', userId);
                     const userDocSnap = await getDoc(userDocRef);
 
-                    // Check if the token in localStorage matches the one in Firestore
-                    if (userDocSnap.exists() && userDocSnap.data().sessionToken === storedUser.sessionToken) {
+                    // Check if the token in localStorage exists in the Firestore tokens array
+                    if (userDocSnap.exists() && userDocSnap.data().sessionTokens?.includes(storedUser.sessionToken)) {
                         setUser(storedUser);
                     } else {
-                        // If tokens don't match, clear the stale session
+                        // If token is not valid, clear the stale session
                         localStorage.removeItem('user');
                         setUser(null);
                     }
@@ -82,9 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = userDocSnap.data();
             const sessionToken = generateSessionToken();
 
-            // Store session token in Firestore
+            // Manage session tokens array in Firestore
+            let sessionTokens = userData.sessionTokens || [];
+            sessionTokens.push(sessionToken);
+            if (sessionTokens.length > 3) {
+                sessionTokens.shift(); // Remove the oldest token
+            }
+
             await updateDoc(userDocRef, {
-                sessionToken: sessionToken,
+                sessionTokens: sessionTokens,
                 lastLogin: serverTimestamp(),
             });
 
@@ -110,15 +116,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    if (!user) return;
+    const currentUser = user;
+    if (!currentUser || !currentUser.sessionToken) return;
     
     setIsLoading(true);
     try {
-        const userId = user.phone.replace(/\D/g, '');
+        const userId = currentUser.phone.replace(/\D/g, '');
         const userDocRef = doc(db, 'users', userId);
         
-        // Remove session token from Firestore
-        await updateDoc(userDocRef, { sessionToken: null });
+        // Remove the specific session token from Firestore
+        await updateDoc(userDocRef, {
+            sessionTokens: arrayRemove(currentUser.sessionToken)
+        });
     } catch (error) {
         console.error("Error clearing session token from Firestore", error);
     } finally {
