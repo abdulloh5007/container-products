@@ -209,7 +209,7 @@ export default function AdminAcceptancePage() {
       {view === 'table' ? (
         <Card>
             <CardContent className="pt-6">
-                <Table>
+                <Table className="min-w-[640px]">
                     <TableHeader>
                     <TableRow>
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
