@@ -12,12 +12,13 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface Product {
     id: string;
     name: string;
     quantity: number;
-    imageUrl: string;
+    imageUrls: string[];
 }
 
 const cardVariants = {
@@ -106,14 +107,39 @@ export default function Home() {
               layout
             >
               <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-                <div className="relative w-full h-60 cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/600x400.png')}>
-                  <Image
-                    src={product.imageUrl || 'https://placehold.co/600x400.png'}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+                 <Carousel className="w-full relative group">
+                  <CarouselContent>
+                    {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
+                      <CarouselItem key={index}>
+                        <div className="relative w-full h-60 cursor-pointer" onClick={() => openFullscreen(url)}>
+                          <Image
+                            src={url}
+                            alt={`${product.name} - image ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    )) : (
+                       <CarouselItem>
+                         <div className="relative w-full h-60" onClick={() => openFullscreen('https://placehold.co/600x400.png')}>
+                            <Image
+                                src={'https://placehold.co/600x400.png'}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                            />
+                         </div>
+                       </CarouselItem>
+                    )}
+                  </CarouselContent>
+                  {product.imageUrls && product.imageUrls.length > 1 && (
+                    <>
+                      <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </>
+                  )}
+                </Carousel>
                 <CardHeader>
                   <CardTitle className="font-headline">{product.name}</CardTitle>
                   <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>

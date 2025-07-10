@@ -106,7 +106,7 @@ export const translations = {
     admin_product_delete_success_desc: "Продукт '{productName}' был удален.",
     admin_form_error_title: "Ошибка",
     admin_form_error_desc: "Пожалуйста, заполните все обязательные поля.",
-    admin_form_error_image_required: "Пожалуйста, загрузите изображение.",
+    admin_form_error_image_required: "Пожалуйста, загрузите хотя бы одно изображение.",
     theme_light: "Светлая",
     theme_dark: "Темная",
     theme_system: "Системная",
@@ -164,8 +164,9 @@ export const translations = {
     admin_acceptance_confirm_title: "Подтвердить приемку",
     admin_acceptance_confirm_desc: "Вы уверены, что хотите принять контейнер '{containerName}' и добавить его содержимое на склад?",
     admin_product_no_included_products: "В этот контейнер пока не добавлены продукты.",
-    admin_product_image_drag_drop: "Перетащите файл или кликните для выбора",
-    admin_view_image_button: "Просмотр"
+    admin_product_image_drag_drop: "Перетащите файлы или кликните для выбора",
+    admin_view_image_button: "Просмотр",
+    admin_product_image_limit: "Осталось мест для изображений: {count}"
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -273,7 +274,7 @@ export const translations = {
     admin_product_delete_success_desc: "'{productName}' mahsuloti o'chirildi.",
     admin_form_error_title: "Xatolik",
     admin_form_error_desc: "Iltimos, barcha majburiy maydonlarni to'ldiring.",
-    admin_form_error_image_required: "Iltimos, rasm yuklang.",
+    admin_form_error_image_required: "Iltimos, kamida bitta rasm yuklang.",
     theme_light: "Yorug'",
     theme_dark: "Qorong'i",
     theme_system: "Tizim",
@@ -331,8 +332,9 @@ export const translations = {
     admin_acceptance_confirm_title: "Qabul qilishni tasdiqlang",
     admin_acceptance_confirm_desc: "'{containerName}' konteynerini qabul qilib, uning tarkibini omborga qo'shmoqchimisiz?",
     admin_product_no_included_products: "Bu konteynerga hali mahsulotlar qo'shilmagan.",
-    admin_product_image_drag_drop: "Faylni sudrab olib keling yoki tanlash uchun bosing",
-    admin_view_image_button: "Ko'rish"
+    admin_product_image_drag_drop: "Fayllarni sudrab olib keling yoki tanlash uchun bosing",
+    admin_view_image_button: "Ko'rish",
+    admin_product_image_limit: "Rasmlar uchun qolgan joylar soni: {count}"
   },
 };
 

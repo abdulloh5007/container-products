@@ -23,7 +23,7 @@ interface Product {
   id: string;
   name: string;
   quantity: number;
-  imageUrl: string;
+  imageUrls: string[];
 }
 
 interface IncludedProduct {
@@ -250,6 +250,9 @@ export default function NewContainerPage() {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
+  const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/40x40.png';
+
+  
   const openFullscreen = (imageUrl: string) => {
     if (imageUrl) setFullscreenImage(imageUrl);
   };
@@ -330,12 +333,12 @@ export default function NewContainerPage() {
                   >
                     <div className="flex items-center gap-4">
                       <Image
-                          src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                          src={getFirstImage(product)}
                           alt={product.name}
                           width={40}
                           height={40}
                           className="rounded-md object-cover h-10 w-10 cursor-pointer"
-                          onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/40x40.png')}
+                          onClick={() => openFullscreen(getFirstImage(product))}
                       />
                       <span>{product.name}</span>
                     </div>

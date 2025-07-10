@@ -7,7 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
-import { PlusCircle, Edit, Trash2, UploadCloud, Search, Eye } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UploadCloud, Search, Eye, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
@@ -15,18 +15,19 @@ import { Label } from '@/components/ui/label';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, where, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface Product {
     id: string; // Firestore document ID
     name: string;
     quantity: number;
-    imageUrl: string; // Will store a Base64 Data URI
+    imageUrls: string[];
 }
 
 const cardVariants = {
@@ -35,8 +36,6 @@ const cardVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
-
-// Helper to convert a file to a Base64 data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -45,67 +44,87 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 });
 
 
-function ImageUploader({ file, setFile, previewUrl, disabled, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, disabled?: boolean, onPreviewClick: (url: string) => void }) {
-  const { t } = useLanguage();
-  const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
+function MultiImageUploader({ 
+    files, 
+    setFiles, 
+    existingImageUrls,
+    setExistingImageUrls,
+    disabled 
+}: { 
+    files: File[], 
+    setFiles: (files: File[]) => void, 
+    existingImageUrls: string[],
+    setExistingImageUrls: (urls: string[]) => void,
+    disabled?: boolean,
+}) {
+    const { t } = useLanguage();
+    const MAX_FILES = 10;
+    const currentTotal = files.length + existingImageUrls.length;
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles[0]) {
-      const newPreview = URL.createObjectURL(acceptedFiles[0]);
-      setFile(acceptedFiles[0]);
-      setCurrentPreview(newPreview);
-    }
-  }, [setFile]);
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        if (currentTotal + acceptedFiles.length > MAX_FILES) {
+            // Optionally, show a toast message here
+            return;
+        }
+        setFiles([...files, ...acceptedFiles]);
+    }, [files, existingImageUrls, setFiles, currentTotal]);
+    
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: { 'image/*': [] },
+        maxFiles: MAX_FILES - currentTotal,
+        disabled: disabled || currentTotal >= MAX_FILES,
+    });
+    
+    const removeFile = (index: number) => {
+        setFiles(files.filter((_, i) => i !== index));
+    };
+    
+    const removeExistingUrl = (index: number) => {
+        setExistingImageUrls(existingImageUrls.filter((_, i) => i !== index));
+    };
 
-  useEffect(() => {
-    if (file) {
-        const newPreview = URL.createObjectURL(file);
-        setCurrentPreview(newPreview);
-        return () => URL.revokeObjectURL(newPreview);
-    } else if (previewUrl) {
-        setCurrentPreview(previewUrl)
-    } else {
-        setCurrentPreview(null);
-    }
-  }, [file, previewUrl]);
-  
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'image/*': [] },
-    maxFiles: 1,
-    disabled,
-  });
-
-  return (
-    <div
-      {...getRootProps()}
-      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors flex items-center justify-center relative group ${disabled ? 'cursor-not-allowed bg-muted/50' : 'hover:border-primary'} ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
-    >
-      <input {...getInputProps()} />
-      {currentPreview ? (
-        <>
-            <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
-            <div 
-                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); onPreviewClick(currentPreview); }}
+    return (
+        <div className="space-y-4">
+            <div
+                {...getRootProps()}
+                className={`w-full rounded-lg border-2 border-dashed border-muted-foreground/50 p-6 text-center transition-colors flex flex-col items-center justify-center relative group ${disabled || currentTotal >= MAX_FILES ? 'cursor-not-allowed bg-muted/50' : 'hover:border-primary'} ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
             >
-                <div className="text-white flex items-center gap-2">
-                    <Eye className="h-5 w-5"/>
-                    <span>{t('admin_view_image_button')}</span>
+                <input {...getInputProps()} />
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
+                    <UploadCloud className="h-8 w-8" />
+                    <p className="font-semibold text-foreground">
+                        {isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drag_drop')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t('admin_product_image_limit', { count: MAX_FILES - currentTotal })}</p>
                 </div>
             </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
-          <UploadCloud className="h-8 w-8" />
-          <p className="font-semibold text-foreground">
-            {t('admin_product_image_drag_drop')}
-          </p>
-          <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+             {(existingImageUrls.length > 0 || files.length > 0) && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                    {existingImageUrls.map((url, index) => (
+                        <div key={`existing-${index}`} className="relative group aspect-square">
+                            <Image src={url} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
+                            {!disabled && (
+                                <button type="button" onClick={() => removeExistingUrl(index)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                    {files.map((file, index) => (
+                        <div key={`new-${index}`} className="relative group aspect-square">
+                            <Image src={URL.createObjectURL(file)} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
+                             {!disabled && (
+                                <button type="button" onClick={() => removeFile(index)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
 
@@ -125,8 +144,8 @@ export default function AdminProductsPage() {
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
-  const [newProductImage, setNewProductImage] = useState<File | null>(null);
-  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [newProductImages, setNewProductImages] = useState<File[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -156,9 +175,9 @@ export default function AdminProductsPage() {
   const resetForm = () => {
       setNewProductName('');
       setNewProductQuantity(1);
-      setNewProductImage(null);
+      setNewProductImages([]);
       setProductToEdit(null);
-      setExistingImageUrl(null);
+      setExistingImageUrls([]);
   }
 
   const onModalOpenChange = (open: boolean) => {
@@ -172,8 +191,8 @@ export default function AdminProductsPage() {
     if (productToEdit) {
       setNewProductName(productToEdit.name);
       setNewProductQuantity(productToEdit.quantity);
-      setExistingImageUrl(productToEdit.imageUrl);
-      setNewProductImage(null); // Clear file input
+      setExistingImageUrls(productToEdit.imageUrls || []);
+      setNewProductImages([]); 
     } else {
       resetForm();
     }
@@ -185,7 +204,7 @@ export default function AdminProductsPage() {
       return;
     }
 
-    if (!productToEdit && !newProductImage) {
+    if (!productToEdit && newProductImages.length === 0) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_image_required') });
         return;
     }
@@ -193,16 +212,17 @@ export default function AdminProductsPage() {
     setIsSubmitting(true);
     
     try {
-        let imageUrl = productToEdit ? productToEdit.imageUrl : '';
+        let finalImageUrls = [...existingImageUrls];
 
-        if (newProductImage) {
-            imageUrl = await fileToDataUri(newProductImage);
+        if (newProductImages.length > 0) {
+            const uploadedUrls = await Promise.all(newProductImages.map(fileToDataUri));
+            finalImageUrls.push(...uploadedUrls);
         }
 
         const productData = {
             name: newProductName,
             quantity: newProductQuantity,
-            imageUrl: imageUrl
+            imageUrls: finalImageUrls
         };
 
         if (productToEdit) {
@@ -245,9 +265,7 @@ export default function AdminProductsPage() {
             const containerData = containerDoc.data();
             const productsInContainer = containerData.products || [];
             
-            // Check if the product to delete exists in this container's products array
             if (productsInContainer.some((p: any) => p.id === productToDelete.id)) {
-                // Filter out the product to be deleted
                 const updatedProducts = productsInContainer.filter((p: any) => p.id !== productToDelete.id);
                 batch.update(containerDoc.ref, { products: updatedProducts });
             }
@@ -322,18 +340,20 @@ export default function AdminProductsPage() {
             </div>
         )
     }
+    
+    const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/64x64.png';
 
     if (view === 'table') {
         return filteredProducts.map((product) => (
             <TableRow key={product.id}>
                 <TableCell>
                     <Image
-                    src={product.imageUrl || 'https://placehold.co/64x64.png'}
+                    src={getFirstImage(product)}
                     alt={product.name}
                     width={64}
                     height={64}
                     className="rounded-md object-cover h-16 w-16 cursor-pointer"
-                    onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/64x64.png')}
+                    onClick={() => openFullscreen(getFirstImage(product))}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -364,14 +384,40 @@ export default function AdminProductsPage() {
                         layout
                     >
                         <Card>
-                            <CardHeader className="p-0 relative cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/300x200.png')}>
-                                <Image
-                                    src={product.imageUrl || 'https://placehold.co/300x200.png'}
-                                    alt={product.name}
-                                    width={300}
-                                    height={200}
-                                    className="rounded-t-lg object-cover w-full aspect-[3/2]"
-                                />
+                             <CardHeader className="p-0 relative">
+                                <Carousel className="w-full relative group">
+                                    <CarouselContent>
+                                        {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
+                                            <CarouselItem key={index}>
+                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(url)}>
+                                                    <Image
+                                                        src={url}
+                                                        alt={`${product.name} - image ${index + 1}`}
+                                                        fill
+                                                        className="rounded-t-lg object-cover"
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        )) : (
+                                            <CarouselItem>
+                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen('https://placehold.co/300x200.png')}>
+                                                    <Image
+                                                        src={'https://placehold.co/300x200.png'}
+                                                        alt={product.name}
+                                                        fill
+                                                        className="rounded-t-lg object-cover"
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        )}
+                                    </CarouselContent>
+                                    {product.imageUrls && product.imageUrls.length > 1 && (
+                                        <>
+                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </>
+                                    )}
+                                </Carousel>
                                 <div className="absolute top-2 right-2 space-x-2 bg-transparent/10" onClick={(e) => e.stopPropagation()}>
                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" onClick={() => handleOpenModalForEdit(product)}>
                                         <Edit className="h-4 w-4" />
@@ -455,12 +501,12 @@ export default function AdminProductsPage() {
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
-                <ImageUploader 
-                  file={newProductImage} 
-                  setFile={setNewProductImage} 
-                  previewUrl={existingImageUrl} 
-                  disabled={isSubmitting} 
-                  onPreviewClick={(url) => openFullscreen(url)}
+                <MultiImageUploader
+                    files={newProductImages}
+                    setFiles={setNewProductImages}
+                    existingImageUrls={existingImageUrls}
+                    setExistingImageUrls={setExistingImageUrls}
+                    disabled={isSubmitting}
                 />
             </div>
           </div>

@@ -17,12 +17,13 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface Product {
     id: string;
     name: string;
     quantity: number;
-    imageUrl: string;
+    imageUrls: string[];
 }
 
 const cardVariants = {
@@ -100,6 +101,9 @@ export default function AdminStockPage() {
   const closeFullscreen = () => {
     setFullscreenImage(null);
   };
+  
+  const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/64x64.png';
+
 
   const renderContent = () => {
     if (isLoading) {
@@ -151,12 +155,12 @@ export default function AdminStockPage() {
             <TableRow key={product.id}>
                 <TableCell>
                     <Image
-                    src={product.imageUrl || 'https://placehold.co/64x64.png'}
+                    src={getFirstImage(product)}
                     alt={product.name}
                     width={64}
                     height={64}
                     className="rounded-md object-cover h-16 w-16 cursor-pointer"
-                    onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/64x64.png')}
+                    onClick={() => openFullscreen(getFirstImage(product))}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -200,14 +204,40 @@ export default function AdminStockPage() {
                         layout
                     >
                          <Card>
-                            <CardHeader className="p-0 cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/300x200.png')}>
-                                <Image
-                                    src={product.imageUrl || 'https://placehold.co/300x200.png'}
-                                    alt={product.name}
-                                    width={300}
-                                    height={200}
-                                    className="rounded-t-lg object-cover w-full aspect-[3/2]"
-                                />
+                            <CardHeader className="p-0">
+                               <Carousel className="w-full relative group">
+                                    <CarouselContent>
+                                        {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
+                                            <CarouselItem key={index}>
+                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(url)}>
+                                                    <Image
+                                                        src={url}
+                                                        alt={`${product.name} - image ${index + 1}`}
+                                                        fill
+                                                        className="rounded-t-lg object-cover"
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        )) : (
+                                            <CarouselItem>
+                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen('https://placehold.co/300x200.png')}>
+                                                    <Image
+                                                        src={'https://placehold.co/300x200.png'}
+                                                        alt={product.name}
+                                                        fill
+                                                        className="rounded-t-lg object-cover"
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        )}
+                                    </CarouselContent>
+                                    {product.imageUrls && product.imageUrls.length > 1 && (
+                                        <>
+                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </>
+                                    )}
+                                </Carousel>
                             </CardHeader>
                             <CardContent className="pt-4 space-y-1">
                                 <CardTitle className="text-lg">{product.name}</CardTitle>
