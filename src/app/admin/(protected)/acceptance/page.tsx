@@ -199,9 +199,9 @@ export default function AdminAcceptancePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_acceptance_title')}</h1>
-        <div className="flex w-full sm:w-auto sm:justify-end">
+        <div className="flex w-full justify-end">
             <ViewSwitcher view={view} setView={setView} />
         </div>
       </div>
