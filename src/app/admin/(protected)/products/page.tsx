@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
-import { PlusCircle, Edit, Trash2, UploadCloud } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UploadCloud, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy 
 import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
-
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Product {
     id: string; // Firestore document ID
@@ -27,6 +27,13 @@ interface Product {
     quantity: number;
     imageUrl: string; // Will store a Base64 Data URI
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
 
 // Helper to convert a file to a Base64 data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -103,6 +110,7 @@ export default function AdminProductsPage() {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { view, setView } = useViewSwitcher('products');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
@@ -127,6 +135,12 @@ export default function AdminProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+  
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
 
   const resetForm = () => {
       setNewProductName('');
@@ -259,7 +273,7 @@ export default function AdminProductsPage() {
         )
     }
 
-    if (products.length === 0) {
+    if (filteredProducts.length === 0) {
         return view === 'table' ? (
             <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
@@ -272,7 +286,7 @@ export default function AdminProductsPage() {
     }
 
     if (view === 'table') {
-        return products.map((product) => (
+        return filteredProducts.map((product) => (
             <TableRow key={product.id}>
                 <TableCell>
                     <Image
@@ -298,32 +312,44 @@ export default function AdminProductsPage() {
     }
     
     return (
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
-                 <Card key={product.id}>
-                    <CardHeader className="p-0 relative">
-                        <Image
-                            src={product.imageUrl || 'https://placehold.co/300x200.png'}
-                            alt={product.name}
-                            width={300}
-                            height={200}
-                            className="rounded-t-lg object-cover w-full aspect-[3/2]"
-                        />
-                         <div className="absolute top-2 right-2 space-x-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" onClick={() => handleOpenModalForEdit(product)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setProductToDelete(product)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-1">
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                        <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
-                    </CardContent>
-                </Card>
-            ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <AnimatePresence>
+                {filteredProducts.map((product) => (
+                    <motion.div
+                        key={product.id}
+                        variants={cardVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={{ duration: 0.3 }}
+                        layout
+                    >
+                        <Card>
+                            <CardHeader className="p-0 relative">
+                                <Image
+                                    src={product.imageUrl || 'https://placehold.co/300x200.png'}
+                                    alt={product.name}
+                                    width={300}
+                                    height={200}
+                                    className="rounded-t-lg object-cover w-full aspect-[3/2]"
+                                />
+                                <div className="absolute top-2 right-2 space-x-2">
+                                    <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" onClick={() => handleOpenModalForEdit(product)}>
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setProductToDelete(product)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-1">
+                                <CardTitle className="text-lg">{product.name}</CardTitle>
+                                <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     )
   }
@@ -343,10 +369,20 @@ export default function AdminProductsPage() {
         </div>
       </div>
       
+       <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('admin_product_search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
+
        {view === 'table' ? (
         <Card>
             <CardContent className="pt-6">
-                <Table className="min-w-[640px]">
+                <Table>
                     <TableHeader>
                     <TableRow>
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
@@ -369,7 +405,6 @@ export default function AdminProductsPage() {
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>{productToEdit ? t('admin_products_edit_title') : t('admin_create_product_title')}</DialogTitle>
-            <DialogDescription>{productToEdit ? t('admin_products_edit_desc') : t('admin_create_product_desc')}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
             <div className="space-y-2">
