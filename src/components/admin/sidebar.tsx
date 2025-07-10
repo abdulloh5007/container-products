@@ -12,6 +12,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { Separator } from '@/components/ui/separator';
 
 export function Sidebar() {
   const router = useRouter();
@@ -33,6 +34,11 @@ export function Sidebar() {
     { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
     { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ];
+
+  const handleSheetLinkClick = (href: string) => {
+    router.push(href);
+    closeSheet();
+  };
 
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
@@ -83,14 +89,28 @@ export function Sidebar() {
                      </Link>
                    </SheetTitle>
                  </SheetHeader>
-                <nav className="flex-1">
-                   <Button variant="ghost" className="w-full justify-start gap-3 text-base" onClick={() => { router.push('/admin/settings'); closeSheet(); }}>
+                <nav className="flex-1 space-y-2">
+                   {navItems.map((item) => {
+                     const isActive = pathname.startsWith(item.href);
+                     return (
+                        <Button 
+                          key={item.href}
+                          variant={isActive ? 'secondary' : 'ghost'} 
+                          className="w-full justify-start gap-3 text-base" 
+                          onClick={() => handleSheetLinkClick(item.href)}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {item.label}
+                        </Button>
+                     );
+                   })}
+                </nav>
+                 <div className="mt-auto border-t pt-4 space-y-2">
+                   <Button variant="ghost" className="w-full justify-start gap-3 text-base" onClick={() => handleSheetLinkClick('/admin/settings')}>
                      <Settings className="h-5 w-5" />
                      {t('admin_sidebar_settings')}
                    </Button>
-                </nav>
-                 <div className="mt-auto border-t pt-4">
-                   <Button variant="ghost" className="w-full justify-start gap-3 text-base" onClick={handleLogout}>
+                   <Button variant="ghost" className="w-full justify-start gap-3 text-base text-destructive hover:text-destructive" onClick={handleLogout}>
                      <LogOut className="h-5 w-5" />
                      {t('admin_logout')}
                    </Button>
