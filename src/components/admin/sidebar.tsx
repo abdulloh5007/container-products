@@ -69,7 +69,7 @@ export function Sidebar() {
                      </Link>
                    </SheetTitle>
                  </SheetHeader>
-                <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="hidden md:grid grid-cols-2 gap-2 mb-4">
                    {navItems.map((item) => {
                      const Icon = item.icon;
                      const isActive = pathname.startsWith(item.href);
@@ -79,7 +79,7 @@ export function Sidebar() {
                           href={item.href}
                           onClick={closeSheet}
                           className={cn(
-                            'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors',
+                            'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors aspect-square',
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted text-muted-foreground hover:bg-muted/80'
