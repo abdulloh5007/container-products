@@ -291,32 +291,30 @@ export default function NewContainerPage() {
                   className="pl-10"
                 />
             </div>
-            <div className="overflow-x-auto">
-                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 min-w-[400px]">
-                  {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
-                  <div className="relative space-y-2">
-                    {filteredProducts.map(product => (
-                      <div 
-                        key={product.id} 
-                        className="flex items-center justify-between p-2 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-4">
-                          <Image
-                              src={product.imageUrl || 'https://placehold.co/40x40.png'}
-                              alt={product.name}
-                              width={40}
-                              height={40}
-                              className="rounded-md object-cover h-10 w-10"
-                          />
-                          <span>{product.name}</span>
-                        </div>
-                        <Button size="sm" onClick={() => addProduct(product)}>
-                          {t('admin_add_product_button')}
-                        </Button>
-                      </div>
-                    ))}
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
+              <div className="relative space-y-2">
+                {filteredProducts.map(product => (
+                  <div 
+                    key={product.id} 
+                    className="flex items-center justify-between p-2 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Image
+                          src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                          alt={product.name}
+                          width={40}
+                          height={40}
+                          className="rounded-md object-cover h-10 w-10"
+                      />
+                      <span>{product.name}</span>
+                    </div>
+                    <Button size="sm" onClick={() => addProduct(product)}>
+                      {t('admin_add_product_button')}
+                    </Button>
                   </div>
-                </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
