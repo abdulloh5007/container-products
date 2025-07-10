@@ -234,11 +234,11 @@ export default function AdminStockPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_stock_title')}</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_stock_title')}</h1>
+        <div className="flex w-full sm:w-auto justify-end">
+            <ViewSwitcher view={view} setView={setView} />
         </div>
-        <ViewSwitcher view={view} setView={setView} />
       </div>
 
        <div className="relative w-full">

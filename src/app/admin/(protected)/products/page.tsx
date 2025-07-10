@@ -356,11 +356,9 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_products_title')}</h1>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_products_title')}</h1>
+        <div className="flex w-full sm:w-auto justify-end items-center gap-2">
             <ViewSwitcher view={view} setView={setView} />
             <Button onClick={handleOpenModalForCreate}>
                 <PlusCircle className="mr-2 h-4 w-4" />
