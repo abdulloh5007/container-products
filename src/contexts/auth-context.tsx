@@ -63,10 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(appUser);
             sessionStorage.setItem('user', JSON.stringify(appUser));
         } else {
-            throw new Error('Incorrect password');
+            throw new Error('Incorrect credentials');
         }
     } else {
-        throw new Error('User not found');
+        throw new Error('Incorrect credentials');
     }
   };
   

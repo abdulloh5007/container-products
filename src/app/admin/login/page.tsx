@@ -71,7 +71,7 @@ export default function LoginPage() {
       console.error(error);
       let description = t('admin_login_failure_desc');
       if (error instanceof Error) {
-          if (error.message === 'Incorrect password' || error.message === 'User not found') {
+          if (error.message === 'Incorrect credentials') {
              description = t('admin_login_failure_desc');
           } else {
              description = error.message;
