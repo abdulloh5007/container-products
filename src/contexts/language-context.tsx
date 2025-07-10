@@ -14,25 +14,22 @@ type LanguageContextType = {
 
 export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-// Helper to get the initial language from localStorage
-const getInitialLanguage = (): Language => {
-    if (typeof window !== 'undefined') {
-        const storedLang = localStorage.getItem('language');
-        if (storedLang === 'ru' || storedLang === 'uz') {
-            return storedLang;
-        }
-    }
-    return 'ru'; // Default language
-};
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>(getInitialLanguage);
+  // Start with the default language to avoid hydration mismatch.
+  const [language, setLanguageState] = useState<Language>('ru');
 
-  // Update localStorage when language changes
+  // On component mount (client-side only), check localStorage.
   useEffect(() => {
-    localStorage.setItem('language', language);
-  }, [language]);
+    const storedLang = localStorage.getItem('language');
+    if (storedLang === 'ru' || storedLang === 'uz') {
+      setLanguageState(storedLang);
+    }
+  }, []);
 
+  const setLanguage = (newLanguage: Language) => {
+    setLanguageState(newLanguage);
+    localStorage.setItem('language', newLanguage);
+  };
 
   const t = useMemo(() => (key: TranslationKeys, replacements?: Record<string, string>): string => {
     let translation = translations[language][key] || translations['ru'][key] || key;
