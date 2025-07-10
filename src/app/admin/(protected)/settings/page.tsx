@@ -38,6 +38,33 @@ const formatDisplayPhone = (phone?: string): string => {
     return phone; // Fallback for other formats
 };
 
+const formatPhoneNumberInput = (value: string): string => {
+    if (!value) return '';
+    const digits = value.replace(/\D/g, '');
+    
+    // Ensure it starts with 998 and limit to 12 digits total
+    let finalDigits = digits;
+    if (finalDigits.startsWith('998')) {
+        finalDigits = finalDigits.substring(0, 12);
+    } else {
+        finalDigits = `998${finalDigits}`.substring(0, 12);
+    }
+
+    const country = finalDigits.slice(0, 3);
+    const operator = finalDigits.slice(3, 5);
+    const part1 = finalDigits.slice(5, 8);
+    const part2 = finalDigits.slice(8, 10);
+    const part3 = finalDigits.slice(10, 12);
+    
+    let formatted = `+${country}`;
+    if (operator) formatted += ` (${operator}`;
+    if (part1) formatted += `) ${part1}`;
+    if (part2) formatted += `-${part2}`;
+    if (part3) formatted += `-${part3}`;
+    
+    return formatted;
+}
+
 
 export default function SettingsPage() {
     const { t } = useLanguage();
@@ -203,7 +230,7 @@ export default function SettingsPage() {
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
                             <Label htmlFor="phone">{t('admin_phone')}</Label>
-                            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting} />
+                            <Input id="phone" value={phone} onChange={(e) => setPhone(formatPhoneNumberInput(e.target.value))} disabled={isSubmitting} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="name">{t('admin_settings_name')}</Label>
