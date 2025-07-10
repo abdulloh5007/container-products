@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
@@ -16,7 +17,7 @@ type AuthContextType = {
   user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<boolean>; // Return boolean instead of void/throwing
   logout: () => void;
   updateUser: (data: Partial<AppUser>) => void;
 };
@@ -42,31 +43,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (phone: string, password: string) => {
+  const login = async (phone: string, password: string): Promise<boolean> => {
     const userId = phone.replace(/\D/g, ''); // Use phone number as user ID
-    if (!userId) {
-        throw new Error("Invalid phone number provided.");
+    if (!userId || !password) {
+        return false;
     }
     
-    const userDocRef = doc(db, 'users', userId);
-    const userDocSnap = await getDoc(userDocRef);
+    try {
+        const userDocRef = doc(db, 'users', userId);
+        const userDocSnap = await getDoc(userDocRef);
 
-    if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        if (userData.password === password) {
-            const appUser: AppUser = {
-                phone: userData.phone,
-                Name: userData.Name,
-                role: userData.role,
-                password: userData.password,
-            };
-            setUser(appUser);
-            sessionStorage.setItem('user', JSON.stringify(appUser));
-        } else {
-            throw new Error('Incorrect credentials');
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            if (userData.password === password) {
+                const appUser: AppUser = {
+                    phone: userData.phone,
+                    Name: userData.Name,
+                    role: userData.role,
+                    password: userData.password,
+                };
+                setUser(appUser);
+                sessionStorage.setItem('user', JSON.stringify(appUser));
+                return true; // Login successful
+            }
         }
-    } else {
-        throw new Error('Incorrect credentials');
+        return false; // User doesn't exist or password incorrect
+    } catch (error) {
+        console.error("Firestore error during login:", error);
+        return false; // Firestore error
     }
   };
   

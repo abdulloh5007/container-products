@@ -64,27 +64,19 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    try {
-      await login(phone, password);
-      // The redirect is handled by the effect
-    } catch (error) {
-      console.error(error);
-      let description = t('admin_login_failure_desc');
-      if (error instanceof Error) {
-          if (error.message === 'Incorrect credentials') {
-             description = t('admin_login_failure_desc');
-          } else {
-             description = error.message;
-          }
-      }
+    
+    const success = await login(phone, password);
+    
+    if (!success) {
       toast({
         variant: 'destructive',
         title: t('admin_login_failure_title'),
-        description,
+        description: t('admin_login_failure_desc'),
       });
-    } finally {
-        setIsSubmitting(false);
     }
+    // On success, the useEffect will handle the redirect.
+    
+    setIsSubmitting(false);
   };
   
   // Don't render if the user is already authenticated and redirect is in progress
