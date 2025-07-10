@@ -19,9 +19,7 @@ export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = [
-    { href: '/', label: t('nav_home') },
-  ];
+  const navLinks: { href: string; label: string }[] = [];
 
   const NavItems = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
@@ -52,7 +50,7 @@ export function Header() {
       <div className="container flex h-16 items-center">
         <Link href="/" className="mr-6 flex items-center gap-2">
           <Container className="h-6 w-6 text-primary" />
-          <span className="font-bold font-headline">
+          <span className="font-bold sm:inline-block font-headline">
             {t('app_name')}
           </span>
         </Link>
