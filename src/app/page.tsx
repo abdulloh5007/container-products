@@ -122,9 +122,6 @@ export default function Home() {
         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl font-headline">
           {t('products_page_title')}
         </h1>
-        <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-          {t('products_page_subtitle')}
-        </p>
       </div>
 
       <div className="max-w-md mx-auto mb-12">
