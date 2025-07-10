@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
@@ -13,9 +14,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { db } from '@/lib/firebase';
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
 
-
-// This structure needs to be consistent across pages
 interface IncludedProduct {
   id: string;
   name: string;
@@ -34,6 +35,7 @@ export default function AdminContainersPage() {
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { view, setView } = useViewSwitcher('containers');
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -58,15 +60,12 @@ export default function AdminContainersPage() {
     if (!containerToDelete) return;
 
     try {
-      // Delete the document from Firestore
       await deleteDoc(doc(db, "containers", containerToDelete.id));
-
       toast({
         title: t('admin_container_delete_success_title'),
         description: t('admin_container_delete_success_desc', { containerName: containerToDelete.name }),
       });
-
-      fetchContainers(); // Refresh the list
+      fetchContainers();
     } catch (error) {
        console.error("Failed to delete container: ", error);
        toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_save_error') });
@@ -75,90 +74,155 @@ export default function AdminContainersPage() {
     }
   };
 
+  const renderContent = () => {
+    if (isLoading) {
+        return view === 'table' ? (
+             Array.from({ length: 3 }).map((_, index) => (
+                <TableRow key={index}>
+                    <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                    <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
+                    <TableCell className="text-right space-x-2">
+                        <Skeleton className="h-10 w-10 inline-block" />
+                        <Skeleton className="h-10 w-10 inline-block" />
+                    </TableCell>
+                </TableRow>
+             ))
+        ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index}>
+                        <CardHeader>
+                            <Skeleton className="h-32 w-full rounded-md" />
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </CardContent>
+                        <CardFooter>
+                            <div className="flex justify-end gap-2 w-full">
+                                <Skeleton className="h-10 w-10" />
+                                <Skeleton className="h-10 w-10" />
+                            </div>
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
+    if (containers.length === 0) {
+        return view === 'table' ? (
+            <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">{t('admin_container_no_containers')}</TableCell>
+            </TableRow>
+        ) : (
+             <div className="col-span-full text-center py-12">
+                <p>{t('admin_container_no_containers')}</p>
+            </div>
+        )
+    }
+
+    if (view === 'table') {
+        return containers.map((container) => (
+            <TableRow key={container.id}>
+                <TableCell>
+                    <Image
+                        src={container.imageUrl || 'https://placehold.co/64x64.png'}
+                        alt={container.name}
+                        width={64}
+                        height={64}
+                        className="rounded-md object-cover h-16 w-16"
+                    />
+                </TableCell>
+                <TableCell className="font-medium">{container.name}</TableCell>
+                <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
+                <TableCell className="text-right space-x-2">
+                    <Button variant="outline" size="icon" asChild>
+                        <Link href={`/admin/containers/new?id=${container.id}`}>
+                            <Edit className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                    <Button variant="destructive" size="icon" onClick={() => setContainerToDelete(container)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </TableCell>
+            </TableRow>
+        ));
+    }
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {containers.map((container) => (
+                 <Card key={container.id}>
+                    <CardHeader className="p-0 relative">
+                        <Image
+                            src={container.imageUrl || 'https://placehold.co/300x200.png'}
+                            alt={container.name}
+                            width={300}
+                            height={200}
+                            className="rounded-t-lg object-cover w-full aspect-[3/2]"
+                        />
+                         <div className="absolute top-2 right-2 space-x-2">
+                            <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" asChild>
+                                <Link href={`/admin/containers/new?id=${container.id}`}>
+                                    <Edit className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setContainerToDelete(container)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-1">
+                        <CardTitle className="text-lg">{container.name}</CardTitle>
+                        <CardDescription>{t('admin_acceptance_table_products')}: {container.products.reduce((acc, p) => acc + p.quantity, 0)}</CardDescription>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_containers_title')}</h1>
-        <p className="text-muted-foreground">{t('admin_containers_desc')}</p>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-                <CardTitle>{t('admin_sidebar_containers')}</CardTitle>
-                <CardDescription>
-                  {t('admin_containers_desc')}
-                </CardDescription>
-            </div>
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('admin_containers_title')}</h1>
+            <p className="text-muted-foreground">{t('admin_containers_desc')}</p>
+        </div>
+        <div className="flex items-center gap-2">
+            <ViewSwitcher view={view} setView={setView} />
             <Button asChild>
               <Link href="/admin/containers/new">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                {t('admin_containers_add')}
+                <span className="hidden sm:inline">{t('admin_containers_add')}</span>
               </Link>
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
-                <TableHead>{t('admin_containers_table_name')}</TableHead>
-                <TableHead className="text-center">{t('admin_containers_table_products')}</TableHead>
-                <TableHead className="text-right">{t('admin_containers_table_actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, index) => (
-                    <TableRow key={index}>
-                        <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-40" /></TableCell>
-                        <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <Skeleton className="h-10 w-10 inline-block" />
-                            <Skeleton className="h-10 w-10 inline-block" />
-                        </TableCell>
+        </div>
+      </div>
+      
+      {view === 'table' ? (
+        <Card>
+            <CardContent className="pt-6">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
+                        <TableHead>{t('admin_containers_table_name')}</TableHead>
+                        <TableHead className="text-center">{t('admin_containers_table_products')}</TableHead>
+                        <TableHead className="text-right">{t('admin_containers_table_actions')}</TableHead>
                     </TableRow>
-                 ))
-              ) : containers.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        {t('admin_container_no_containers')}
-                    </TableCell>
-                </TableRow>
-              ) : (
-                containers.map((container) => (
-                    <TableRow key={container.id}>
-                    <TableCell>
-                        <Image
-                            src={container.imageUrl || 'https://placehold.co/64x64.png'}
-                            alt={container.name}
-                            width={64}
-                            height={64}
-                            className="rounded-md object-cover h-16 w-16"
-                        />
-                    </TableCell>
-                    <TableCell className="font-medium">{container.name}</TableCell>
-                    <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="icon" asChild>
-                            <Link href={`/admin/containers/new?id=${container.id}`}>
-                                <Edit className="h-4 w-4" />
-                            </Link>
-                        </Button>
-                        <Button variant="destructive" size="icon" onClick={() => setContainerToDelete(container)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </TableCell>
-                    </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                        {renderContent()}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+      ) : (
+        renderContent()
+      )}
       
       <AlertDialog open={!!containerToDelete} onOpenChange={(open) => !open && setContainerToDelete(null)}>
         <AlertDialogContent>

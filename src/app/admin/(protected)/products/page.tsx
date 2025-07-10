@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { PlusCircle, Edit, Trash2, UploadCloud } from 'lucide-react';
@@ -17,6 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
+
 
 interface Product {
     id: string; // Firestore document ID
@@ -99,6 +102,7 @@ export default function AdminProductsPage() {
   const [isModalOpen, setModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const { view, setView } = useViewSwitcher('products');
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
@@ -220,6 +224,114 @@ export default function AdminProductsPage() {
     }
   }
 
+  const renderContent = () => {
+    if (isLoading) {
+        return view === 'table' ? (
+            Array.from({ length: 3 }).map((_, index) => (
+                <TableRow key={index}>
+                    <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell className="text-right space-x-2">
+                        <Skeleton className="h-10 w-10 inline-block" />
+                        <Skeleton className="h-10 w-10 inline-block" />
+                    </TableCell>
+                </TableRow>
+            ))
+        ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index}>
+                        <CardHeader>
+                            <Skeleton className="h-32 w-full rounded-md" />
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </CardContent>
+                        <CardFooter>
+                           <div className="flex justify-end gap-2 w-full">
+                                <Skeleton className="h-10 w-10" />
+                                <Skeleton className="h-10 w-10" />
+                            </div>
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
+    if (products.length === 0) {
+        return view === 'table' ? (
+            <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
+            </TableRow>
+        ) : (
+             <div className="col-span-full text-center py-12">
+                <p>{t('admin_product_no_products')}</p>
+            </div>
+        )
+    }
+
+    if (view === 'table') {
+        return products.map((product) => (
+            <TableRow key={product.id}>
+                <TableCell>
+                    <Image
+                    src={product.imageUrl || 'https://placehold.co/64x64.png'}
+                    alt={product.name}
+                    width={64}
+                    height={64}
+                    className="rounded-md object-cover h-16 w-16"
+                    />
+                </TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>{product.quantity}</TableCell>
+                <TableCell className="text-right space-x-2">
+                    <Button variant="outline" size="icon" onClick={() => handleOpenModalForEdit(product)}>
+                    <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="destructive" size="icon" onClick={() => setProductToDelete(product)}>
+                    <Trash2 className="h-4 w-4" />
+                    </Button>
+                </TableCell>
+            </TableRow>
+        ));
+    }
+    
+    return (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {products.map((product) => (
+                 <Card key={product.id}>
+                    <CardHeader className="p-0">
+                        <Image
+                            src={product.imageUrl || 'https://placehold.co/300x200.png'}
+                            alt={product.name}
+                            width={300}
+                            height={200}
+                            className="rounded-t-lg object-cover w-full aspect-[3/2]"
+                        />
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-1">
+                        <CardTitle className="text-lg">{product.name}</CardTitle>
+                        <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
+                    </CardContent>
+                    <CardFooter>
+                         <div className="flex w-full justify-end gap-2">
+                            <Button variant="outline" size="icon" onClick={() => handleOpenModalForEdit(product)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="icon" onClick={() => setProductToDelete(product)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -227,72 +339,36 @@ export default function AdminProductsPage() {
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_products_title')}</h1>
             <p className="text-muted-foreground">{t('admin_products_desc')}</p>
         </div>
-        <Button onClick={handleOpenModalForCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t('admin_products_add')}
-        </Button>
+        <div className="flex items-center gap-2">
+            <ViewSwitcher view={view} setView={setView} />
+            <Button onClick={handleOpenModalForCreate}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">{t('admin_products_add')}</span>
+            </Button>
+        </div>
       </div>
       
-      <Card>
-        <CardHeader></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
-                <TableHead>{t('admin_products_table_name')}</TableHead>
-                <TableHead className="w-[120px]">{t('admin_product_quantity')}</TableHead>
-                <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                 Array.from({ length: 3 }).map((_, index) => (
-                    <TableRow key={index}>
-                        <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <Skeleton className="h-10 w-10 inline-block" />
-                            <Skeleton className="h-10 w-10 inline-block" />
-                        </TableCell>
+       {view === 'table' ? (
+        <Card>
+            <CardContent className="pt-6">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
+                        <TableHead>{t('admin_products_table_name')}</TableHead>
+                        <TableHead className="w-[120px]">{t('admin_product_quantity')}</TableHead>
+                        <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
                     </TableRow>
-                 ))
-              ) : products.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        {t('admin_product_no_products')}
-                    </TableCell>
-                </TableRow>
-              ) : (
-                products.map((product) => (
-                    <TableRow key={product.id}>
-                    <TableCell>
-                        <Image
-                        src={product.imageUrl || 'https://placehold.co/64x64.png'}
-                        alt={product.name}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover h-16 w-16"
-                        />
-                    </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.quantity}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="icon" onClick={() => handleOpenModalForEdit(product)}>
-                        <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="icon" onClick={() => setProductToDelete(product)}>
-                        <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </TableCell>
-                    </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                        {renderContent()}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+      ) : (
+        renderContent()
+      )}
       
       <Dialog open={isModalOpen} onOpenChange={onModalOpenChange}>
         <DialogContent className="sm:max-w-[480px]">

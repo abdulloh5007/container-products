@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,8 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Minus } from 'lucide-react';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
 
 interface Product {
     id: string;
@@ -27,6 +29,7 @@ export default function AdminStockPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
+  const { view, setView } = useViewSwitcher('stock');
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -73,85 +76,166 @@ export default function AdminStockPage() {
     }
   };
   
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_stock_title')}</h1>
-        <p className="text-muted-foreground">{t('admin_stock_desc')}</p>
-      </div>
-      
-      <Card>
-        <CardHeader></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
-                <TableHead>{t('admin_stock_table_product')}</TableHead>
-                <TableHead>{t('admin_stock_table_quantity')}</TableHead>
-                <TableHead className="text-right w-[180px]">{t('admin_stock_table_actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                 Array.from({ length: 4 }).map((_, index) => (
-                    <TableRow key={index}>
-                        <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-48" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                        <TableCell className="text-right space-x-2">
-                           <Skeleton className="h-10 w-24 inline-block" />
-                        </TableCell>
-                    </TableRow>
-                 ))
-              ) : products.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        {t('admin_product_no_products')}
+  const renderContent = () => {
+    if (isLoading) {
+        return view === 'table' ? (
+            Array.from({ length: 4 }).map((_, index) => (
+                <TableRow key={index}>
+                    <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell className="text-right space-x-2">
+                       <Skeleton className="h-10 w-24 inline-block" />
                     </TableCell>
                 </TableRow>
-              ) : (
-                products.map((product) => (
-                    <TableRow key={product.id}>
-                    <TableCell>
+            ))
+        ) : (
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index}>
+                        <CardHeader>
+                            <Skeleton className="h-32 w-full rounded-md" />
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </CardContent>
+                        <CardFooter>
+                            <Skeleton className="h-10 w-full" />
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
+    if (products.length === 0) {
+        return view === 'table' ? (
+            <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
+            </TableRow>
+        ) : (
+            <div className="col-span-full text-center py-12">
+                <p>{t('admin_product_no_products')}</p>
+            </div>
+        )
+    }
+
+    if (view === 'table') {
+        return products.map((product) => (
+            <TableRow key={product.id}>
+                <TableCell>
+                    <Image
+                    src={product.imageUrl || 'https://placehold.co/64x64.png'}
+                    alt={product.name}
+                    width={64}
+                    height={64}
+                    className="rounded-md object-cover h-16 w-16"
+                    />
+                </TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell className="font-semibold text-lg">{product.quantity}</TableCell>
+                <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => handleQuantityChange(product, -1)}
+                            disabled={updatingProductId === product.id || product.quantity <= 0}
+                        >
+                            <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-12 text-center">{product.quantity}</span>
+                         <Button 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => handleQuantityChange(product, 1)}
+                            disabled={updatingProductId === product.id}
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </TableCell>
+            </TableRow>
+        ));
+    }
+
+    return (
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {products.map((product) => (
+                 <Card key={product.id}>
+                    <CardHeader className="p-0">
                         <Image
-                        src={product.imageUrl || 'https://placehold.co/64x64.png'}
-                        alt={product.name}
-                        width={64}
-                        height={64}
-                        className="rounded-md object-cover h-16 w-16"
+                            src={product.imageUrl || 'https://placehold.co/300x200.png'}
+                            alt={product.name}
+                            width={300}
+                            height={200}
+                            className="rounded-t-lg object-cover w-full aspect-[3/2]"
                         />
-                    </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell className="font-semibold text-lg">{product.quantity}</TableCell>
-                    <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-1">
+                        <CardTitle className="text-lg">{product.name}</CardTitle>
+                        <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
+                    </CardContent>
+                    <CardFooter>
+                         <div className="flex w-full items-center justify-center gap-2">
                             <Button 
                                 variant="outline" 
                                 size="icon" 
                                 onClick={() => handleQuantityChange(product, -1)}
                                 disabled={updatingProductId === product.id || product.quantity <= 0}
+                                className="w-full"
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>
-                            <span className="w-12 text-center">{product.quantity}</span>
-                             <Button 
+                            <Button 
                                 variant="outline" 
                                 size="icon" 
                                 onClick={() => handleQuantityChange(product, 1)}
                                 disabled={updatingProductId === product.id}
+                                className="w-full"
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
-                    </TableCell>
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('admin_stock_title')}</h1>
+            <p className="text-muted-foreground">{t('admin_stock_desc')}</p>
+        </div>
+        <ViewSwitcher view={view} setView={setView} />
+      </div>
+      
+       {view === 'table' ? (
+            <Card>
+                <CardContent className="pt-6">
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
+                        <TableHead>{t('admin_stock_table_product')}</TableHead>
+                        <TableHead>{t('admin_stock_table_quantity')}</TableHead>
+                        <TableHead className="text-right w-[180px]">{t('admin_stock_table_actions')}</TableHead>
                     </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                        {renderContent()}
+                    </TableBody>
+                </Table>
+                </CardContent>
+            </Card>
+        ) : (
+            renderContent()
+        )}
     </div>
   );
 }
