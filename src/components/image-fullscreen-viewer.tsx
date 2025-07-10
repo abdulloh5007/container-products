@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -22,30 +22,26 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
       setCurrentIndex(startIndex);
     }
   }, [isOpen, startIndex]);
+  
+  const goToPrevious = useCallback(() => {
+    if (imageUrls.length > 1) {
+        setCurrentIndex((prevIndex) => (prevIndex === 0 ? imageUrls.length - 1 : prevIndex - 1));
+    }
+  }, [imageUrls.length]);
+
+  const goToNext = useCallback(() => {
+     if (imageUrls.length > 1) {
+        setCurrentIndex((prevIndex) => (prevIndex === imageUrls.length - 1 ? 0 : prevIndex + 1));
+    }
+  }, [imageUrls.length]);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 100) {
       onClose();
-    } else if (info.offset.x > 50 && imageUrls.length > 1) {
+    } else if (info.offset.x > 50) {
       goToPrevious();
-    } else if (info.offset.x < -50 && imageUrls.length > 1) {
+    } else if (info.offset.x < -50) {
       goToNext();
-    }
-  };
-  
-  const goToPrevious = () => {
-    if (imageUrls.length > 1) {
-        const isFirst = currentIndex === 0;
-        const newIndex = isFirst ? imageUrls.length - 1 : currentIndex - 1;
-        setCurrentIndex(newIndex);
-    }
-  };
-
-  const goToNext = () => {
-     if (imageUrls.length > 1) {
-        const isLast = currentIndex === imageUrls.length - 1;
-        const newIndex = isLast ? 0 : currentIndex + 1;
-        setCurrentIndex(newIndex);
     }
   };
   
@@ -63,25 +59,37 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
         >
           <motion.div
             key={currentIndex}
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
-            dragElastic={0.4}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
             onDragEnd={handleDragEnd}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center cursor-grab active:cursor-grabbing"
+            className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
           >
-            <Image
-              src={currentImageUrl}
-              alt="Fullscreen view"
-              fill
-              style={{ objectFit: 'contain' }}
-              className="pointer-events-none"
-              priority
-            />
+             <motion.div
+                 className="w-full h-full cursor-grab active:cursor-grabbing"
+                 drag="y"
+                 dragConstraints={{ top: 0, bottom: 0 }}
+                 dragElastic={0.4}
+                 onDragEnd={(e, info) => {
+                    if (info.offset.y > 100) {
+                        onClose();
+                    }
+                 }}
+             >
+                <Image
+                  src={currentImageUrl}
+                  alt="Fullscreen view"
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  className="pointer-events-none"
+                  priority
+                />
+             </motion.div>
           </motion.div>
            <button
             onClick={onClose}
