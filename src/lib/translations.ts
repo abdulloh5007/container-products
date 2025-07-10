@@ -1,6 +1,6 @@
 export const translations = {
   ru: {
-    app_name: "Container Solutions Hub",
+    app_name: "Продукты Контейнера",
     nav_home: "Главная",
     nav_containers: "Контейнеры",
     nav_admin: "Админ",
@@ -163,7 +163,7 @@ export const translations = {
     admin_acceptance_confirm_desc: "Вы уверены, что хотите принять контейнер '{containerName}' и добавить его содержимое на склад?"
   },
   uz: {
-    app_name: "Konteyner Yechimlari Markazi",
+    app_name: "Konteyner Mahsulotlari",
     nav_home: "Bosh Sahifa",
     nav_containers: "Konteynerlar",
     nav_admin: "Admin",
