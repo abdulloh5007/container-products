@@ -15,6 +15,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher';
 
 export function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
@@ -26,13 +27,42 @@ export function Sidebar() {
   
   const closeSheet = () => setSheetOpen(false);
 
+  const navItems = [
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
+    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
+  ];
+
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          <Link href="/admin/acceptance" className="flex items-center gap-2 font-semibold">
-            <Container className="h-6 w-6 text-primary" />
-            <span className="hidden sm:inline-block">{t('admin_title')}</span>
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/admin/acceptance" className="flex items-center gap-2 font-semibold">
+              <Container className="h-6 w-6 text-primary" />
+              <span className="hidden sm:inline-block">{t('admin_title')}</span>
+            </Link>
+            <nav className="hidden md:flex items-center gap-4">
+               {navItems.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'text-primary'
+                          : 'text-muted-foreground hover:text-primary'
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+               })}
+            </nav>
+          </div>
           
           <div className="flex items-center gap-2">
             <ThemeSwitcher />
