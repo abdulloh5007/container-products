@@ -125,34 +125,34 @@ function MultiImageUploader({
                     {existingImageUrls.map((url, index) => (
                         <div key={`existing-${index}`} className="relative group aspect-square">
                             <Image src={url} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <button type="button" onClick={() => onView(allImageUrls, index)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
-                                    <Eye className="h-4 w-4" />
+                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <button type="button" onClick={() => onView(allImageUrls, index)} className="text-white p-1.5 rounded-full bg-black/50 hover:bg-black/80">
+                                    <Eye className="h-5 w-5" />
                                 </button>
-                                {!disabled && (
-                                    <button type="button" onClick={() => removeExistingUrl(index)} className="text-white p-1 rounded-full bg-destructive/80 hover:bg-destructive">
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
                             </div>
+                            {!disabled && (
+                                <button type="button" onClick={() => removeExistingUrl(index)} className="absolute top-1 right-1 text-white p-1 rounded-full bg-destructive/90 hover:bg-destructive z-10">
+                                    <X className="h-3 w-3" />
+                                </button>
+                            )}
                         </div>
                     ))}
                     {files.map((file, index) => {
                         const previewUrl = URL.createObjectURL(file);
                         const overallIndex = existingImageUrls.length + index;
                         return (
-                            <div key={`new-${index}`} className="relative group aspect-square">
+                             <div key={`new-${index}`} className="relative group aspect-square">
                                 <Image src={previewUrl} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
-                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <button type="button" onClick={() => onView(allImageUrls, overallIndex)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
-                                        <Eye className="h-4 w-4" />
+                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button type="button" onClick={() => onView(allImageUrls, overallIndex)} className="text-white p-1.5 rounded-full bg-black/50 hover:bg-black/80">
+                                        <Eye className="h-5 w-5" />
                                     </button>
-                                    {!disabled && (
-                                        <button type="button" onClick={() => removeFile(index)} className="text-white p-1 rounded-full bg-destructive/80 hover:bg-destructive">
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    )}
                                 </div>
+                                {!disabled && (
+                                    <button type="button" onClick={() => removeFile(index)} className="absolute top-1 right-1 text-white p-1 rounded-full bg-destructive/90 hover:bg-destructive z-10">
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                )}
                             </div>
                         )
                     })}
