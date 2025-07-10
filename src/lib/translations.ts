@@ -166,7 +166,10 @@ export const translations = {
     admin_product_no_included_products: "В этот контейнер пока не добавлены продукты.",
     admin_product_image_drag_drop: "Перетащите файлы или кликните для выбора",
     admin_view_image_button: "Просмотр",
-    admin_product_image_limit: "Осталось мест для изображений: {count}"
+    admin_product_image_limit: "Осталось мест для изображений: {count}",
+    admin_product_image_size_error: "Размер файла не должен превышать {size} МБ.",
+    admin_product_image_max_files_error: "Можно загрузить не более {max} изображений.",
+    admin_product_image_accepted_formats: "Допустимые форматы: JPG, PNG"
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -334,9 +337,14 @@ export const translations = {
     admin_product_no_included_products: "Bu konteynerga hali mahsulotlar qo'shilmagan.",
     admin_product_image_drag_drop: "Fayllarni sudrab olib keling yoki tanlash uchun bosing",
     admin_view_image_button: "Ko'rish",
-    admin_product_image_limit: "Rasmlar uchun qolgan joylar soni: {count}"
+    admin_product_image_limit: "Rasmlar uchun qolgan joylar soni: {count}",
+    admin_product_image_size_error: "Fayl hajmi {size} MB dan oshmasligi kerak.",
+    admin_product_image_max_files_error: "{max} tadan ko'p rasm yuklab bo'lmaydi.",
+    admin_product_image_accepted_formats: "Ruxsat etilgan formatlar: JPG, PNG"
   },
 };
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
+
+    

@@ -175,7 +175,12 @@ export default function AdminStockPage() {
                         >
                             <Minus className="h-4 w-4" />
                         </Button>
-                        <span className="w-12 text-center">{product.quantity}</span>
+                        <Input 
+                            type="number" 
+                            className="w-20 text-center h-9"
+                            value={product.quantity}
+                            disabled={true}
+                        />
                          <Button 
                             variant="outline" 
                             size="icon" 
@@ -302,7 +307,7 @@ export default function AdminStockPage() {
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                         <TableHead>{t('admin_stock_table_product')}</TableHead>
                         <TableHead>{t('admin_stock_table_quantity')}</TableHead>
-                        <TableHead className="text-right w-[180px]">{t('admin_stock_table_actions')}</TableHead>
+                        <TableHead className="text-right w-[220px]">{t('admin_stock_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -323,3 +328,5 @@ export default function AdminStockPage() {
     </>
   );
 }
+
+    

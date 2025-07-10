@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'firebase/firestore';
@@ -49,30 +49,43 @@ function MultiImageUploader({
     setFiles, 
     existingImageUrls,
     setExistingImageUrls,
-    disabled 
+    disabled,
+    onView
 }: { 
     files: File[], 
     setFiles: (files: File[]) => void, 
     existingImageUrls: string[],
     setExistingImageUrls: (urls: string[]) => void,
     disabled?: boolean,
+    onView: (url: string) => void,
 }) {
     const { t } = useLanguage();
-    const MAX_FILES = 10;
+    const { toast } = useToast();
+    const MAX_FILES = 3;
+    const MAX_SIZE_MB = 0.5; // 500KB
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
     const currentTotal = files.length + existingImageUrls.length;
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
+    const onDrop = useCallback((acceptedFiles: File[], fileRejections: FileRejection[]) => {
         if (currentTotal + acceptedFiles.length > MAX_FILES) {
-            // Optionally, show a toast message here
+            toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_product_image_max_files_error', { max: MAX_FILES }) });
             return;
         }
-        setFiles([...files, ...acceptedFiles]);
-    }, [files, existingImageUrls, setFiles, currentTotal]);
+        setFiles(prev => [...prev, ...acceptedFiles]);
+        
+        fileRejections.forEach(rejection => {
+            if (rejection.file.size > MAX_SIZE_BYTES) {
+                toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_product_image_size_error', { size: MAX_SIZE_MB }) });
+            }
+        });
+
+    }, [files, existingImageUrls, setFiles, currentTotal, toast, t]);
     
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
-        accept: { 'image/*': [] },
-        maxFiles: MAX_FILES - currentTotal,
+        accept: { 'image/jpeg': [], 'image/png': [] },
+        maxFiles: MAX_FILES,
+        maxSize: MAX_SIZE_BYTES,
         disabled: disabled || currentTotal >= MAX_FILES,
     });
     
@@ -97,6 +110,7 @@ function MultiImageUploader({
                         {isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drag_drop')}
                     </p>
                     <p className="text-xs text-muted-foreground">{t('admin_product_image_limit', { count: MAX_FILES - currentTotal })}</p>
+                    <p className="text-xs text-muted-foreground">{t('admin_product_image_accepted_formats')}</p>
                 </div>
             </div>
              {(existingImageUrls.length > 0 || files.length > 0) && (
@@ -104,23 +118,36 @@ function MultiImageUploader({
                     {existingImageUrls.map((url, index) => (
                         <div key={`existing-${index}`} className="relative group aspect-square">
                             <Image src={url} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
-                            {!disabled && (
-                                <button type="button" onClick={() => removeExistingUrl(index)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <X className="h-4 w-4" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <button type="button" onClick={() => onView(url)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
+                                    <Eye className="h-4 w-4" />
                                 </button>
-                            )}
+                                {!disabled && (
+                                    <button type="button" onClick={() => removeExistingUrl(index)} className="text-white p-1 rounded-full bg-destructive/80 hover:bg-destructive">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
-                    {files.map((file, index) => (
-                        <div key={`new-${index}`} className="relative group aspect-square">
-                            <Image src={URL.createObjectURL(file)} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
-                             {!disabled && (
-                                <button type="button" onClick={() => removeFile(index)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                    {files.map((file, index) => {
+                        const previewUrl = URL.createObjectURL(file);
+                        return (
+                            <div key={`new-${index}`} className="relative group aspect-square">
+                                <Image src={previewUrl} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
+                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <button type="button" onClick={() => onView(previewUrl)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
+                                        <Eye className="h-4 w-4" />
+                                    </button>
+                                    {!disabled && (
+                                        <button type="button" onClick={() => removeFile(index)} className="text-white p-1 rounded-full bg-destructive/80 hover:bg-destructive">
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
             )}
         </div>
@@ -199,12 +226,12 @@ export default function AdminProductsPage() {
   }, [productToEdit]);
 
   const handleSaveProduct = async () => {
-    if (!newProductName || newProductQuantity < 1) {
+    if (!newProductName || newProductQuantity < 0) {
       toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
       return;
     }
 
-    if (!productToEdit && newProductImages.length === 0) {
+    if (existingImageUrls.length === 0 && newProductImages.length === 0) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_image_required') });
         return;
     }
@@ -497,7 +524,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} disabled={isSubmitting} />
+              <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
@@ -507,6 +534,7 @@ export default function AdminProductsPage() {
                     existingImageUrls={existingImageUrls}
                     setExistingImageUrls={setExistingImageUrls}
                     disabled={isSubmitting}
+                    onView={openFullscreen}
                 />
             </div>
           </div>
@@ -544,3 +572,5 @@ export default function AdminProductsPage() {
     </>
   );
 }
+
+    
