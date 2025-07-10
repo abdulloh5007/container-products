@@ -217,7 +217,6 @@ export default function SettingsPage() {
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
-                    <p className="text-muted-foreground">{t('admin_settings_desc')}</p>
                 </div>
             </div>
             

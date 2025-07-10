@@ -210,7 +210,6 @@ export default function AdminStockPage() {
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_stock_title')}</h1>
-            <p className="text-muted-foreground">{t('admin_stock_desc')}</p>
         </div>
         <ViewSwitcher view={view} setView={setView} />
       </div>

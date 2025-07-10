@@ -271,7 +271,6 @@ export default function NewContainerPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{isEditMode ? t('admin_edit_container_title') : t('admin_new_container_title')}</h1>
-          <p className="text-muted-foreground">{isEditMode ? t('admin_edit_container_desc') : t('admin_new_container_desc')}</p>
         </div>
       </div>
 

@@ -187,7 +187,6 @@ export default function AdminContainersPage() {
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_containers_title')}</h1>
-            <p className="text-muted-foreground">{t('admin_containers_desc')}</p>
         </div>
         <div className="flex items-center gap-2">
             <ViewSwitcher view={view} setView={setView} />

@@ -333,7 +333,6 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_products_title')}</h1>
-            <p className="text-muted-foreground">{t('admin_products_desc')}</p>
         </div>
         <div className="flex items-center gap-2">
             <ViewSwitcher view={view} setView={setView} />
