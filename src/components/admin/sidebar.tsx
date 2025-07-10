@@ -48,26 +48,6 @@ export function Sidebar() {
               <Container className="h-6 w-6 text-primary" />
               <span className="hidden sm:inline-block">{t('admin_title')}</span>
             </Link>
-            <nav className="hidden md:flex items-center gap-4">
-               {navItems.map((item) => {
-                  const isActive = pathname.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        'flex items-center gap-2 text-sm font-medium transition-colors',
-                        isActive
-                          ? 'text-primary'
-                          : 'text-muted-foreground hover:text-primary'
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  );
-               })}
-            </nav>
           </div>
           
           <div className="flex items-center gap-2">
@@ -89,22 +69,28 @@ export function Sidebar() {
                      </Link>
                    </SheetTitle>
                  </SheetHeader>
-                <nav className="flex-1 space-y-2">
+                <div className="grid grid-cols-2 gap-2 mb-4">
                    {navItems.map((item) => {
+                     const Icon = item.icon;
                      const isActive = pathname.startsWith(item.href);
                      return (
-                        <Button 
+                        <Link
                           key={item.href}
-                          variant={isActive ? 'secondary' : 'ghost'} 
-                          className="w-full justify-start gap-3 text-base" 
-                          onClick={() => handleSheetLinkClick(item.href)}
+                          href={item.href}
+                          onClick={closeSheet}
+                          className={cn(
+                            'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          )}
                         >
-                          <item.icon className="h-5 w-5" />
-                          {item.label}
-                        </Button>
+                          <Icon className="h-6 w-6" />
+                          <span>{item.label}</span>
+                        </Link>
                      );
                    })}
-                </nav>
+                </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base" onClick={() => handleSheetLinkClick('/admin/settings')}>
                      <Settings className="h-5 w-5" />
