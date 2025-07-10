@@ -3,89 +3,138 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-// A simple user object, not the Firebase one
 interface AppUser {
     phone: string;
     Name: string;
     role: string;
     password?: string;
+    sessionToken?: string;
 }
 
 type AuthContextType = {
   user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, password: string) => Promise<boolean>; // Return boolean instead of void/throwing
+  login: (phone: string, password:string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: Partial<AppUser>) => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to generate a random token
+const generateSessionToken = () => {
+    return [...Array(30)].map(() => Math.random().toString(36)[2]).join('');
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check session storage on initial load
+  // Check local storage on initial load
   useEffect(() => {
-    try {
-        const storedUser = sessionStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+    const validateSession = async () => {
+        try {
+            const storedUserString = localStorage.getItem('user');
+            if (storedUserString) {
+                const storedUser: AppUser = JSON.parse(storedUserString);
+                
+                if (storedUser.phone && storedUser.sessionToken) {
+                    const userId = storedUser.phone.replace(/\D/g, '');
+                    const userDocRef = doc(db, 'users', userId);
+                    const userDocSnap = await getDoc(userDocRef);
+
+                    // Check if the token in localStorage matches the one in Firestore
+                    if (userDocSnap.exists() && userDocSnap.data().sessionToken === storedUser.sessionToken) {
+                        setUser(storedUser);
+                    } else {
+                        // If tokens don't match, clear the stale session
+                        localStorage.removeItem('user');
+                        setUser(null);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Could not validate session", error);
+            localStorage.removeItem('user');
+        } finally {
+            setIsLoading(false);
         }
-    } catch (error) {
-        console.error("Could not parse user from session storage", error);
-        sessionStorage.removeItem('user');
-    } finally {
-        setIsLoading(false);
     }
+    
+    validateSession();
   }, []);
 
   const login = async (phone: string, password: string): Promise<boolean> => {
-    const userId = phone.replace(/\D/g, ''); // Use phone number as user ID
+    const userId = phone.replace(/\D/g, '');
     if (!userId || !password) {
         return false;
     }
     
+    setIsLoading(true);
     try {
         const userDocRef = doc(db, 'users', userId);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists()) {
+        if (userDocSnap.exists() && userDocSnap.data().password === password) {
             const userData = userDocSnap.data();
-            if (userData.password === password) {
-                const appUser: AppUser = {
-                    phone: userData.phone,
-                    Name: userData.Name,
-                    role: userData.role,
-                    password: userData.password,
-                };
-                setUser(appUser);
-                sessionStorage.setItem('user', JSON.stringify(appUser));
-                return true; // Login successful
-            }
+            const sessionToken = generateSessionToken();
+
+            // Store session token in Firestore
+            await updateDoc(userDocRef, {
+                sessionToken: sessionToken,
+                lastLogin: serverTimestamp(),
+            });
+
+            const appUser: AppUser = {
+                phone: userData.phone,
+                Name: userData.Name,
+                role: userData.role,
+                password: userData.password,
+                sessionToken: sessionToken,
+            };
+
+            setUser(appUser);
+            localStorage.setItem('user', JSON.stringify(appUser));
+            return true;
         }
-        return false; // User doesn't exist or password incorrect
+        return false;
     } catch (error) {
         console.error("Firestore error during login:", error);
-        return false; // Firestore error
+        return false;
+    } finally {
+        setIsLoading(false);
     }
   };
   
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem('user');
-    // Also remove from router to login page
-    window.location.href = '/admin/login';
+  const logout = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+        const userId = user.phone.replace(/\D/g, '');
+        const userDocRef = doc(db, 'users', userId);
+        
+        // Remove session token from Firestore
+        await updateDoc(userDocRef, { sessionToken: null });
+    } catch (error) {
+        console.error("Error clearing session token from Firestore", error);
+    } finally {
+        setUser(null);
+        localStorage.removeItem('user');
+        setIsLoading(false);
+        // Using window.location to ensure a full refresh and state clear
+        window.location.href = '/admin/login';
+    }
   };
 
   const updateUser = (data: Partial<AppUser>) => {
       setUser(prevUser => {
           if (!prevUser) return null;
           const newUser = { ...prevUser, ...data };
-          sessionStorage.setItem('user', JSON.stringify(newUser));
+          localStorage.setItem('user', JSON.stringify(newUser));
           return newUser;
       });
   }
