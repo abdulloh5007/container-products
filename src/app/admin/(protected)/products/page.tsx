@@ -60,13 +60,11 @@ type ImageItem = {
 function MultiImageUploader({
     items,
     setItems,
-    disabled,
-    onView
+    disabled
 }: {
     items: ImageItem[],
     setItems: (items: ImageItem[]) => void,
     disabled?: boolean,
-    onView: (urls: string[], index: number) => void,
 }) {
     const { t } = useLanguage();
     const { toast } = useToast();
@@ -109,8 +107,6 @@ function MultiImageUploader({
         setItems(items.filter((item) => item.id !== idToRemove));
     };
 
-    const allImagePreviews = items.map(item => item.preview);
-
     return (
         <div className="space-y-4">
             <div
@@ -128,24 +124,30 @@ function MultiImageUploader({
                 </div>
             </div>
             {items.length > 0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                <Reorder.Group
+                    axis="x"
+                    values={items}
+                    onReorder={setItems}
+                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
+                >
                     <AnimatePresence>
-                        {items.map((item, index) => (
-                             <motion.div
+                        {items.map((item) => (
+                             <Reorder.Item
                                 key={item.id}
+                                value={item}
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}
-                                className="relative group aspect-square rounded-md bg-muted"
+                                className="relative group aspect-square rounded-md bg-muted cursor-grab active:cursor-grabbing"
                             >
                                 <div className="relative w-full h-full">
-                                    <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
+                                    <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md pointer-events-none" />
                                 </div>
                                 {!disabled && (
                                     <button
                                         type="button"
                                         onClick={(e) => {
-                                            e.stopPropagation(); // Prevent opening fullscreen viewer
+                                            e.stopPropagation();
                                             removeItem(item.id);
                                         }}
                                         className="absolute top-1 right-1 text-white p-1 rounded-full bg-destructive/80 hover:bg-destructive backdrop-blur-sm z-10"
@@ -153,10 +155,10 @@ function MultiImageUploader({
                                         <X className="h-3 w-3" />
                                     </button>
                                 )}
-                            </motion.div>
+                            </Reorder.Item>
                         ))}
                     </AnimatePresence>
-                </div>
+                </Reorder.Group>
             )}
         </div>
     );
@@ -545,7 +547,6 @@ export default function AdminProductsPage() {
                     items={imageItems}
                     setItems={setImageItems}
                     disabled={isSubmitting}
-                    onView={() => {}}
                 />
             </div>
           </div>
