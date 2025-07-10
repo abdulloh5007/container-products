@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Sidebar } from '@/components/admin/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
 
 
 function AdminSkeleton() {
@@ -27,7 +28,6 @@ function AdminSkeleton() {
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <div className="space-y-4">
           <Skeleton className="h-10 w-1/4" />
-          <Skeleton className="h-6 w-1/2" />
           <Skeleton className="h-96 w-full" />
         </div>
       </main>
@@ -59,7 +59,8 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   return (
     <div className="flex min-h-screen flex-col bg-background">
         <Sidebar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
+        <BottomNavBar />
     </div>
   );
 }
