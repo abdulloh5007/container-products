@@ -26,9 +26,9 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 100) {
       onClose();
-    } else if (info.offset.x > 100) {
+    } else if (info.offset.x > 50 && imageUrls.length > 1) {
       goToPrevious();
-    } else if (info.offset.x < -100) {
+    } else if (info.offset.x < -50 && imageUrls.length > 1) {
       goToNext();
     }
   };
@@ -63,16 +63,16 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
         >
           <motion.div
             key={currentIndex}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
             dragElastic={0.4}
             onDragEnd={handleDragEnd}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2 }}
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on the image itself
-            className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center cursor-grab active:cursor-grabbing"
           >
             <Image
               src={currentImageUrl}
@@ -80,6 +80,7 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
               fill
               style={{ objectFit: 'contain' }}
               className="pointer-events-none"
+              priority
             />
           </motion.div>
            <button
