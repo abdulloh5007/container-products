@@ -26,6 +26,11 @@ interface Product {
     imageUrls: string[];
 }
 
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
+}
+
 const cardVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -41,7 +46,7 @@ export default function AdminStockPage() {
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const { view, setView } = useViewSwitcher('stock');
   const [searchQuery, setSearchQuery] = useState('');
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -94,12 +99,14 @@ export default function AdminStockPage() {
     }
   };
   
-  const openFullscreen = (imageUrl: string) => {
-    if (imageUrl) setFullscreenImage(imageUrl);
+  const openFullscreen = (imageUrls: string[], startIndex: number) => {
+    if (imageUrls && imageUrls.length > 0) {
+      setFullscreenState({ imageUrls, startIndex });
+    }
   };
   
   const closeFullscreen = () => {
-    setFullscreenImage(null);
+    setFullscreenState(null);
   };
   
   const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/64x64.png';
@@ -160,7 +167,7 @@ export default function AdminStockPage() {
                     width={64}
                     height={64}
                     className="rounded-md object-cover h-16 w-16 cursor-pointer"
-                    onClick={() => openFullscreen(getFirstImage(product))}
+                    onClick={() => openFullscreen(product.imageUrls, 0)}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -214,7 +221,7 @@ export default function AdminStockPage() {
                                     <CarouselContent>
                                         {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
                                             <CarouselItem key={index}>
-                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(url)}>
+                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(product.imageUrls, index)}>
                                                     <Image
                                                         src={url}
                                                         alt={`${product.name} - image ${index + 1}`}
@@ -225,7 +232,7 @@ export default function AdminStockPage() {
                                             </CarouselItem>
                                         )) : (
                                             <CarouselItem>
-                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen('https://placehold.co/300x200.png')}>
+                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen(['https://placehold.co/300x200.png'], 0)}>
                                                     <Image
                                                         src={'https://placehold.co/300x200.png'}
                                                         alt={product.name}
@@ -321,9 +328,10 @@ export default function AdminStockPage() {
         )}
     </div>
     <ImageFullscreenViewer 
-        isOpen={!!fullscreenImage}
+        isOpen={!!fullscreenState}
         onClose={closeFullscreen}
-        imageUrl={fullscreenImage}
+        imageUrls={fullscreenState?.imageUrls}
+        startIndex={fullscreenState?.startIndex}
     />
     </>
   );

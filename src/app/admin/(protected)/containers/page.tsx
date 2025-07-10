@@ -30,6 +30,11 @@ interface Container {
   products: IncludedProduct[];
 }
 
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
+}
+
 export default function AdminContainersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -37,7 +42,7 @@ export default function AdminContainersPage() {
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -77,11 +82,13 @@ export default function AdminContainersPage() {
   };
   
   const openFullscreen = (imageUrl: string) => {
-    if (imageUrl) setFullscreenImage(imageUrl);
+    if (imageUrl) {
+      setFullscreenState({ imageUrls: [imageUrl], startIndex: 0 });
+    }
   };
   
   const closeFullscreen = () => {
-    setFullscreenImage(null);
+    setFullscreenState(null);
   };
 
   const renderContent = () => {
@@ -249,9 +256,10 @@ export default function AdminContainersPage() {
       </AlertDialog>
     </div>
     <ImageFullscreenViewer 
-        isOpen={!!fullscreenImage}
+        isOpen={!!fullscreenState}
         onClose={closeFullscreen}
-        imageUrl={fullscreenImage}
+        imageUrls={fullscreenState?.imageUrls}
+        startIndex={fullscreenState?.startIndex}
     />
     </>
   );

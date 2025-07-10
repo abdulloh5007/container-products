@@ -30,6 +30,11 @@ interface Product {
     imageUrls: string[];
 }
 
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
+}
+
 const cardVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -57,7 +62,7 @@ function MultiImageUploader({
     existingImageUrls: string[],
     setExistingImageUrls: (urls: string[]) => void,
     disabled?: boolean,
-    onView: (url: string) => void,
+    onView: (urls: string[], index: number) => void,
 }) {
     const { t } = useLanguage();
     const { toast } = useToast();
@@ -96,6 +101,8 @@ function MultiImageUploader({
     const removeExistingUrl = (index: number) => {
         setExistingImageUrls(existingImageUrls.filter((_, i) => i !== index));
     };
+    
+    const allImageUrls = [...existingImageUrls, ...files.map(file => URL.createObjectURL(file))];
 
     return (
         <div className="space-y-4">
@@ -119,7 +126,7 @@ function MultiImageUploader({
                         <div key={`existing-${index}`} className="relative group aspect-square">
                             <Image src={url} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <button type="button" onClick={() => onView(url)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
+                                <button type="button" onClick={() => onView(allImageUrls, index)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
                                     <Eye className="h-4 w-4" />
                                 </button>
                                 {!disabled && (
@@ -132,11 +139,12 @@ function MultiImageUploader({
                     ))}
                     {files.map((file, index) => {
                         const previewUrl = URL.createObjectURL(file);
+                        const overallIndex = existingImageUrls.length + index;
                         return (
                             <div key={`new-${index}`} className="relative group aspect-square">
                                 <Image src={previewUrl} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <button type="button" onClick={() => onView(previewUrl)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
+                                    <button type="button" onClick={() => onView(allImageUrls, overallIndex)} className="text-white p-1 rounded-full bg-black/50 hover:bg-black/70">
                                         <Eye className="h-4 w-4" />
                                     </button>
                                     {!disabled && (
@@ -167,7 +175,7 @@ export default function AdminProductsPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { view, setView } = useViewSwitcher('products');
   const [searchQuery, setSearchQuery] = useState('');
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
@@ -313,12 +321,14 @@ export default function AdminProductsPage() {
     }
   }
 
-  const openFullscreen = (imageUrl: string) => {
-    if (imageUrl) setFullscreenImage(imageUrl);
+  const openFullscreen = (imageUrls: string[], startIndex: number) => {
+    if (imageUrls && imageUrls.length > 0) {
+      setFullscreenState({ imageUrls, startIndex });
+    }
   };
   
   const closeFullscreen = () => {
-    setFullscreenImage(null);
+    setFullscreenState(null);
   };
 
   const renderContent = () => {
@@ -380,7 +390,7 @@ export default function AdminProductsPage() {
                     width={64}
                     height={64}
                     className="rounded-md object-cover h-16 w-16 cursor-pointer"
-                    onClick={() => openFullscreen(getFirstImage(product))}
+                    onClick={() => openFullscreen(product.imageUrls, 0)}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -416,7 +426,7 @@ export default function AdminProductsPage() {
                                     <CarouselContent>
                                         {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
                                             <CarouselItem key={index}>
-                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(url)}>
+                                                <div className="relative w-full aspect-[3/2] cursor-pointer" onClick={() => openFullscreen(product.imageUrls, index)}>
                                                     <Image
                                                         src={url}
                                                         alt={`${product.name} - image ${index + 1}`}
@@ -427,7 +437,7 @@ export default function AdminProductsPage() {
                                             </CarouselItem>
                                         )) : (
                                             <CarouselItem>
-                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen('https://placehold.co/300x200.png')}>
+                                                <div className="relative w-full aspect-[3/2]" onClick={() => openFullscreen(['https://placehold.co/300x200.png'], 0)}>
                                                     <Image
                                                         src={'https://placehold.co/300x200.png'}
                                                         alt={product.name}
@@ -565,9 +575,10 @@ export default function AdminProductsPage() {
       </AlertDialog>
     </div>
     <ImageFullscreenViewer 
-        isOpen={!!fullscreenImage}
+        isOpen={!!fullscreenState}
         onClose={closeFullscreen}
-        imageUrl={fullscreenImage}
+        imageUrls={fullscreenState?.imageUrls}
+        startIndex={fullscreenState?.startIndex}
     />
     </>
   );

@@ -17,7 +17,6 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
-
 interface IncludedProduct {
   id: string;
   name: string;
@@ -30,6 +29,11 @@ interface Container {
   products: IncludedProduct[];
 }
 
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
+}
+
 export default function AdminAcceptancePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -38,7 +42,7 @@ export default function AdminAcceptancePage() {
   const [acceptingContainerId, setAcceptingContainerId] = useState<string | null>(null);
   const [containerToAccept, setContainerToAccept] = useState<Container | null>(null);
   const { view, setView } = useViewSwitcher('acceptance');
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -94,11 +98,13 @@ export default function AdminAcceptancePage() {
   }
   
   const openFullscreen = (imageUrl: string) => {
-    if (imageUrl) setFullscreenImage(imageUrl);
+    if (imageUrl) {
+        setFullscreenState({ imageUrls: [imageUrl], startIndex: 0 });
+    }
   };
   
   const closeFullscreen = () => {
-    setFullscreenImage(null);
+    setFullscreenState(null);
   };
 
   const renderContent = () => {
@@ -272,9 +278,10 @@ export default function AdminAcceptancePage() {
       </AlertDialog>
     </div>
     <ImageFullscreenViewer 
-        isOpen={!!fullscreenImage}
+        isOpen={!!fullscreenState}
         onClose={closeFullscreen}
-        imageUrl={fullscreenImage}
+        imageUrls={fullscreenState?.imageUrls}
+        startIndex={fullscreenState?.startIndex}
     />
     </>
   );

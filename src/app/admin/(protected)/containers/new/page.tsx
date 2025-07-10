@@ -18,7 +18,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
-
 interface Product {
   id: string;
   name: string;
@@ -37,6 +36,11 @@ interface ContainerData {
   name: string;
   imageUrl?: string;
   products: IncludedProduct[];
+}
+
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
 }
 
 // Helper to convert a file to a Base64 data URI
@@ -117,7 +121,7 @@ export default function NewContainerPage() {
   const [containerId, setContainerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -253,13 +257,19 @@ export default function NewContainerPage() {
   const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/40x40.png';
 
   
-  const openFullscreen = (imageUrl: string) => {
-    if (imageUrl) setFullscreenImage(imageUrl);
+  const openFullscreen = (imageUrls: string[], startIndex: number = 0) => {
+    if (imageUrls && imageUrls.length > 0) {
+      setFullscreenState({ imageUrls, startIndex });
+    }
   };
   
   const closeFullscreen = () => {
-    setFullscreenImage(null);
+    setFullscreenState(null);
   };
+  
+  const handleUploaderClick = (url: string) => {
+    if (url) openFullscreen([url]);
+  }
 
   if (isLoading) {
       return (
@@ -338,7 +348,7 @@ export default function NewContainerPage() {
                           width={40}
                           height={40}
                           className="rounded-md object-cover h-10 w-10 cursor-pointer"
-                          onClick={() => openFullscreen(getFirstImage(product))}
+                          onClick={() => openFullscreen(product.imageUrls, 0)}
                       />
                       <span>{product.name}</span>
                     </div>
@@ -365,7 +375,7 @@ export default function NewContainerPage() {
 
             <div className="space-y-2">
               <Label>{t('admin_container_image')}</Label>
-              <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} onPreviewClick={openFullscreen} />
+              <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} onPreviewClick={handleUploaderClick} />
             </div>
             
             <div className="space-y-2">
@@ -430,9 +440,10 @@ export default function NewContainerPage() {
       </div>
     </div>
     <ImageFullscreenViewer 
-        isOpen={!!fullscreenImage}
+        isOpen={!!fullscreenState}
         onClose={closeFullscreen}
-        imageUrl={fullscreenImage}
+        imageUrls={fullscreenState?.imageUrls}
+        startIndex={fullscreenState?.startIndex}
     />
     </>
   );
