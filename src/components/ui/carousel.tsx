@@ -117,11 +117,11 @@ const Carousel = React.forwardRef<
       if (!api) {
         return
       }
-      setScrollSnaps(api.scrollSnaps)
+      setScrollSnaps(api.scrollSnaps())
       onSelect(api)
       api.on("reInit", onSelect)
       api.on("select", onSelect)
-      api.on("reInit", () => setScrollSnaps(api.scrollSnaps))
+      api.on("reInit", () => setScrollSnaps(api.scrollSnaps()))
 
       return () => {
         api?.off("select", onSelect)
@@ -276,6 +276,10 @@ const CarouselDots = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const { scrollSnaps, selectedIndex, onDotButtonClick } = useCarousel();
+
+  if (!scrollSnaps || scrollSnaps.length === 0) {
+    return null;
+  }
 
   return (
     <div
