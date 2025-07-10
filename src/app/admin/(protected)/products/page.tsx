@@ -242,19 +242,17 @@ export default function AdminProductsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <Card key={index}>
-                        <CardHeader className="p-0">
+                        <CardHeader className="p-0 relative">
                             <Skeleton className="w-full aspect-[3/2] rounded-t-lg" />
+                             <div className="absolute top-2 right-2 space-x-2">
+                                <Skeleton className="h-8 w-8 inline-block rounded-md" />
+                                <Skeleton className="h-8 w-8 inline-block rounded-md" />
+                            </div>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-2">
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardContent>
-                        <CardFooter>
-                           <div className="flex justify-end gap-2 w-full">
-                                <Skeleton className="h-10 w-10" />
-                                <Skeleton className="h-10 w-10" />
-                            </div>
-                        </CardFooter>
                     </Card>
                 ))}
             </div>
@@ -303,7 +301,7 @@ export default function AdminProductsPage() {
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map((product) => (
                  <Card key={product.id}>
-                    <CardHeader className="p-0">
+                    <CardHeader className="p-0 relative">
                         <Image
                             src={product.imageUrl || 'https://placehold.co/300x200.png'}
                             alt={product.name}
@@ -311,21 +309,19 @@ export default function AdminProductsPage() {
                             height={200}
                             className="rounded-t-lg object-cover w-full aspect-[3/2]"
                         />
+                         <div className="absolute top-2 right-2 space-x-2">
+                            <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" onClick={() => handleOpenModalForEdit(product)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setProductToDelete(product)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-1">
                         <CardTitle className="text-lg">{product.name}</CardTitle>
                         <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
                     </CardContent>
-                    <CardFooter>
-                         <div className="flex w-full justify-end gap-2">
-                            <Button variant="outline" size="icon" onClick={() => handleOpenModalForEdit(product)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="destructive" size="icon" onClick={() => setProductToDelete(product)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardFooter>
                 </Card>
             ))}
         </div>
