@@ -141,7 +141,7 @@ function MultiImageUploader({
                                 className="relative group aspect-square rounded-md bg-muted cursor-grab active:cursor-grabbing"
                             >
                                 <div className="relative w-full h-full">
-                                    <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md pointer-events-none" />
+                                  <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md pointer-events-none" />
                                 </div>
                                 {!disabled && (
                                     <button
