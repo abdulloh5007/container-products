@@ -128,20 +128,18 @@ function MultiImageUploader({
                 </div>
             </div>
             {items.length > 0 && (
-                <Reorder.Group axis="x" values={items} onReorder={setItems} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                     <AnimatePresence>
                         {items.map((item, index) => (
-                             <Reorder.Item
+                             <motion.div
                                 key={item.id}
-                                value={item}
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.8 }}
-                                whileDrag={{ scale: 1.05, zIndex: 50 }}
-                                className="relative group aspect-square rounded-md bg-muted cursor-grab"
+                                className="relative group aspect-square rounded-md bg-muted"
                             >
-                                <div className="relative w-full h-full" onClick={() => onView(allImagePreviews, index)}>
-                                    <Image src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
+                                <div className="relative w-full h-full">
+                                    <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md" />
                                 </div>
                                 {!disabled && (
                                     <button
@@ -155,10 +153,10 @@ function MultiImageUploader({
                                         <X className="h-3 w-3" />
                                     </button>
                                 )}
-                            </Reorder.Item>
+                            </motion.div>
                         ))}
                     </AnimatePresence>
-                </Reorder.Group>
+                </div>
             )}
         </div>
     );
@@ -547,7 +545,7 @@ export default function AdminProductsPage() {
                     items={imageItems}
                     setItems={setImageItems}
                     disabled={isSubmitting}
-                    onView={openFullscreen}
+                    onView={() => {}}
                 />
             </div>
           </div>
