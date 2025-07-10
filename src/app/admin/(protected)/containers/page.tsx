@@ -92,19 +92,17 @@ export default function AdminContainersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <Card key={index}>
-                        <CardHeader>
-                            <Skeleton className="h-32 w-full rounded-md" />
+                        <CardHeader className="p-0 relative">
+                             <Skeleton className="w-full aspect-[3/2] rounded-t-lg" />
+                             <div className="absolute top-2 right-2 space-x-2">
+                                <Skeleton className="h-8 w-8 inline-block rounded-md" />
+                                <Skeleton className="h-8 w-8 inline-block rounded-md" />
+                            </div>
                         </CardHeader>
-                        <CardContent className="space-y-2">
+                        <CardContent className="pt-4 space-y-2">
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardContent>
-                        <CardFooter>
-                            <div className="flex justify-end gap-2 w-full">
-                                <Skeleton className="h-10 w-10" />
-                                <Skeleton className="h-10 w-10" />
-                            </div>
-                        </CardFooter>
                     </Card>
                 ))}
             </div>
