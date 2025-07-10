@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -33,7 +34,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 });
 
 
-function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
+function ImageUploader({ file, setFile, previewUrl, disabled }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, disabled?: boolean }) {
   const { t } = useLanguage();
   const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
 
@@ -61,12 +62,13 @@ function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFi
     onDrop,
     accept: { 'image/*': [] },
     maxFiles: 1,
+    disabled,
   });
 
   return (
     <div
       {...getRootProps()}
-      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors hover:border-primary flex items-center justify-center ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors flex items-center justify-center ${disabled ? 'cursor-not-allowed bg-muted/50' : 'hover:border-primary'} ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
     >
       <input {...getInputProps()} />
       {currentPreview ? (
@@ -306,15 +308,15 @@ export default function AdminProductsPage() {
           <div className="grid gap-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="name">{t('admin_product_name')}</Label>
-              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
+              <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} disabled={isSubmitting} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} />
+              <Input id="quantity" type="number" min="1" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 1)} disabled={isSubmitting} />
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
-                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} />
+                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} disabled={isSubmitting} />
             </div>
           </div>
           <DialogFooter>
