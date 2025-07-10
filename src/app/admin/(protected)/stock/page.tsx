@@ -16,6 +16,7 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 interface Product {
     id: string;
@@ -39,6 +40,7 @@ export default function AdminStockPage() {
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const { view, setView } = useViewSwitcher('stock');
   const [searchQuery, setSearchQuery] = useState('');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -91,6 +93,14 @@ export default function AdminStockPage() {
     }
   };
   
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) setFullscreenImage(imageUrl);
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenImage(null);
+  };
+
   const renderContent = () => {
     if (isLoading) {
         return view === 'table' ? (
@@ -145,7 +155,8 @@ export default function AdminStockPage() {
                     alt={product.name}
                     width={64}
                     height={64}
-                    className="rounded-md object-cover h-16 w-16"
+                    className="rounded-md object-cover h-16 w-16 cursor-pointer"
+                    onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/64x64.png')}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -189,7 +200,7 @@ export default function AdminStockPage() {
                         layout
                     >
                          <Card>
-                            <CardHeader className="p-0">
+                            <CardHeader className="p-0 cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/300x200.png')}>
                                 <Image
                                     src={product.imageUrl || 'https://placehold.co/300x200.png'}
                                     alt={product.name}
@@ -233,6 +244,7 @@ export default function AdminStockPage() {
   }
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_stock_title')}</h1>
@@ -273,5 +285,11 @@ export default function AdminStockPage() {
             renderContent()
         )}
     </div>
+    <ImageFullscreenViewer 
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+        imageUrl={fullscreenImage}
+    />
+    </>
   );
 }

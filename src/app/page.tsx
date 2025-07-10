@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 interface Product {
     id: string;
@@ -31,6 +32,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -56,6 +58,14 @@ export default function Home() {
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [products, searchQuery]);
+  
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) setFullscreenImage(imageUrl);
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenImage(null);
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -96,7 +106,7 @@ export default function Home() {
               layout
             >
               <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-                <div className="relative w-full h-60">
+                <div className="relative w-full h-60 cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/600x400.png')}>
                   <Image
                     src={product.imageUrl || 'https://placehold.co/600x400.png'}
                     alt={product.name}
@@ -117,6 +127,7 @@ export default function Home() {
   };
 
   return (
+    <>
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-20">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl font-headline">
@@ -138,5 +149,11 @@ export default function Home() {
 
       {renderContent()}
     </div>
+    <ImageFullscreenViewer 
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+        imageUrl={fullscreenImage}
+    />
+    </>
   );
 }

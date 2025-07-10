@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 
 interface Product {
@@ -47,7 +48,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 });
 
 
-function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null }) {
+function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, onPreviewClick: (url: string) => void }) {
   const { t } = useLanguage();
   const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
 
@@ -77,19 +78,24 @@ function ImageUploader({ file, setFile, previewUrl }: { file: File | null, setFi
     maxFiles: 1,
   });
 
-  return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors">
-      <input {...getInputProps()} />
-      {currentPreview ? (
-        <div className="relative h-32 w-full">
+  if (currentPreview) {
+    return (
+        <div className="relative h-48 w-full group cursor-pointer" onClick={() => onPreviewClick(currentPreview)}>
             <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <p className="text-white font-semibold">{t('admin_view_image_button')}</p>
+            </div>
         </div>
-      ) : (
-         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Upload className="h-8 w-8" />
-          <p>{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drop')}</p>
-        </div>
-      )}
+    )
+  }
+
+  return (
+    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors h-48 flex flex-col items-center justify-center">
+      <input {...getInputProps()} />
+       <div className="flex flex-col items-center gap-2 text-muted-foreground">
+        <Upload className="h-8 w-8" />
+        <p>{isDragActive ? t('admin_product_image_drop') : t('admin_product_image_drag_drop')}</p>
+      </div>
     </div>
   );
 }
@@ -111,6 +117,7 @@ export default function NewContainerPage() {
   const [containerId, setContainerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -132,7 +139,7 @@ export default function NewContainerPage() {
             setAvailableProducts(allProducts);
 
             // 2. If in edit mode, fetch container data and validate its products
-            if (isEditing) {
+            if (isEditing && containerIdParam) {
                 const containerDocRef = doc(db, 'containers', containerIdParam);
                 const containerDocSnap = await getDoc(containerDocRef);
 
@@ -143,7 +150,16 @@ export default function NewContainerPage() {
 
                     // 3. Filter included products to ensure they still exist
                     const existingProductIds = new Set(allProducts.map(p => p.id));
-                    const validIncludedProducts = (containerData.products || []).filter(p => existingProductIds.has(p.id));
+                    const validIncludedProducts = (containerData.products || [])
+                        .filter(p => existingProductIds.has(p.id))
+                        // Also, map to include the product name from the allProducts list
+                        .map(p => {
+                            const fullProduct = allProducts.find(ap => ap.id === p.id);
+                            return {
+                                ...p,
+                                name: fullProduct?.name || 'Unknown Product'
+                            }
+                        });
                     
                     setIncludedProducts(validIncludedProducts);
 
@@ -202,11 +218,14 @@ export default function NewContainerPage() {
         if (containerImage) {
             finalImageUrl = await fileToDataUri(containerImage);
         }
+        
+        // Remove name from included products before saving
+        const productsToSave = includedProducts.map(({ id, quantity }) => ({ id, quantity }));
 
         const containerData = {
             name: containerName,
             imageUrl: finalImageUrl,
-            products: includedProducts,
+            products: productsToSave,
         };
 
         if (isEditMode && containerId) {
@@ -231,6 +250,14 @@ export default function NewContainerPage() {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) setFullscreenImage(imageUrl);
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenImage(null);
+  };
+
   if (isLoading) {
       return (
         <div className="max-w-5xl mx-auto space-y-8">
@@ -265,6 +292,7 @@ export default function NewContainerPage() {
   }
 
   return (
+    <>
     <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
@@ -292,7 +320,7 @@ export default function NewContainerPage() {
                   className="pl-10"
                 />
             </div>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
               {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
               <div className="relative space-y-2">
                 {filteredProducts.map(product => (
@@ -306,7 +334,8 @@ export default function NewContainerPage() {
                           alt={product.name}
                           width={40}
                           height={40}
-                          className="rounded-md object-cover h-10 w-10"
+                          className="rounded-md object-cover h-10 w-10 cursor-pointer"
+                          onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/40x40.png')}
                       />
                       <span>{product.name}</span>
                     </div>
@@ -333,7 +362,7 @@ export default function NewContainerPage() {
 
             <div className="space-y-2">
               <Label>{t('admin_container_image')}</Label>
-              <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} />
+              <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} onPreviewClick={openFullscreen} />
             </div>
             
             <div className="space-y-2">
@@ -351,7 +380,7 @@ export default function NewContainerPage() {
                             {includedProducts.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={3} className="h-24 text-center">
-                                        {t('admin_product_no_products')}
+                                        {t('admin_product_no_included_products')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -397,5 +426,11 @@ export default function NewContainerPage() {
         </Card>
       </div>
     </div>
+    <ImageFullscreenViewer 
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+        imageUrl={fullscreenImage}
+    />
+    </>
   );
 }

@@ -1,3 +1,4 @@
+
 export const translations = {
   ru: {
     app_name: "Продукты Контейнера",
@@ -75,7 +76,7 @@ export const translations = {
     admin_product_quantity: "Кол-во",
     admin_product_desc: "Описание продукта",
     admin_product_image: "Изображение продукта",
-    admin_product_image_drop: "Перетащите файл сюда или кликните для выбора",
+    admin_product_image_drop: "Перетащите файл",
     admin_product_search_placeholder: "Поиск продуктов...",
     admin_create_button: "Создать",
     admin_cancel_button: "Отмена",
@@ -105,6 +106,7 @@ export const translations = {
     admin_product_delete_success_desc: "Продукт '{productName}' был удален.",
     admin_form_error_title: "Ошибка",
     admin_form_error_desc: "Пожалуйста, заполните все обязательные поля.",
+    admin_form_error_image_required: "Пожалуйста, загрузите изображение.",
     theme_light: "Светлая",
     theme_dark: "Темная",
     theme_system: "Системная",
@@ -160,7 +162,10 @@ export const translations = {
     admin_acceptance_error_title: "Ошибка приёмки",
     admin_acceptance_error_desc: "Не удалось обновить склад. Попробуйте еще раз.",
     admin_acceptance_confirm_title: "Подтвердить приемку",
-    admin_acceptance_confirm_desc: "Вы уверены, что хотите принять контейнер '{containerName}' и добавить его содержимое на склад?"
+    admin_acceptance_confirm_desc: "Вы уверены, что хотите принять контейнер '{containerName}' и добавить его содержимое на склад?",
+    admin_product_no_included_products: "В этот контейнер пока не добавлены продукты.",
+    admin_product_image_drag_drop: "Перетащите файл или кликните для выбора",
+    admin_view_image_button: "Просмотр"
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -238,7 +243,7 @@ export const translations = {
     admin_product_quantity: "Miqdori",
     admin_product_desc: "Mahsulot tavsifi",
     admin_product_image: "Mahsulot rasmi",
-    admin_product_image_drop: "Faylni bu yerga torting yoki tanlash uchun bosing",
+    admin_product_image_drop: "Faylni bu yerga torting",
     admin_product_search_placeholder: "Mahsulotlarni qidirish...",
     admin_create_button: "Yaratish",
     admin_cancel_button: "Bekor qilish",
@@ -268,6 +273,7 @@ export const translations = {
     admin_product_delete_success_desc: "'{productName}' mahsuloti o'chirildi.",
     admin_form_error_title: "Xatolik",
     admin_form_error_desc: "Iltimos, barcha majburiy maydonlarni to'ldiring.",
+    admin_form_error_image_required: "Iltimos, rasm yuklang.",
     theme_light: "Yorug'",
     theme_dark: "Qorong'i",
     theme_system: "Tizim",
@@ -323,7 +329,10 @@ export const translations = {
     admin_acceptance_error_title: "Qabul qilishda xatolik",
     admin_acceptance_error_desc: "Omborni yangilab bo'lmadi. Qayta urinib ko'ring.",
     admin_acceptance_confirm_title: "Qabul qilishni tasdiqlang",
-    admin_acceptance_confirm_desc: "'{containerName}' konteynerini qabul qilib, uning tarkibini omborga qo'shmoqchimisiz?"
+    admin_acceptance_confirm_desc: "'{containerName}' konteynerini qabul qilib, uning tarkibini omborga qo'shmoqchimisiz?",
+    admin_product_no_included_products: "Bu konteynerga hali mahsulotlar qo'shilmagan.",
+    admin_product_image_drag_drop: "Faylni sudrab olib keling yoki tanlash uchun bosing",
+    admin_view_image_button: "Ko'rish"
   },
 };
 

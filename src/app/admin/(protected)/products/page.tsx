@@ -7,7 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
-import { PlusCircle, Edit, Trash2, UploadCloud, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UploadCloud, Search, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 interface Product {
     id: string; // Firestore document ID
@@ -44,14 +45,14 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 });
 
 
-function ImageUploader({ file, setFile, previewUrl, disabled }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, disabled?: boolean }) {
+function ImageUploader({ file, setFile, previewUrl, disabled, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, disabled?: boolean, onPreviewClick: (url: string) => void }) {
   const { t } = useLanguage();
   const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
-      setFile(acceptedFiles[0]);
       const newPreview = URL.createObjectURL(acceptedFiles[0]);
+      setFile(acceptedFiles[0]);
       setCurrentPreview(newPreview);
     }
   }, [setFile]);
@@ -67,7 +68,7 @@ function ImageUploader({ file, setFile, previewUrl, disabled }: { file: File | n
         setCurrentPreview(null);
     }
   }, [file, previewUrl]);
-
+  
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
@@ -78,18 +79,27 @@ function ImageUploader({ file, setFile, previewUrl, disabled }: { file: File | n
   return (
     <div
       {...getRootProps()}
-      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors flex items-center justify-center ${disabled ? 'cursor-not-allowed bg-muted/50' : 'hover:border-primary'} ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
+      className={`w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/50 p-4 text-center transition-colors flex items-center justify-center relative group ${disabled ? 'cursor-not-allowed bg-muted/50' : 'hover:border-primary'} ${isDragActive ? 'border-primary bg-primary/10' : ''}`}
     >
       <input {...getInputProps()} />
       {currentPreview ? (
-        <div className="relative h-full w-full">
+        <>
             <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
-        </div>
+            <div 
+                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onPreviewClick(currentPreview); }}
+            >
+                <div className="text-white flex items-center gap-2">
+                    <Eye className="h-5 w-5"/>
+                    <span>{t('admin_view_image_button')}</span>
+                </div>
+            </div>
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
           <UploadCloud className="h-8 w-8" />
-           <p className="font-semibold text-foreground">
-            {t('admin_product_image_drop')}
+          <p className="font-semibold text-foreground">
+            {t('admin_product_image_drag_drop')}
           </p>
           <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
         </div>
@@ -111,6 +121,7 @@ export default function AdminProductsPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { view, setView } = useViewSwitcher('products');
   const [searchQuery, setSearchQuery] = useState('');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const [newProductName, setNewProductName] = useState('');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
@@ -175,7 +186,7 @@ export default function AdminProductsPage() {
     }
 
     if (!productToEdit && !newProductImage) {
-        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_image_required') });
         return;
     }
     
@@ -226,14 +237,6 @@ export default function AdminProductsPage() {
   const confirmDelete = async () => {
     if (!productToDelete) return;
     try {
-        // 1. Find all containers that include this product
-        const containersRef = collection(db, "containers");
-        const q = query(containersRef, where("products", "array-contains-any", [{id: productToDelete.id}]));
-        
-        // Unfortunately, Firestore doesn't support querying for a specific field in an object within an array directly.
-        // A workaround is needed: fetch all containers and filter client-side, or a more complex data structure.
-        // For simplicity here, we'll fetch all and filter. For larger datasets, a Cloud Function would be better.
-        
         const containersSnapshot = await getDocs(collection(db, "containers"));
         
         const batch = writeBatch(db);
@@ -242,21 +245,17 @@ export default function AdminProductsPage() {
             const containerData = containerDoc.data();
             const productsInContainer = containerData.products || [];
             
-            // Find the specific product object to remove, as arrayRemove needs the exact object.
-            const productToRemove = productsInContainer.find((p: any) => p.id === productToDelete.id);
-
-            if (productToRemove) {
-                batch.update(containerDoc.ref, {
-                    products: arrayRemove(productToRemove)
-                });
+            // Check if the product to delete exists in this container's products array
+            if (productsInContainer.some((p: any) => p.id === productToDelete.id)) {
+                // Filter out the product to be deleted
+                const updatedProducts = productsInContainer.filter((p: any) => p.id !== productToDelete.id);
+                batch.update(containerDoc.ref, { products: updatedProducts });
             }
         });
         
-        // 2. Delete the actual product document
         const productDocRef = doc(db, "products", productToDelete.id);
         batch.delete(productDocRef);
         
-        // 3. Commit all batched writes
         await batch.commit();
 
         toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
@@ -268,6 +267,14 @@ export default function AdminProductsPage() {
         setProductToDelete(null);
     }
   }
+
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) setFullscreenImage(imageUrl);
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenImage(null);
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -325,7 +332,8 @@ export default function AdminProductsPage() {
                     alt={product.name}
                     width={64}
                     height={64}
-                    className="rounded-md object-cover h-16 w-16"
+                    className="rounded-md object-cover h-16 w-16 cursor-pointer"
+                    onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/64x64.png')}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -356,7 +364,7 @@ export default function AdminProductsPage() {
                         layout
                     >
                         <Card>
-                            <CardHeader className="p-0 relative">
+                            <CardHeader className="p-0 relative cursor-pointer" onClick={() => openFullscreen(product.imageUrl || 'https://placehold.co/300x200.png')}>
                                 <Image
                                     src={product.imageUrl || 'https://placehold.co/300x200.png'}
                                     alt={product.name}
@@ -364,7 +372,7 @@ export default function AdminProductsPage() {
                                     height={200}
                                     className="rounded-t-lg object-cover w-full aspect-[3/2]"
                                 />
-                                <div className="absolute top-2 right-2 space-x-2">
+                                <div className="absolute top-2 right-2 space-x-2 bg-transparent/10" onClick={(e) => e.stopPropagation()}>
                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" onClick={() => handleOpenModalForEdit(product)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>
@@ -386,6 +394,7 @@ export default function AdminProductsPage() {
   }
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_products_title')}</h1>
@@ -446,7 +455,13 @@ export default function AdminProductsPage() {
             </div>
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
-                <ImageUploader file={newProductImage} setFile={setNewProductImage} previewUrl={existingImageUrl} disabled={isSubmitting} />
+                <ImageUploader 
+                  file={newProductImage} 
+                  setFile={setNewProductImage} 
+                  previewUrl={existingImageUrl} 
+                  disabled={isSubmitting} 
+                  onPreviewClick={(url) => openFullscreen(url)}
+                />
             </div>
           </div>
           <DialogFooter>
@@ -475,5 +490,11 @@ export default function AdminProductsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    <ImageFullscreenViewer 
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+        imageUrl={fullscreenImage}
+    />
+    </>
   );
 }

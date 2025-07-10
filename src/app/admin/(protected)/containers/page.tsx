@@ -16,6 +16,7 @@ import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/fi
 import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 interface IncludedProduct {
   id: string;
@@ -36,6 +37,7 @@ export default function AdminContainersPage() {
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +74,14 @@ export default function AdminContainersPage() {
     } finally {
         setContainerToDelete(null);
     }
+  };
+  
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) setFullscreenImage(imageUrl);
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenImage(null);
   };
 
   const renderContent = () => {
@@ -130,7 +140,8 @@ export default function AdminContainersPage() {
                         alt={container.name}
                         width={64}
                         height={64}
-                        className="rounded-md object-cover h-16 w-16"
+                        className="rounded-md object-cover h-16 w-16 cursor-pointer"
+                        onClick={() => openFullscreen(container.imageUrl || 'https://placehold.co/64x64.png')}
                     />
                 </TableCell>
                 <TableCell className="font-medium">{container.name}</TableCell>
@@ -153,7 +164,7 @@ export default function AdminContainersPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {containers.map((container) => (
                  <Card key={container.id}>
-                    <CardHeader className="p-0 relative">
+                    <CardHeader className="p-0 relative cursor-pointer" onClick={() => openFullscreen(container.imageUrl || 'https://placehold.co/300x200.png')}>
                         <Image
                             src={container.imageUrl || 'https://placehold.co/300x200.png'}
                             alt={container.name}
@@ -161,7 +172,7 @@ export default function AdminContainersPage() {
                             height={200}
                             className="rounded-t-lg object-cover w-full aspect-[3/2]"
                         />
-                         <div className="absolute top-2 right-2 space-x-2">
+                         <div className="absolute top-2 right-2 space-x-2 bg-transparent/10" onClick={(e) => e.stopPropagation()}>
                             <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80 hover:bg-background" asChild>
                                 <Link href={`/admin/containers/new?id=${container.id}`}>
                                     <Edit className="h-4 w-4" />
@@ -183,6 +194,7 @@ export default function AdminContainersPage() {
   }
 
   return (
+    <>
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-center sm:text-left">{t('admin_containers_title')}</h1>
@@ -236,5 +248,11 @@ export default function AdminContainersPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    <ImageFullscreenViewer 
+        isOpen={!!fullscreenImage}
+        onClose={closeFullscreen}
+        imageUrl={fullscreenImage}
+    />
+    </>
   );
 }
