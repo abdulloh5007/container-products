@@ -25,10 +25,10 @@ export function Sidebar() {
   };
 
   const navItems = [
-    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
-    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
+    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ];
   
   const closeSheet = () => setSheetOpen(false);
@@ -36,7 +36,7 @@ export function Sidebar() {
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-          <Link href="/admin/containers" className="flex items-center gap-2 font-semibold">
+          <Link href="/admin/acceptance" className="flex items-center gap-2 font-semibold">
             <Container className="h-6 w-6 text-primary" />
             <span className="hidden sm:inline-block">{t('admin_title')}</span>
           </Link>
@@ -54,7 +54,7 @@ export function Sidebar() {
               <SheetContent side="right" className="flex w-[320px] flex-col p-4">
                  <SheetHeader className="border-b pb-4 mb-4">
                    <SheetTitle>
-                     <Link href="/admin/containers" onClick={closeSheet} className="flex items-center gap-2 font-semibold">
+                     <Link href="/admin/acceptance" onClick={closeSheet} className="flex items-center gap-2 font-semibold">
                        <Container className="h-6 w-6 text-primary" />
                        <span>{t('admin_title')}</span>
                      </Link>

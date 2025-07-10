@@ -8,7 +8,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/admin/containers');
+    router.replace('/admin/acceptance');
   }, [router]);
 
   return null; // Or a loading spinner
