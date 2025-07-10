@@ -241,13 +241,13 @@ export default function AdminStockPage() {
         <ViewSwitcher view={view} setView={setView} />
       </div>
 
-       <div className="relative">
+       <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t('admin_product_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-full max-w-sm"
+            className="pl-10 w-full"
           />
         </div>
       
