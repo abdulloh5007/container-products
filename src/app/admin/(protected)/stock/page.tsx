@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -11,9 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, increment, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Search } from 'lucide-react';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
+import { Input } from '@/components/ui/input';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Product {
     id: string;
@@ -21,6 +23,12 @@ interface Product {
     quantity: number;
     imageUrl: string;
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
 
 export default function AdminStockPage() {
   const { t } = useLanguage();
@@ -30,6 +38,7 @@ export default function AdminStockPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const { view, setView } = useViewSwitcher('stock');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -49,6 +58,12 @@ export default function AdminStockPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
 
   const handleQuantityChange = async (product: Product, amount: number) => {
     if (product.quantity + amount < 0) return; // Prevent negative stock
@@ -109,7 +124,7 @@ export default function AdminStockPage() {
         )
     }
 
-    if (products.length === 0) {
+    if (filteredProducts.length === 0) {
         return view === 'table' ? (
             <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
@@ -122,7 +137,7 @@ export default function AdminStockPage() {
     }
 
     if (view === 'table') {
-        return products.map((product) => (
+        return filteredProducts.map((product) => (
             <TableRow key={product.id}>
                 <TableCell>
                     <Image
@@ -162,45 +177,57 @@ export default function AdminStockPage() {
 
     return (
          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
-                 <Card key={product.id}>
-                    <CardHeader className="p-0">
-                        <Image
-                            src={product.imageUrl || 'https://placehold.co/300x200.png'}
-                            alt={product.name}
-                            width={300}
-                            height={200}
-                            className="rounded-t-lg object-cover w-full aspect-[3/2]"
-                        />
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-1">
-                        <CardTitle className="text-lg">{product.name}</CardTitle>
-                        <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
-                    </CardContent>
-                    <CardFooter>
-                         <div className="flex w-full items-center justify-center gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => handleQuantityChange(product, -1)}
-                                disabled={updatingProductId === product.id || product.quantity <= 0}
-                                className="w-full"
-                            >
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => handleQuantityChange(product, 1)}
-                                disabled={updatingProductId === product.id}
-                                className="w-full"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardFooter>
-                </Card>
-            ))}
+            <AnimatePresence>
+                {filteredProducts.map((product) => (
+                    <motion.div
+                        key={product.id}
+                        variants={cardVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={{ duration: 0.3 }}
+                        layout
+                    >
+                         <Card>
+                            <CardHeader className="p-0">
+                                <Image
+                                    src={product.imageUrl || 'https://placehold.co/300x200.png'}
+                                    alt={product.name}
+                                    width={300}
+                                    height={200}
+                                    className="rounded-t-lg object-cover w-full aspect-[3/2]"
+                                />
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-1">
+                                <CardTitle className="text-lg">{product.name}</CardTitle>
+                                <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
+                            </CardContent>
+                            <CardFooter>
+                                 <div className="flex w-full items-center justify-center gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        onClick={() => handleQuantityChange(product, -1)}
+                                        disabled={updatingProductId === product.id || product.quantity <= 0}
+                                        className="w-full"
+                                    >
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        onClick={() => handleQuantityChange(product, 1)}
+                                        disabled={updatingProductId === product.id}
+                                        className="w-full"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </CardFooter>
+                        </Card>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     );
   }
@@ -213,6 +240,16 @@ export default function AdminStockPage() {
         </div>
         <ViewSwitcher view={view} setView={setView} />
       </div>
+
+       <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('admin_product_search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full max-w-sm"
+          />
+        </div>
       
        {view === 'table' ? (
             <Card>
