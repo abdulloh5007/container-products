@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -51,7 +52,7 @@ export function Header() {
       <div className="container flex h-16 items-center">
         <Link href="/" className="mr-6 flex items-center gap-2">
           <Container className="h-6 w-6 text-primary" />
-          <span className="font-bold hidden sm:inline-block font-headline">
+          <span className="font-bold font-headline">
             {t('app_name')}
           </span>
         </Link>
