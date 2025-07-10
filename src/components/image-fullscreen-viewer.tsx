@@ -14,83 +14,116 @@ interface ImageFullscreenViewerProps {
   startIndex?: number;
 }
 
+const variants = {
+  enter: (direction: number) => {
+    return {
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0,
+    };
+  },
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => {
+    return {
+      zIndex: 0,
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0,
+    };
+  },
+};
+
+const swipeConfidenceThreshold = 10000;
+const swipePower = (offset: number, velocity: number) => {
+  return Math.abs(offset) * velocity;
+};
+
+
 export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIndex = 0 }: ImageFullscreenViewerProps) {
-  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [[page, direction], setPage] = useState([startIndex, 0]);
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentIndex(startIndex);
+      setPage([startIndex, 0]);
     }
   }, [isOpen, startIndex]);
   
-  const goToPrevious = useCallback(() => {
-    if (imageUrls.length > 1) {
-        setCurrentIndex((prevIndex) => (prevIndex === 0 ? imageUrls.length - 1 : prevIndex - 1));
-    }
-  }, [imageUrls.length]);
+  const imageIndex = page % (imageUrls.length || 1);
 
-  const goToNext = useCallback(() => {
-     if (imageUrls.length > 1) {
-        setCurrentIndex((prevIndex) => (prevIndex === imageUrls.length - 1 ? 0 : prevIndex + 1));
-    }
-  }, [imageUrls.length]);
+  const paginate = (newDirection: number) => {
+    if (!imageUrls || imageUrls.length <= 1) return;
+    setPage([page + newDirection, newDirection]);
+  };
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.y > 100) {
+  const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: PanInfo) => {
+    const swipe = swipePower(offset.x, velocity.x);
+
+    if (swipe < -swipeConfidenceThreshold) {
+      paginate(1);
+    } else if (swipe > swipeConfidenceThreshold) {
+      paginate(-1);
+    }
+    
+    if (offset.y > 100) {
       onClose();
-    } else if (info.offset.x > 50) {
-      goToPrevious();
-    } else if (info.offset.x < -50) {
-      goToNext();
     }
   };
   
-  const currentImageUrl = imageUrls[currentIndex];
+  const currentImageUrl = imageUrls[imageIndex];
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false} custom={direction}>
       {isOpen && currentImageUrl && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={onClose}
         >
+          {/* Main Content Area that stops propagation */}
           <motion.div
-            key={currentIndex}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            className="relative w-full h-full flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-             <motion.div
-                 className="w-full h-full cursor-grab active:cursor-grabbing"
-                 drag="y"
-                 dragConstraints={{ top: 0, bottom: 0 }}
-                 dragElastic={0.4}
-                 onDragEnd={(e, info) => {
-                    if (info.offset.y > 100) {
-                        onClose();
-                    }
-                 }}
-             >
-                <Image
-                  src={currentImageUrl}
-                  alt="Fullscreen view"
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  className="pointer-events-none"
-                  priority
-                />
-             </motion.div>
+            {/* Image with Drag Gestures */}
+            <motion.div
+              key={page}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
+              }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={handleDragEnd}
+              className="absolute w-full h-full max-w-7xl max-h-[90vh] cursor-grab active:cursor-grabbing"
+            >
+              <Image
+                src={currentImageUrl}
+                alt={`Fullscreen view ${imageIndex + 1}`}
+                fill
+                style={{ objectFit: 'contain' }}
+                className="pointer-events-none"
+                priority
+              />
+            </motion.div>
           </motion.div>
+
+
+           {/* UI Controls */}
            <button
             onClick={onClose}
             aria-label="Close fullscreen image"
@@ -103,14 +136,14 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
             {imageUrls.length > 1 && (
                 <>
                     <button 
-                        onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+                        onClick={(e) => { e.stopPropagation(); paginate(-1); }}
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 hover:bg-black/75 transition-colors z-[101]"
                         aria-label="Previous image"
                     >
                         <ChevronLeft className="h-6 w-6" />
                     </button>
                      <button 
-                        onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                        onClick={(e) => { e.stopPropagation(); paginate(1); }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 rounded-full p-2 hover:bg-black/75 transition-colors z-[101]"
                         aria-label="Next image"
                     >
@@ -122,11 +155,11 @@ export function ImageFullscreenViewer({ isOpen, onClose, imageUrls = [], startIn
                                 key={index}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setCurrentIndex(index);
+                                    setPage([index, index > imageIndex ? 1 : -1]);
                                 }}
                                 className={cn(
                                     'w-2 h-2 rounded-full transition-colors',
-                                    currentIndex === index ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
+                                    imageIndex === index ? 'bg-white' : 'bg-white/50 hover:bg-white/75'
                                 )}
                                 aria-label={`Go to image ${index + 1}`}
                             />
