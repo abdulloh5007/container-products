@@ -88,7 +88,7 @@ function ImageUploader({ file, setFile, previewUrl, disabled }: { file: File | n
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-full">
           <UploadCloud className="h-8 w-8" />
-          <p className="font-semibold text-foreground">
+           <p className="font-semibold text-foreground">
             {t('admin_product_image_drop')}
           </p>
           <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
