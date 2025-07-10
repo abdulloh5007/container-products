@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/contexts/language-context';
 import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
+// import { Footer } from '@/components/layout/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/contexts/theme-provider';
@@ -34,7 +34,7 @@ export default function RootLayout({
           <LanguageProvider>
             <Header />
             <main className="flex-grow">{children}</main>
-            <Footer />
+            {/* <Footer /> */}
             <Toaster />
           </LanguageProvider>
         </ThemeProvider>
