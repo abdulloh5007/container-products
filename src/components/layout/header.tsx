@@ -23,9 +23,9 @@ export function Header() {
       <div className="container flex h-16 items-center">
         <Link href="/" className="mr-6 flex items-center gap-2">
           <Container className="h-6 w-6 text-primary" />
-          <span className="font-bold sm:inline-block font-headline">
+          <h1 className="sm:font-bold sm:text-base sm:inline-block sm:font-headline text-sm font-medium">
             {t('app_name')}
-          </span>
+          </h1>
         </Link>
 
         <div className="flex flex-1 items-center justify-end gap-2">

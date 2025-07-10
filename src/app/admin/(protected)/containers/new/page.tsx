@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 
 
 interface Product {
@@ -231,7 +232,7 @@ export default function NewContainerPage() {
   
   if (isLoading) {
       return (
-          <div className="space-y-8">
+        <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
               <Skeleton className="h-10 w-10" />
               <div className="space-y-2">
@@ -263,7 +264,7 @@ export default function NewContainerPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
@@ -274,7 +275,7 @@ export default function NewContainerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Left Panel: Available Products */}
         <Card>
           <CardHeader>
@@ -290,7 +291,7 @@ export default function NewContainerPage() {
                   className="pl-10"
                 />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
               {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
               <div className="relative space-y-2">
                 {filteredProducts.map(product => (
@@ -334,28 +335,55 @@ export default function NewContainerPage() {
               <ImageUploader file={containerImage} setFile={setContainerImage} previewUrl={containerImageUrl} />
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-2">
                 <h3 className="text-lg font-medium">{t('admin_included_products')}</h3>
-                <div className="space-y-2">
-                    {includedProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
-                    {includedProducts.map(product => (
-                        <div key={product.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
-                            <span className="font-medium">{product.name}</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">{t('admin_product_quantity')}:</span>
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
-                                    <Minus className="h-4 w-4" />
-                                </Button>
-                                <Input type="number" value={product.quantity} onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} className="w-16 h-8 text-center" />
-                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeProduct(product.id)}>
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{t('admin_products_table_name')}</TableHead>
+                                <TableHead className="w-[150px] text-center">{t('admin_product_quantity')}</TableHead>
+                                <TableHead className="text-right w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {includedProducts.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">
+                                        {t('admin_product_no_products')}
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                includedProducts.map(product => (
+                                    <TableRow key={product.id}>
+                                        <TableCell className="font-medium">{product.name}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
+                                                    <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <Input 
+                                                    type="number" 
+                                                    value={product.quantity} 
+                                                    onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
+                                                    className="w-14 h-8 text-center" 
+                                                    min="1"
+                                                />
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
+                                                    <Plus className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeProduct(product.id)}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 </div>
             </div>
 
