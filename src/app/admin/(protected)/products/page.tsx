@@ -82,7 +82,7 @@ function MultiImageUploader({
         }
 
         const newItems: ImageItem[] = acceptedFiles.map(file => ({
-            id: `${file.name}-${file.lastModified}`,
+            id: `${file.name}-${file.lastModified}-${Math.random()}`,
             type: 'file',
             value: file,
             preview: URL.createObjectURL(file)
