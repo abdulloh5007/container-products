@@ -8,12 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { X, Upload, Plus, Minus, ArrowLeft } from 'lucide-react';
+import { X, Upload, Plus, Minus, ArrowLeft, Search } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
 
 interface Product {
   id: string;
@@ -102,6 +104,7 @@ export default function NewContainerPage() {
   const [containerImageUrl, setContainerImageUrl] = useState<string | null>(null);
   const [includedProducts, setIncludedProducts] = useState<IncludedProduct[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [containerId, setContainerId] = useState<string | null>(null);
@@ -221,6 +224,10 @@ export default function NewContainerPage() {
         setIsSubmitting(false);
     }
   };
+
+  const filteredProducts = availableProducts.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   if (isLoading) {
       return (
@@ -274,25 +281,46 @@ export default function NewContainerPage() {
           <CardHeader>
             <CardTitle>{t('admin_available_products')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
-            {availableProducts.map(product => (
-              <div key={product.id} className="flex items-center justify-between p-2 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <Image
-                      src={product.imageUrl || 'https://placehold.co/40x40.png'}
-                      alt={product.name}
-                      width={40}
-                      height={40}
-                      className="rounded-md object-cover h-10 w-10"
-                  />
-                  <span>{product.name}</span>
-                </div>
-                <Button size="sm" onClick={() => addProduct(product)}>
-                  {t('admin_add_product_button')}
-                </Button>
+          <CardContent>
+            <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('admin_product_search_placeholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+            </div>
+            <div className="space-y-2">
+              {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
+              <div className="relative space-y-2">
+                {availableProducts.map(product => (
+                  <div 
+                    key={product.id} 
+                    className={cn(
+                      "flex items-center justify-between p-2 border rounded-lg transition-all duration-300",
+                      filteredProducts.some(p => p.id === product.id)
+                        ? 'opacity-100'
+                        : 'opacity-0 h-0 p-0 border-0 overflow-hidden'
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Image
+                          src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                          alt={product.name}
+                          width={40}
+                          height={40}
+                          className="rounded-md object-cover h-10 w-10"
+                      />
+                      <span>{product.name}</span>
+                    </div>
+                    <Button size="sm" onClick={() => addProduct(product)}>
+                      {t('admin_add_product_button')}
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </CardContent>
         </Card>
 
