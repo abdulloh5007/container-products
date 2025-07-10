@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, where, arrayRemove } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
@@ -226,12 +226,43 @@ export default function AdminProductsPage() {
   const confirmDelete = async () => {
     if (!productToDelete) return;
     try {
-        await deleteDoc(doc(db, "products", productToDelete.id));
+        // 1. Find all containers that include this product
+        const containersRef = collection(db, "containers");
+        const q = query(containersRef, where("products", "array-contains-any", [{id: productToDelete.id}]));
+        
+        // Unfortunately, Firestore doesn't support querying for a specific field in an object within an array directly.
+        // A workaround is needed: fetch all containers and filter client-side, or a more complex data structure.
+        // For simplicity here, we'll fetch all and filter. For larger datasets, a Cloud Function would be better.
+        
+        const containersSnapshot = await getDocs(collection(db, "containers"));
+        
+        const batch = writeBatch(db);
+
+        containersSnapshot.forEach(containerDoc => {
+            const containerData = containerDoc.data();
+            const productsInContainer = containerData.products || [];
+            
+            // Find the specific product object to remove, as arrayRemove needs the exact object.
+            const productToRemove = productsInContainer.find((p: any) => p.id === productToDelete.id);
+
+            if (productToRemove) {
+                batch.update(containerDoc.ref, {
+                    products: arrayRemove(productToRemove)
+                });
+            }
+        });
+        
+        // 2. Delete the actual product document
+        const productDocRef = doc(db, "products", productToDelete.id);
+        batch.delete(productDocRef);
+        
+        // 3. Commit all batched writes
+        await batch.commit();
 
         toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
         fetchProducts(); // Refresh data
     } catch (error) {
-        console.error("Error deleting product: ", error);
+        console.error("Error deleting product and updating containers: ", error);
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
     } finally {
         setProductToDelete(null);
