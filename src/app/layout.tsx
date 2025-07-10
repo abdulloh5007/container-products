@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/contexts/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'Container Solutions Hub',
+  title: 'CONTAINER PRODUCTS',
   description: 'Professional information website for a container factory.',
 };
 
