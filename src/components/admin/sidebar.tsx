@@ -98,7 +98,7 @@ export function Sidebar() {
                    </Button>
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base text-destructive hover:text-destructive" onClick={handleLogout}>
                      <LogOut className="h-5 w-5" />
-                     {t('admin_logout')}
+                      {t('admin_logout')}
                    </Button>
                  </div>
               </SheetContent>
