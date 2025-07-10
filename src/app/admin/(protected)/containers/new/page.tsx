@@ -294,15 +294,10 @@ export default function NewContainerPage() {
             <div className="space-y-2">
               {availableProducts.length === 0 && <p className="text-sm text-muted-foreground">{t('admin_product_no_products')}</p>}
               <div className="relative space-y-2">
-                {availableProducts.map(product => (
+                {filteredProducts.map(product => (
                   <div 
                     key={product.id} 
-                    className={cn(
-                      "flex items-center justify-between p-2 border rounded-lg transition-all duration-300",
-                      filteredProducts.some(p => p.id === product.id)
-                        ? 'opacity-100'
-                        : 'opacity-0 h-0 p-0 border-0 overflow-hidden'
-                    )}
+                    className="flex items-center justify-between p-2 border rounded-lg"
                   >
                     <div className="flex items-center gap-4">
                       <Image
