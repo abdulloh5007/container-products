@@ -110,7 +110,7 @@ export default function Home() {
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-20">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl font-headline">
-           {t('products_page_title')}
+          {t('products_page_title')}
         </h1>
       </div>
 
