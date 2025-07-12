@@ -279,7 +279,7 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {sessions.filter(s => s.role === 'pending').map(renderSessionCard)}
-                    </ToContent>
+                    </CardContent>
                 </Card>
             )}
 
