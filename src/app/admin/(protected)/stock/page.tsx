@@ -92,7 +92,12 @@ export default function AdminStockPage() {
     setUpdatingProductId(product.id);
     try {
         const productDoc = doc(db, 'products', product.id);
-        const newQuantity = product.quantity + finalAmount;
+        let newQuantity = product.quantity + finalAmount;
+
+        // Correct for floating point inaccuracies near zero
+        if (Math.abs(newQuantity) < EPSILON) {
+            newQuantity = 0;
+        }
 
         await updateDoc(productDoc, {
             quantity: newQuantity
@@ -115,39 +120,49 @@ export default function AdminStockPage() {
   
   const renderProductQuantity = (product: Product) => {
     if (product.type === 'kit') {
-      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+      const totalM2Value = quantity * (product.m2PerKit || 0);
+      const totalM2 = (Math.abs(totalM2Value) < EPSILON ? 0 : totalM2Value).toFixed(2);
+      
       return (
         <div className="flex flex-col">
-          <span className="font-semibold text-lg">{product.quantity} <span className="text-sm text-muted-foreground">{t('admin_kit_unit')}</span></span>
+          <span className="font-semibold text-lg">{quantity} <span className="text-sm text-muted-foreground">{t('admin_kit_unit')}</span></span>
           <span className="text-sm text-muted-foreground">{totalM2} {t('admin_m2_unit')}</span>
         </div>
       );
     }
      if (product.type === 'area') {
-      return <span className="font-semibold text-lg">{product.quantity.toFixed(2)} <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span></span>;
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+      return <span className="font-semibold text-lg">{quantity.toFixed(2)} <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span></span>;
     }
-    return <span className="font-semibold text-lg">{product.quantity}</span>;
+    const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+    return <span className="font-semibold text-lg">{quantity}</span>;
   }
   
   const renderCardQuantity = (product: Product) => {
-      if (product.type === 'kit') {
-      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+    if (product.type === 'kit') {
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+      const totalM2Value = quantity * (product.m2PerKit || 0);
+      const totalM2 = (Math.abs(totalM2Value) < EPSILON ? 0 : totalM2Value).toFixed(2);
+
       return (
         <CardDescription>
-            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span> {t('admin_kit_unit')}
+            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{quantity}</span> {t('admin_kit_unit')}
             <span className="text-muted-foreground"> ({totalM2} {t('admin_m2_unit')})</span>
         </CardDescription>
       )
     }
     if (product.type === 'area') {
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
       return (
         <CardDescription>
-            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity.toFixed(2)}</span> {t('admin_m2_unit')}
+            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{quantity.toFixed(2)}</span> {t('admin_m2_unit')}
         </CardDescription>
       )
     }
+    const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
     return (
-        <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
+        <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{quantity}</span></CardDescription>
     )
   }
   
