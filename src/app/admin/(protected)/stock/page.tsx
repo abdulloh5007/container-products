@@ -65,9 +65,22 @@ export default function AdminStockPage() {
   }, [fetchProducts]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
+    const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
+
+    const filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    return filtered.sort((a, b) => {
+        const typeA = a.type || 'unit';
+        const typeB = b.type || 'unit';
+        const orderA = sortOrder[typeA] || 99;
+        const orderB = sortOrder[typeB] || 99;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return a.name.localeCompare(b.name);
+    });
   }, [products, searchQuery]);
 
   const handleAmountInputChange = (productId: string, value: string) => {
@@ -108,6 +121,13 @@ export default function AdminStockPage() {
                 p.id === product.id ? { ...p, quantity: newQuantity } : p
             )
         );
+        
+        // Clear the input field for this product after successful update
+        setChangeAmounts(prev => {
+            const newAmounts = {...prev};
+            delete newAmounts[product.id];
+            return newAmounts;
+        });
 
         toast({ title: t('admin_stock_update_success_title'), description: t('admin_stock_update_success_desc', { productName: product.name }) });
     } catch (error) {
@@ -156,7 +176,7 @@ export default function AdminStockPage() {
       const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
       return (
         <CardDescription>
-            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{quantity.toFixed(2)}</span> {t('admin_m2_unit')}
+            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{Math.abs(quantity).toFixed(2)}</span> {t('admin_m2_unit')}
         </CardDescription>
       )
     }
