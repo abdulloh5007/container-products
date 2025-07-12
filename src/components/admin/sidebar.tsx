@@ -69,7 +69,7 @@ export function Sidebar() {
                      </Link>
                    </SheetTitle>
                  </SheetHeader>
-                <div className="hidden md:grid grid-cols-2 gap-2 mb-4">
+                <div className="grid grid-cols-2 gap-2 mb-4">
                    {navItems.map((item) => {
                      const Icon = item.icon;
                      const isActive = pathname.startsWith(item.href);
@@ -86,7 +86,7 @@ export function Sidebar() {
                           )}
                         >
                           <Icon className="h-6 w-6" />
-                          <span>{item.label}</span>
+                          <span className="text-center">{item.label}</span>
                         </Link>
                      );
                    })}
