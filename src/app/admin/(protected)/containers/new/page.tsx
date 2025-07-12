@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { X, Upload, Plus, Minus, ArrowLeft, Search } from 'lucide-react';
+import { X, Upload, Plus, Minus, ArrowLeft, Search, Grip } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -190,9 +190,13 @@ export default function NewContainerPage() {
     setIncludedProducts(prev => {
       const existing = prev.find(p => p.id === product.id);
       if (existing) {
-        return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p);
+          if (product.type !== 'area') {
+            return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p);
+          }
+          return prev; // Do not increment area products on re-add
       }
-      return [...prev, { id: product.id, name: product.name, quantity: 1, type: product.type, m2PerKit: product.m2PerKit }];
+      const initialQuantity = product.type === 'area' ? 0 : 1;
+      return [...prev, { id: product.id, name: product.name, quantity: initialQuantity, type: product.type, m2PerKit: product.m2PerKit }];
     });
   };
 
@@ -202,10 +206,16 @@ export default function NewContainerPage() {
   
   const updateQuantity = (productId: string, newQuantityStr: string) => {
     const newQuantity = parseFloat(newQuantityStr);
+    
+    if (newQuantityStr === '') {
+        setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: 0 } : p));
+        return;
+    }
+    
     if (isNaN(newQuantity) || newQuantity < 0) {
         return; 
     }
-     if (newQuantity === 0) {
+     if (newQuantity === 0 && !newQuantityStr.endsWith('.')) {
         removeProduct(productId);
         return;
     }
@@ -265,12 +275,11 @@ export default function NewContainerPage() {
       return (
           <div className="flex items-center justify-center gap-1">
               <Input 
-                  type="number" 
-                  value={product.quantity} 
-                  onChange={(e) => updateQuantity(product.id, e.target.value)} 
-                  className="w-24 h-8 text-center" 
-                  min="0"
-                  step="0.01"
+                  type="text" 
+                  value={product.quantity || ''}
+                  onChange={(e) => updateQuantity(product.id, e.target.value.replace(/[^0-9.]/g, ''))}
+                  className="w-24 h-8 text-center"
+                  placeholder='0'
               />
               <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span>
           </div>
