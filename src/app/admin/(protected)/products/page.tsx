@@ -204,13 +204,16 @@ export default function AdminProductsPage() {
   }
   
   const renderProductQuantity = (product: Product) => {
+    const quantity = Math.abs(product.quantity) < 1e-9 ? 0 : product.quantity;
+
     if (product.type === 'kit') {
-      return `${product.quantity} ${t('admin_kit_unit')} (${(product.quantity * (product.m2PerKit || 0)).toFixed(2)} ${t('admin_m2_unit')})`
+      const totalM2 = quantity * (product.m2PerKit || 0);
+      return `${quantity} ${t('admin_kit_unit')} (${totalM2.toFixed(2)} ${t('admin_m2_unit')})`;
     }
     if (product.type === 'area') {
-        return `${product.quantity} ${t('admin_m2_unit')}`
+        return `${quantity.toFixed(2)} ${t('admin_m2_unit')}`;
     }
-    return product.quantity;
+    return quantity;
   }
 
   const renderContent = () => {
