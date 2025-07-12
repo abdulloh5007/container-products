@@ -40,6 +40,8 @@ export default function AdminStockPage() {
   const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const { view, setView } = useViewSwitcher('stock');
   const [searchQuery, setSearchQuery] = useState('');
+  const [changeAmounts, setChangeAmounts] = useState<Record<string, string>>({});
+
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -66,19 +68,35 @@ export default function AdminStockPage() {
     );
   }, [products, searchQuery]);
 
-  const handleQuantityChange = async (product: Product, amount: number) => {
-    if (product.quantity + amount < 0) return;
+  const handleAmountInputChange = (productId: string, value: string) => {
+    const sanitizedValue = value.replace(/[^0-9.]/g, '');
+    const parts = sanitizedValue.split('.');
+      if (parts.length > 2) { 
+        return;
+      }
+      if (parts[1] && parts[1].length > 2) {
+        return;
+      }
+    setChangeAmounts(prev => ({ ...prev, [productId]: sanitizedValue }));
+  };
+
+  const handleQuantityChange = async (product: Product, direction: 'increment' | 'decrement') => {
+    const amountStr = changeAmounts[product.id] || '1';
+    const amount = parseFloat(amountStr) || 1;
+    const finalAmount = direction === 'increment' ? amount : -amount;
+
+    if (product.quantity + finalAmount < 0) return;
 
     setUpdatingProductId(product.id);
     try {
         const productDoc = doc(db, 'products', product.id);
         await updateDoc(productDoc, {
-            quantity: increment(amount)
+            quantity: increment(finalAmount)
         });
         
         setProducts(prevProducts => 
             prevProducts.map(p => 
-                p.id === product.id ? { ...p, quantity: p.quantity + amount } : p
+                p.id === product.id ? { ...p, quantity: p.quantity + finalAmount } : p
             )
         );
 
@@ -128,6 +146,37 @@ export default function AdminStockPage() {
         <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
     )
   }
+  
+  const renderActionControls = (product: Product) => (
+    <div className="flex w-full items-center justify-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => handleQuantityChange(product, 'decrement')}
+        disabled={updatingProductId === product.id || product.quantity <= 0}
+        className="h-9 w-9"
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <Input
+        type="text"
+        value={changeAmounts[product.id] || ''}
+        onChange={(e) => handleAmountInputChange(product.id, e.target.value)}
+        placeholder="1"
+        className="w-20 h-9 text-center"
+        disabled={updatingProductId === product.id}
+      />
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => handleQuantityChange(product, 'increment')}
+        disabled={updatingProductId === product.id}
+        className="h-9 w-9"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 
 
   const renderContent = () => {
@@ -138,7 +187,7 @@ export default function AdminStockPage() {
                     <TableCell><Skeleton className="h-6 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell className="text-right space-x-2">
-                       <Skeleton className="h-10 w-24 inline-block" />
+                       <Skeleton className="h-10 w-32 inline-block" />
                     </TableCell>
                 </TableRow>
             ))
@@ -176,25 +225,8 @@ export default function AdminStockPage() {
             <TableRow key={product.id}>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell className="w-[200px]">{renderProductQuantity(product)}</TableCell>
-                <TableCell className="text-right w-[150px]">
-                    <div className="flex items-center justify-end gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => handleQuantityChange(product, -1)}
-                            disabled={updatingProductId === product.id || product.quantity <= 0}
-                        >
-                            <Minus className="h-4 w-4" />
-                        </Button>
-                         <Button 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => handleQuantityChange(product, 1)}
-                            disabled={updatingProductId === product.id}
-                        >
-                            <Plus className="h-4 w-4" />
-                        </Button>
-                    </div>
+                <TableCell className="text-right w-[200px]">
+                    {renderActionControls(product)}
                 </TableCell>
             </TableRow>
         ));
@@ -221,26 +253,7 @@ export default function AdminStockPage() {
                                 {renderCardQuantity(product)}
                             </CardContent>
                             <CardFooter>
-                                 <div className="flex w-full items-center justify-center gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={() => handleQuantityChange(product, -1)}
-                                        disabled={updatingProductId === product.id || product.quantity <= 0}
-                                        className="w-full"
-                                    >
-                                        <Minus className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={() => handleQuantityChange(product, 1)}
-                                        disabled={updatingProductId === product.id}
-                                        className="w-full"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                {renderActionControls(product)}
                             </CardFooter>
                         </Card>
                     </motion.div>
@@ -278,7 +291,7 @@ export default function AdminStockPage() {
                     <TableRow>
                         <TableHead>{t('admin_stock_table_product')}</TableHead>
                         <TableHead className="w-[200px]">{t('admin_stock_table_quantity')}</TableHead>
-                        <TableHead className="text-right w-[150px]">{t('admin_stock_table_actions')}</TableHead>
+                        <TableHead className="text-right w-[200px]">{t('admin_stock_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
