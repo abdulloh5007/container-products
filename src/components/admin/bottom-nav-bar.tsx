@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { Truck, Archive, Box, Package } from 'lucide-react';
+import { Truck, Archive } from 'lucide-react';
 
 export function BottomNavBar() {
   const { t } = useLanguage();
@@ -14,13 +14,11 @@ export function BottomNavBar() {
   const navItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
-    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
-    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ];
   
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card p-2 md:hidden">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
