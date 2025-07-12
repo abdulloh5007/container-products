@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff, MoreHorizontal } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface AlertDialogState {
   type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
@@ -220,6 +221,11 @@ export default function SettingsPage() {
             makeSenior: () => handleMakeSenior(session),
             deleteSession: () => handleDeleteSession(session)
         };
+        const actionButtonText = {
+            confirmAccess: t('admin_confirm_button'),
+            makeSenior: t('admin_session_promote_button'),
+            deleteSession: t('admin_delete_button')
+        }
 
         return (
             <AlertDialog open={!!alertDialogState} onOpenChange={() => setAlertDialogState(null)}>
@@ -230,8 +236,12 @@ export default function SettingsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setAlertDialogState(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={actions[type]} disabled={isSubmitting}>
-                            {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
+                        <AlertDialogAction 
+                          onClick={actions[type]} 
+                          disabled={isSubmitting}
+                          className={type === 'deleteSession' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                        >
+                            {isSubmitting ? t('admin_saving_text') : actionButtonText[type]}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -268,6 +278,8 @@ export default function SettingsPage() {
     
     const renderSessionCard = (session: Session) => {
         const isCurrentSession = session.sessionToken === user?.currentSession.sessionToken;
+        const canManage = isSenior && !isCurrentSession;
+
         return (
             <div key={session.sessionToken} className="flex items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
@@ -282,25 +294,43 @@ export default function SettingsPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {isSenior && session.role === 'pending' && (
-                        <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting}>
-                            <UserCheck className="mr-2 h-4 w-4" />
-                            {t('admin_session_confirm_button')}
-                        </Button>
-                    )}
-                    {isSenior && session.role === 'junior' && (
-                         <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', session })} disabled={isSubmitting}>
-                            <Crown className="mr-2 h-4 w-4" />
-                            {t('admin_session_promote_button')}
-                        </Button>
-                    )}
-                    {(isSenior && !isCurrentSession) && (
-                        <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'deleteSession', session })} disabled={isSubmitting}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
+
+                {isSenior && (
+                    <div className="flex items-center gap-2">
+                         {session.role === 'pending' ? (
+                            <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting} className="h-9">
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                <span className="hidden sm:inline">{t('admin_session_confirm_button')}</span>
+                            </Button>
+                        ) : (
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={isSubmitting}>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Actions</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {session.role === 'junior' && (
+                                         <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'makeSenior', session })}>
+                                            <Crown className="mr-2 h-4 w-4" />
+                                            {t('admin_session_promote_button')}
+                                        </DropdownMenuItem>
+                                    )}
+                                    {canManage && (
+                                        <>
+                                            {session.role === 'junior' && <DropdownMenuSeparator />}
+                                            <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'deleteSession', session })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                {t('admin_delete_button')}
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+                )}
             </div>
         )
     }
@@ -350,6 +380,7 @@ export default function SettingsPage() {
                                         onChange={(e) => setPassword(e.target.value)}
                                         disabled={isSubmitting || isAuthLoading}
                                         className="pr-10"
+                                        placeholder={t('admin_settings_password_placeholder')}
                                       />
                                       <Button 
                                           type="button" 
@@ -381,7 +412,11 @@ export default function SettingsPage() {
                           {totalLoading ? (
                              Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
                           ) : sessions.filter(s => s.role !== 'pending').length > 0 ? (
-                               sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
+                               sessions.filter(s => s.role !== 'pending').sort((a, b) => {
+                                  if (a.role === 'senior') return -1;
+                                  if (b.role === 'senior') return 1;
+                                  return new Date(b.date).getTime() - new Date(a.date).getTime();
+                               }).map(renderSessionCard)
                            ) : (
                                <p className="text-muted-foreground text-center py-4">{t('admin_session_none_active')}</p>
                            )}
