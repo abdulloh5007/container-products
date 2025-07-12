@@ -148,11 +148,11 @@ export default function AdminStockPage() {
   }
   
   const renderActionControls = (product: Product) => {
-    const amountToChange = parseFloat(changeAmounts[product.id]) || 1;
+    const amountToChange = parseFloat(changeAmounts[product.id]) || 0;
     const isDecrementDisabled = 
         updatingProductId === product.id || 
-        product.quantity <= 0 ||
-        (changeAmounts[product.id] && amountToChange > product.quantity);
+        product.quantity === 0 ||
+        (amountToChange > 0 && amountToChange > product.quantity);
 
     return (
         <div className="flex w-full items-center justify-center gap-2">
