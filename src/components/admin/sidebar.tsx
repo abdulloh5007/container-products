@@ -43,6 +43,30 @@ export function Sidebar() {
     closeSheet();
   };
 
+  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType}[]) => (
+     items.map((item) => {
+        const Icon = item.icon;
+        const isActive = pathname.startsWith(item.href);
+        return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={closeSheet}
+              className={cn(
+                'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors aspect-square',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              <Icon className="h-6 w-6" />
+              <span className="text-center">{item.label}</span>
+            </Link>
+        );
+      })
+  );
+
+
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -73,26 +97,8 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {managementNavItems.map((item) => {
-                     const Icon = item.icon;
-                     const isActive = pathname.startsWith(item.href);
-                     return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={closeSheet}
-                          className={cn(
-                            'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors aspect-square',
-                            isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                          )}
-                        >
-                          <Icon className="h-6 w-6" />
-                          <span className="text-center">{item.label}</span>
-                        </Link>
-                     );
-                   })}
+                   {renderNavGrid(mainNavItems)}
+                   {renderNavGrid(managementNavItems)}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
