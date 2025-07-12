@@ -209,25 +209,18 @@ export default function NewContainerPage() {
     if (!product) return;
 
     if (product.type === 'area') {
-      // Allow only numbers and one dot, and max two decimal places
-      let sanitizedValue = newQuantityStr.replace(/[^0-9.]/g, '');
-      const parts = sanitizedValue.split('.');
-      if (parts.length > 2) {
-          sanitizedValue = `${parts[0]}.${parts.slice(1).join('')}`;
+      // Correctly handle decimal input
+      if (newQuantityStr === '' || /^\d*\.?\d{0,2}$/.test(newQuantityStr)) {
+          setIncludedProducts(prev => prev.map(p => 
+            p.id === productId 
+              ? { ...p, quantity: newQuantityStr } // Keep as string for input value
+              : p
+          ));
       }
-      if (parts[1] && parts[1].length > 2) {
-          sanitizedValue = `${parts[0]}.${parts[1].slice(0, 2)}`;
-      }
-
-      setIncludedProducts(prev => prev.map(p => 
-        p.id === productId 
-          ? { ...p, quantity: sanitizedValue === '' ? 0 : parseFloat(sanitizedValue) || 0 } 
-          : p
-      ));
     } else { // 'kit' or 'unit'
       const newQuantity = parseInt(newQuantityStr, 10);
       if (isNaN(newQuantity) || newQuantity < 0) {
-        return;
+        return; // Do nothing for invalid input like 'e', '-', etc.
       }
       if (newQuantity === 0) {
         removeProduct(productId);
@@ -253,8 +246,8 @@ export default function NewContainerPage() {
         }
         
         const productsToSave = includedProducts
-            .filter(p => p.quantity > 0)
-            .map(({ id, quantity }) => ({ id, quantity }));
+            .filter(p => Number(p.quantity) > 0)
+            .map(({ id, quantity }) => ({ id, quantity: Number(quantity) }));
 
         const containerData = {
             name: containerName,
@@ -294,6 +287,10 @@ export default function NewContainerPage() {
                   type="text" 
                   value={displayValue}
                   onChange={(e) => updateQuantity(product.id, e.target.value)}
+                  onBlur={(e) => { // Final conversion to number on blur
+                      const numericValue = parseFloat(e.target.value) || 0;
+                      setIncludedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: numericValue } : p));
+                  }}
                   className="w-24 h-8 text-center"
                   placeholder='0.00'
               />
@@ -307,7 +304,7 @@ export default function NewContainerPage() {
       return (
         <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1">
-                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity - 1))}>
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) - 1))}>
                     <Minus className="h-3 w-3" />
                 </Button>
                 <Input 
@@ -318,7 +315,7 @@ export default function NewContainerPage() {
                     min="1"
                     step="1"
                 />
-                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity + 1))}>
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) + 1))}>
                     <Plus className="h-3 w-3" />
                 </Button>
             </div>
@@ -330,7 +327,7 @@ export default function NewContainerPage() {
     // Type 'unit'
     return (
         <div className="flex items-center justify-center gap-1">
-            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity - 1))}>
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) - 1))}>
                 <Minus className="h-3 w-3" />
             </Button>
             <Input 
@@ -341,7 +338,7 @@ export default function NewContainerPage() {
                 min="1"
                 step="1"
             />
-            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity + 1))}>
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) + 1))}>
                 <Plus className="h-3 w-3" />
             </Button>
         </div>
