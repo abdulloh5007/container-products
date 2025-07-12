@@ -274,6 +274,14 @@ export default function AdminAcceptancePage() {
                         <CardDescription>{t('admin_acceptance_table_products')}: {getTotalProducts(container)}</CardDescription>
                     </CardContent>
                     <CardFooter className="flex-col gap-2">
+                         <Button 
+                            onClick={() => setContainerToAccept(container)}
+                            disabled={isActionDisabled(container)}
+                            className="w-full"
+                        >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            {acceptingContainerId === container.id ? t('admin_saving_text') : t('admin_acceptance_button')}
+                        </Button>
                         <Button 
                             onClick={() => setContainerToDispatch(container)}
                             disabled={isActionDisabled(container)}
@@ -282,14 +290,6 @@ export default function AdminAcceptancePage() {
                         >
                             <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
                             {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
-                        </Button>
-                         <Button 
-                            onClick={() => setContainerToAccept(container)}
-                            disabled={isActionDisabled(container)}
-                            className="w-full"
-                        >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            {acceptingContainerId === container.id ? t('admin_saving_text') : t('admin_acceptance_button')}
                         </Button>
                     </CardFooter>
                 </Card>
