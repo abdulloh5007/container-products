@@ -31,6 +31,8 @@ const cardVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
+const EPSILON = 1e-9; // Small tolerance for float comparisons
+
 export default function AdminStockPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -85,18 +87,20 @@ export default function AdminStockPage() {
     const amount = parseFloat(amountStr) || 1;
     const finalAmount = direction === 'increment' ? amount : -amount;
 
-    if (product.quantity + finalAmount < 0) return;
+    if (product.quantity + finalAmount < -EPSILON) return;
 
     setUpdatingProductId(product.id);
     try {
         const productDoc = doc(db, 'products', product.id);
+        const newQuantity = product.quantity + finalAmount;
+
         await updateDoc(productDoc, {
-            quantity: increment(finalAmount)
+            quantity: newQuantity
         });
         
         setProducts(prevProducts => 
             prevProducts.map(p => 
-                p.id === product.id ? { ...p, quantity: p.quantity + finalAmount } : p
+                p.id === product.id ? { ...p, quantity: newQuantity } : p
             )
         );
 
@@ -151,8 +155,8 @@ export default function AdminStockPage() {
     const amountToChange = parseFloat(changeAmounts[product.id]) || 0;
     const isDecrementDisabled = 
         updatingProductId === product.id || 
-        product.quantity === 0 ||
-        (amountToChange > 0 && amountToChange > product.quantity);
+        product.quantity < EPSILON ||
+        (amountToChange > 0 && amountToChange > product.quantity + EPSILON);
 
     return (
         <div className="flex w-full items-center justify-center gap-2">
