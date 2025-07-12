@@ -207,17 +207,23 @@ export default function NewContainerPage() {
   const updateQuantity = (productId: string, newQuantityStr: string) => {
     const product = includedProducts.find(p => p.id === productId);
     if (!product) return;
-  
+
     if (product.type === 'area') {
-      const sanitizedValue = newQuantityStr.replace(/[^0-9.]/g, '');
+      // Allow only numbers and one dot, and max two decimal places
+      let sanitizedValue = newQuantityStr.replace(/[^0-9.]/g, '');
       const parts = sanitizedValue.split('.');
-      if (parts.length > 2) { // More than one dot
-        return;
+      if (parts.length > 2) {
+          sanitizedValue = `${parts[0]}.${parts.slice(1).join('')}`;
       }
-      const finalValue = parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 2)}` : parts[0];
-  
-      setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: finalValue === '' ? 0 : parseFloat(finalValue) || 0 } : p));
-  
+      if (parts[1] && parts[1].length > 2) {
+          sanitizedValue = `${parts[0]}.${parts[1].slice(0, 2)}`;
+      }
+
+      setIncludedProducts(prev => prev.map(p => 
+        p.id === productId 
+          ? { ...p, quantity: sanitizedValue === '' ? 0 : parseFloat(sanitizedValue) || 0 } 
+          : p
+      ));
     } else { // 'kit' or 'unit'
       const newQuantity = parseInt(newQuantityStr, 10);
       if (isNaN(newQuantity) || newQuantity < 0) {
@@ -279,14 +285,14 @@ export default function NewContainerPage() {
   );
   
   const renderProductQuantity = (product: IncludedProduct) => {
-    const isArea = product.type === 'area';
-
-    if (isArea) {
+    if (product.type === 'area') {
+      // Show empty string if quantity is 0, otherwise show the number
+      const displayValue = product.quantity === 0 ? '' : String(product.quantity);
       return (
           <div className="flex items-center justify-center gap-1">
               <Input 
                   type="text" 
-                  value={product.quantity || ''}
+                  value={displayValue}
                   onChange={(e) => updateQuantity(product.id, e.target.value)}
                   className="w-24 h-8 text-center"
                   placeholder='0.00'
@@ -509,3 +515,5 @@ export default function NewContainerPage() {
     </>
   );
 }
+
+    
