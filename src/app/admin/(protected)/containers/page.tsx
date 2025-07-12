@@ -152,7 +152,7 @@ export default function AdminContainersPage() {
                     />
                 </TableCell>
                 <TableCell className="font-medium">{container.name}</TableCell>
-                <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
+                <TableCell className="text-center">{container.products?.length || 0}</TableCell>
                 <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="icon" asChild>
                         <Link href={`/admin/containers/new?id=${container.id}`}>
@@ -192,7 +192,7 @@ export default function AdminContainersPage() {
                     </CardHeader>
                     <CardContent className="pt-4 space-y-1">
                         <CardTitle className="text-lg">{container.name}</CardTitle>
-                        <CardDescription>{t('admin_acceptance_table_products')}: {container.products.reduce((acc, p) => acc + p.quantity, 0)}</CardDescription>
+                        <CardDescription>{t('admin_acceptance_table_products')}: {container.products?.length || 0}</CardDescription>
                     </CardContent>
                 </Card>
             ))}
@@ -219,19 +219,21 @@ export default function AdminContainersPage() {
       {view === 'table' ? (
         <Card>
             <CardContent className="pt-6">
-                <Table className="min-w-[640px]">
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
-                        <TableHead>{t('admin_containers_table_name')}</TableHead>
-                        <TableHead className="text-center">{t('admin_containers_table_products')}</TableHead>
-                        <TableHead className="text-right">{t('admin_containers_table_actions')}</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {renderContent()}
-                    </TableBody>
-                </Table>
+                <div className="relative w-full overflow-x-auto">
+                    <Table className="min-w-[640px]">
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
+                            <TableHead>{t('admin_containers_table_name')}</TableHead>
+                            <TableHead className="text-center">{t('admin_containers_table_products')}</TableHead>
+                            <TableHead className="text-right">{t('admin_containers_table_actions')}</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {renderContent()}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
       ) : (
@@ -264,5 +266,3 @@ export default function AdminContainersPage() {
     </>
   );
 }
-
-    
