@@ -116,7 +116,7 @@ export default function AdminHistoryPage() {
                 <TableCell className="font-medium">{item.containerName}</TableCell>
                 <TableCell>{item.containerNumber}</TableCell>
                 <TableCell><TypeBadge type={item.type || 'acceptance'} t={t} /></TableCell>
-                <TableCell className="text-right">{item.date ? format(item.date.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}</TableCell>
+                <TableCell className="text-right">{item.date ? format(item.date.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
             </TableRow>
         ));
     }
@@ -133,7 +133,7 @@ export default function AdminHistoryPage() {
                     </CardHeader>
                     <CardFooter className="pt-2 flex justify-between items-center w-full">
                          <p className="text-xs text-muted-foreground">
-                            {item.date ? format(item.date.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}
+                            {item.date ? format(item.date.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
                          </p>
                          <TypeBadge type={item.type || 'acceptance'} t={t} />
                     </CardFooter>

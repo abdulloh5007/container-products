@@ -298,7 +298,7 @@ export default function SettingsPage() {
                            {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {format(new Date(session.date), "PPP p", { locale: dateLocale })}
+                            {format(new Date(session.date), "PPP HH:mm", { locale: dateLocale })}
                         </p>
                     </div>
                 </div>
