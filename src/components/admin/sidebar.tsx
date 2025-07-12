@@ -28,9 +28,12 @@ export function Sidebar() {
   
   const closeSheet = () => setSheetOpen(false);
 
-  const navItems = [
+  const mainNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+  ];
+  
+  const managementNavItems = [
     { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
     { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ];
@@ -70,7 +73,7 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {navItems.map((item) => {
+                   {managementNavItems.map((item) => {
                      const Icon = item.icon;
                      const isActive = pathname.startsWith(item.href);
                      return (
