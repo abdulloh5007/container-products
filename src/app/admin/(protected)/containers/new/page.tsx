@@ -205,21 +205,30 @@ export default function NewContainerPage() {
   };
   
   const updateQuantity = (productId: string, newQuantityStr: string) => {
-    const newQuantity = parseFloat(newQuantityStr);
-    
-    if (newQuantityStr === '') {
-        setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: 0 } : p));
+    const product = includedProducts.find(p => p.id === productId);
+    if (!product) return;
+  
+    if (product.type === 'area') {
+      const sanitizedValue = newQuantityStr.replace(/[^0-9.]/g, '');
+      const parts = sanitizedValue.split('.');
+      if (parts.length > 2) { // More than one dot
         return;
-    }
-    
-    if (isNaN(newQuantity) || newQuantity < 0) {
-        return; 
-    }
-     if (newQuantity === 0 && !newQuantityStr.endsWith('.')) {
+      }
+      const finalValue = parts.length > 1 ? `${parts[0]}.${parts[1].slice(0, 2)}` : parts[0];
+  
+      setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: finalValue === '' ? 0 : parseFloat(finalValue) || 0 } : p));
+  
+    } else { // 'kit' or 'unit'
+      const newQuantity = parseInt(newQuantityStr, 10);
+      if (isNaN(newQuantity) || newQuantity < 0) {
+        return;
+      }
+      if (newQuantity === 0) {
         removeProduct(productId);
         return;
+      }
+      setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
     }
-    setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
   };
   
   const handleSave = async () => {
@@ -237,7 +246,9 @@ export default function NewContainerPage() {
             finalImageUrl = await fileToDataUri(containerImage);
         }
         
-        const productsToSave = includedProducts.map(({ id, quantity }) => ({ id, quantity }));
+        const productsToSave = includedProducts
+            .filter(p => p.quantity > 0)
+            .map(({ id, quantity }) => ({ id, quantity }));
 
         const containerData = {
             name: containerName,
@@ -269,7 +280,6 @@ export default function NewContainerPage() {
   
   const renderProductQuantity = (product: IncludedProduct) => {
     const isArea = product.type === 'area';
-    const isInt = Number.isInteger(product.quantity);
 
     if (isArea) {
       return (
@@ -277,9 +287,9 @@ export default function NewContainerPage() {
               <Input 
                   type="text" 
                   value={product.quantity || ''}
-                  onChange={(e) => updateQuantity(product.id, e.target.value.replace(/[^0-9.]/g, ''))}
+                  onChange={(e) => updateQuantity(product.id, e.target.value)}
                   className="w-24 h-8 text-center"
-                  placeholder='0'
+                  placeholder='0.00'
               />
               <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span>
           </div>
