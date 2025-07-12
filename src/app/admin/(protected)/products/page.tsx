@@ -60,10 +60,12 @@ type ImageItem = {
 function MultiImageUploader({
     items,
     setItems,
+    onView,
     disabled
 }: {
     items: ImageItem[],
     setItems: (items: ImageItem[]) => void,
+    onView: (imageUrls: string[], startIndex: number) => void,
     disabled?: boolean,
 }) {
     const { t } = useLanguage();
@@ -106,6 +108,8 @@ function MultiImageUploader({
     const removeItem = (idToRemove: string) => {
         setItems(items.filter((item) => item.id !== idToRemove));
     };
+    
+    const allImagePreviews = items.map(item => item.preview);
 
     return (
         <div className="space-y-4">
@@ -124,14 +128,14 @@ function MultiImageUploader({
                 </div>
             </div>
             {items.length > 0 && (
-                <Reorder.Group
+                 <Reorder.Group
                     axis="x"
                     values={items}
                     onReorder={setItems}
                     className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
                 >
                     <AnimatePresence>
-                        {items.map((item) => (
+                        {items.map((item, index) => (
                              <Reorder.Item
                                 key={item.id}
                                 value={item}
@@ -140,7 +144,7 @@ function MultiImageUploader({
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 className="relative group aspect-square rounded-md bg-muted cursor-grab active:cursor-grabbing"
                             >
-                                <div className="relative w-full h-full">
+                                <div className="relative w-full h-full cursor-pointer" onClick={() => { /* Fullscreen view is disabled here */ }}>
                                   <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md pointer-events-none" />
                                 </div>
                                 {!disabled && (
@@ -243,11 +247,6 @@ export default function AdminProductsPage() {
     if (!newProductName || newProductQuantity < 0) {
       toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
       return;
-    }
-
-    if (imageItems.length === 0) {
-        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_image_required') });
-        return;
     }
     
     setIsSubmitting(true);
@@ -546,6 +545,7 @@ export default function AdminProductsPage() {
                 <MultiImageUploader
                     items={imageItems}
                     setItems={setImageItems}
+                    onView={openFullscreen}
                     disabled={isSubmitting}
                 />
             </div>
@@ -586,4 +586,3 @@ export default function AdminProductsPage() {
   );
 }
 
-    
