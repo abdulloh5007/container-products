@@ -92,8 +92,6 @@ export default function AdminAcceptancePage() {
             title: t('admin_acceptance_success_title'),
             description: t('admin_acceptance_success_desc', { containerName: containerToAccept.name }),
         });
-        // Refetch containers to show updated state (or just remove the accepted one)
-        setContainers(prev => prev.filter(c => c.id !== containerToAccept.id));
         
     } catch(error) {
         console.error("Error accepting container:", error);
