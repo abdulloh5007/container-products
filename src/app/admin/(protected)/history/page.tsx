@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { format } from 'date-fns';
-import { ru, enUS } from 'date-fns/locale';
+import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
@@ -48,7 +48,7 @@ export default function AdminHistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('history');
-  const dateLocale = language === 'ru' ? ru : enUS;
+  const dateLocale = language === 'uz' ? uz : ru;
 
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
@@ -83,16 +83,14 @@ export default function AdminHistoryPage() {
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
-                    <Card key={index}>
-                        <CardHeader className="pb-4 flex-row items-center justify-between">
-                            <div className="space-y-1">
-                                <Skeleton className="h-6 w-3/4" />
-                                <Skeleton className="h-4 w-1/2" />
-                            </div>
-                            <Skeleton className="h-7 w-24" />
+                    <Card key={index} className="flex flex-col">
+                        <CardHeader className="pb-4 flex-grow">
+                             <Skeleton className="h-6 w-3/4" />
+                             <Skeleton className="h-4 w-1/2 mt-1" />
                         </CardHeader>
-                        <CardFooter className="pt-2">
-                            <Skeleton className="h-4 w-2/3" />
+                        <CardFooter className="pt-2 flex justify-between items-center">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-7 w-24" />
                         </CardFooter>
                     </Card>
                 ))}
@@ -127,19 +125,17 @@ export default function AdminHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {history.map((item) => (
                 <Card key={item.id} className="flex flex-col">
-                    <CardHeader className="flex-grow pb-4 flex-row justify-between items-start">
-                        <div>
-                            <CardTitle className="text-lg">{item.containerName}</CardTitle>
-                            <CardDescription>
-                                {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
-                            </CardDescription>
-                        </div>
-                        <TypeBadge type={item.type || 'acceptance'} t={t} />
+                    <CardHeader className="flex-grow pb-4">
+                        <CardTitle className="text-lg">{item.containerName}</CardTitle>
+                        <CardDescription>
+                            {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
+                        </CardDescription>
                     </CardHeader>
-                    <CardFooter className="pt-2">
+                    <CardFooter className="pt-2 flex justify-between items-center w-full">
                          <p className="text-xs text-muted-foreground">
                             {item.date ? format(item.date.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}
                          </p>
+                         <TypeBadge type={item.type || 'acceptance'} t={t} />
                     </CardFooter>
                 </Card>
             ))}
