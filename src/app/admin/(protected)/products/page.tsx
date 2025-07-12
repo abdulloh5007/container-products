@@ -186,7 +186,7 @@ export default function AdminProductsPage() {
   const [newProductName, setNewProductName] = useState('');
   const [productType, setProductType] = useState<ProductType>('unit');
   const [newProductQuantity, setNewProductQuantity] = useState<number | ''>('');
-  const [m2PerKit, setM2PerKit] = useState<number | ''>('');
+  const [m2PerKit, setM2PerKit] = useState<string>('');
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
 
 
@@ -236,7 +236,7 @@ export default function AdminProductsPage() {
       setNewProductName(productToEdit.name);
       setNewProductQuantity(productToEdit.quantity ?? '');
       setProductType(productToEdit.type || 'unit');
-      setM2PerKit(productToEdit.m2PerKit ?? '');
+      setM2PerKit(productToEdit.m2PerKit?.toString() ?? '');
       const items: ImageItem[] = (productToEdit.imageUrls || []).map((url, index) => ({
           id: `url-${index}-${productToEdit.id}`,
           type: 'url',
@@ -251,9 +251,8 @@ export default function AdminProductsPage() {
   
   const handleM2PerKitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow empty string, a number, or a number with up to two decimal places
     if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setM2PerKit(value === '' ? '' : value);
+      setM2PerKit(value);
     }
   };
 
@@ -574,7 +573,7 @@ export default function AdminProductsPage() {
                 </RadioGroup>
             </div>
             
-            {productType === 'kit' ? (
+            {productType === 'kit' && (
                 <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
                      <div className="space-y-2">
                         <Label htmlFor="kit-quantity">{t('admin_kit_unit')}</Label>
@@ -584,7 +583,7 @@ export default function AdminProductsPage() {
                         <Label htmlFor="m2-per-kit">{t('admin_m2_per_kit')}</Label>
                         <Input 
                             id="m2-per-kit" 
-                            type="number" 
+                            type="text"
                             value={m2PerKit} 
                             onChange={handleM2PerKitChange} 
                             disabled={isSubmitting}
@@ -592,20 +591,8 @@ export default function AdminProductsPage() {
                          />
                     </div>
                 </div>
-            ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                  <Input 
-                    id="quantity" 
-                    type="number" 
-                    min="0" 
-                    value={newProductQuantity} 
-                    onChange={(e) => setNewProductQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
-                    disabled={isSubmitting} 
-                    placeholder="e.g. 10"
-                  />
-                </div>
             )}
+            
              <div className="space-y-2">
                   <Label htmlFor="initial-quantity">{t('admin_product_quantity')}</Label>
                   <Input 
@@ -614,7 +601,7 @@ export default function AdminProductsPage() {
                     min="0" 
                     value={newProductQuantity} 
                     onChange={(e) => setNewProductQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
-                    disabled={isSubmitting || productType === 'kit'} 
+                    disabled={isSubmitting} 
                     placeholder="e.g. 10"
                   />
             </div>
