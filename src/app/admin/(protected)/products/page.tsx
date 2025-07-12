@@ -42,7 +42,7 @@ export default function AdminProductsPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
-  const { isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
+  const { user, isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,12 +57,13 @@ export default function AdminProductsPage() {
   const [productType, setProductType] = useState<ProductType>('unit');
   const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
+  const isSenior = user?.currentSession.role === 'senior';
 
   useEffect(() => {
-      if (!isAuthLoading && !isManagementModeEnabled) {
+      if (!isAuthLoading && (!isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, router]);
+  }, [isAuthLoading, isManagementModeEnabled, isSenior, router]);
 
 
   const fetchProducts = useCallback(async () => {
@@ -81,10 +82,10 @@ export default function AdminProductsPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    if (isManagementModeEnabled) {
+    if (isManagementModeEnabled && isSenior) {
       fetchProducts();
     }
-  }, [fetchProducts, isManagementModeEnabled]);
+  }, [fetchProducts, isManagementModeEnabled, isSenior]);
   
   const filteredProducts = useMemo(() => {
     const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
@@ -262,7 +263,7 @@ export default function AdminProductsPage() {
         )
     }
 
-    if (!isManagementModeEnabled) {
+    if (!isManagementModeEnabled || !isSenior) {
         return null;
     }
 
@@ -332,7 +333,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  if (!isManagementModeEnabled && !isAuthLoading) {
+  if (!isManagementModeEnabled && !isAuthLoading && !isSenior) {
     return null; // Render nothing while redirecting
   }
 

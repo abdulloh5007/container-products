@@ -41,18 +41,19 @@ export default function AdminContainersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
-  const { isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
+  const { user, isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
+  const isSenior = user?.currentSession.role === 'senior';
 
   useEffect(() => {
-      if (!isAuthLoading && !isManagementModeEnabled) {
+      if (!isAuthLoading && (!isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, router]);
+  }, [isAuthLoading, isManagementModeEnabled, isSenior, router]);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -70,10 +71,10 @@ export default function AdminContainersPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    if (isManagementModeEnabled) {
+    if (isManagementModeEnabled && isSenior) {
       fetchContainers();
     }
-  }, [fetchContainers, isManagementModeEnabled]);
+  }, [fetchContainers, isManagementModeEnabled, isSenior]);
 
   const handleDelete = async () => {
     if (!containerToDelete) return;
@@ -138,7 +139,7 @@ export default function AdminContainersPage() {
         )
     }
 
-    if (!isManagementModeEnabled) {
+    if (!isManagementModeEnabled || !isSenior) {
         return null; // Redirect is handling this
     }
 
@@ -216,7 +217,7 @@ export default function AdminContainersPage() {
     )
   }
 
-  if (!isManagementModeEnabled && !isAuthLoading) {
+  if (!isManagementModeEnabled && !isAuthLoading && !isSenior) {
     return null; // Render nothing while redirecting
   }
 

@@ -20,6 +20,7 @@ export function Sidebar() {
   const { logout, pendingRequests, isManagementModeEnabled, user } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
+  const isSenior = user?.currentSession.role === 'senior';
 
   const handleLogout = () => {
     logout();
@@ -41,7 +42,7 @@ export function Sidebar() {
   const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
 
   const allNavItems = [...baseNavItems];
-  if (isManagementModeEnabled) {
+  if (isManagementModeEnabled && isSenior) {
       allNavItems.push(...managementNavItems);
   }
   allNavItems.push(historyNavItem);
@@ -113,7 +114,7 @@ export function Sidebar() {
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
                      <Settings className="h-5 w-5" />
                      {t('admin_sidebar_settings')}
-                      {pendingRequests > 0 && (
+                      {pendingRequests > 0 && isSenior && (
                         <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
                       )}
                    </Button>
