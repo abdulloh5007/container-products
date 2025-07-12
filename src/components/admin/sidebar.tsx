@@ -29,8 +29,8 @@ export function Sidebar() {
   const closeSheet = () => setSheetOpen(false);
 
   const mainNavItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, mobileOnly: true },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, mobileOnly: true },
   ];
   
   const managementNavItems = [
@@ -43,7 +43,7 @@ export function Sidebar() {
     closeSheet();
   };
 
-  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType}[]) => (
+  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, mobileOnly?: boolean}[]) => (
      items.map((item) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
@@ -56,7 +56,8 @@ export function Sidebar() {
                 'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors aspect-square',
                 isActive
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                item.mobileOnly && 'md:hidden'
               )}
             >
               <Icon className="h-6 w-6" />
