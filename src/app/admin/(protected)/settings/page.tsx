@@ -39,7 +39,6 @@ export default function SettingsPage() {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
 
@@ -78,11 +77,6 @@ export default function SettingsPage() {
     const handleProfileUpdate = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user) return;
-
-      if (newPassword && newPassword !== confirmPassword) {
-        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
-        return;
-      }
       
       setIsSubmitting(true);
       try {
@@ -98,7 +92,6 @@ export default function SettingsPage() {
         
         toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
         setNewPassword('');
-        setConfirmPassword('');
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
       } finally {
@@ -348,10 +341,6 @@ export default function SettingsPage() {
                                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                       </Button>
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="confirm-password">{t('admin_settings_confirm_password')}</Label>
-                                    <Input id="confirm-password" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={isSubmitting} />
                                 </div>
                                 <div className="flex justify-end">
                                     <Button type="submit" disabled={isSubmitting}>
