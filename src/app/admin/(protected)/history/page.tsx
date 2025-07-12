@@ -57,18 +57,18 @@ export default function AdminHistoryPage() {
                 <TableRow key={index}>
                     <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-6 w-40 ml-auto" /></TableCell>
                 </TableRow>
             ))
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <Card key={index}>
-                        <CardHeader>
+                        <CardHeader className="pb-4">
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardHeader>
-                        <CardFooter>
+                        <CardFooter className="pt-2">
                             <Skeleton className="h-4 w-2/3" />
                         </CardFooter>
                     </Card>
@@ -94,7 +94,7 @@ export default function AdminHistoryPage() {
             <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.containerName}</TableCell>
                 <TableCell>{item.containerNumber}</TableCell>
-                <TableCell>{item.acceptedAt ? format(item.acceptedAt.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}</TableCell>
+                <TableCell className="text-right">{item.acceptedAt ? format(item.acceptedAt.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}</TableCell>
             </TableRow>
         ));
     }
@@ -103,13 +103,13 @@ export default function AdminHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {history.map((item) => (
                 <Card key={item.id} className="flex flex-col">
-                    <CardHeader className="flex-grow">
+                    <CardHeader className="flex-grow pb-4">
                         <CardTitle className="text-lg">{item.containerName}</CardTitle>
                         <CardDescription>
                             {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
                         </CardDescription>
                     </CardHeader>
-                    <CardFooter>
+                    <CardFooter className="pt-2">
                          <p className="text-xs text-muted-foreground">
                             {item.acceptedAt ? format(item.acceptedAt.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}
                          </p>
@@ -133,12 +133,12 @@ export default function AdminHistoryPage() {
       {view === 'table' ? (
         <Card>
             <CardContent className="pt-6">
-                <Table className="min-w-[500px]">
+                <Table className="min-w-[640px]">
                     <TableHeader>
                     <TableRow>
                         <TableHead>{t('admin_history_table_container')}</TableHead>
                         <TableHead>{t('admin_history_table_number')}</TableHead>
-                        <TableHead>{t('admin_history_table_date')}</TableHead>
+                        <TableHead className="text-right">{t('admin_history_table_date')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
