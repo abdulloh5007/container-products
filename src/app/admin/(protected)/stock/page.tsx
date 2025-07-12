@@ -147,36 +147,44 @@ export default function AdminStockPage() {
     )
   }
   
-  const renderActionControls = (product: Product) => (
-    <div className="flex w-full items-center justify-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => handleQuantityChange(product, 'decrement')}
-        disabled={updatingProductId === product.id || product.quantity <= 0}
-        className="h-9 w-9"
-      >
-        <Minus className="h-4 w-4" />
-      </Button>
-      <Input
-        type="text"
-        value={changeAmounts[product.id] || ''}
-        onChange={(e) => handleAmountInputChange(product.id, e.target.value)}
-        placeholder="1"
-        className="w-20 h-9 text-center"
-        disabled={updatingProductId === product.id}
-      />
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => handleQuantityChange(product, 'increment')}
-        disabled={updatingProductId === product.id}
-        className="h-9 w-9"
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
-    </div>
-  );
+  const renderActionControls = (product: Product) => {
+    const amountToChange = parseFloat(changeAmounts[product.id]) || 1;
+    const isDecrementDisabled = 
+        updatingProductId === product.id || 
+        product.quantity <= 0 ||
+        (changeAmounts[product.id] && amountToChange > product.quantity);
+
+    return (
+        <div className="flex w-full items-center justify-center gap-2">
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleQuantityChange(product, 'decrement')}
+                disabled={isDecrementDisabled}
+                className="h-9 w-9"
+            >
+                <Minus className="h-4 w-4" />
+            </Button>
+            <Input
+                type="text"
+                value={changeAmounts[product.id] || ''}
+                onChange={(e) => handleAmountInputChange(product.id, e.target.value)}
+                placeholder="1"
+                className="w-20 h-9 text-center"
+                disabled={updatingProductId === product.id}
+            />
+            <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleQuantityChange(product, 'increment')}
+                disabled={updatingProductId === product.id}
+                className="h-9 w-9"
+            >
+                <Plus className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+  }
 
 
   const renderContent = () => {
