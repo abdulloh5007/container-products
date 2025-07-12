@@ -77,10 +77,7 @@ export default function AdminAcceptancePage() {
   const handleAcceptContainer = async () => {
     if (!containerToAccept) return;
     
-    if (!containerNumber.trim()) {
-        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_history_number_required') });
-        return;
-    }
+    const finalContainerNumber = containerNumber.trim() || '#';
 
     if (!containerToAccept.products || containerToAccept.products.length === 0) {
         closeAcceptDialog();
@@ -104,9 +101,10 @@ export default function AdminAcceptancePage() {
             containerId: containerToAccept.id,
             containerName: containerToAccept.name,
             containerImageUrl: containerToAccept.imageUrl || '',
-            containerNumber: containerNumber.trim(),
-            acceptedAt: serverTimestamp(),
-            products: containerToAccept.products
+            containerNumber: finalContainerNumber,
+            date: serverTimestamp(),
+            products: containerToAccept.products,
+            type: 'acceptance'
         });
 
         await batch.commit();
@@ -165,6 +163,18 @@ export default function AdminAcceptancePage() {
             batch.update(productRef, { quantity: increment(-product.quantity) });
         }
         
+        // Create history record for dispatch
+        const historyRef = doc(collection(db, 'acceptanceHistory'));
+        batch.set(historyRef, {
+            containerId: containerToDispatch.id,
+            containerName: containerToDispatch.name,
+            containerImageUrl: containerToDispatch.imageUrl || '',
+            containerNumber: '#',
+            date: serverTimestamp(),
+            products: containerToDispatch.products,
+            type: 'dispatch'
+        });
+
         await batch.commit();
         
         toast({
@@ -415,5 +425,3 @@ export default function AdminAcceptancePage() {
     </>
   );
 }
-
-    

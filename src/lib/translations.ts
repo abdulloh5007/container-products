@@ -220,13 +220,16 @@ export const translations = {
     admin_settings_profile_title: "Данные профиля",
     admin_settings_profile_desc: "Измените ваше имя, телефон или пароль.",
 
-    admin_history_title: "История приёмки",
+    admin_history_title: "История операций",
     admin_history_table_container: "Контейнер",
     admin_history_table_number: "Номер",
-    admin_history_table_date: "Дата приёмки",
-    admin_history_container_number: "Номер контейнера",
-    admin_history_container_number_placeholder: "например, MSCU1234567",
-    admin_history_no_history: "Записей о приёмке пока нет.",
+    admin_history_table_date: "Дата",
+    admin_history_table_type: "Тип",
+    admin_history_type_accepted: "Принято",
+    admin_history_type_dispatched: "Отправлено",
+    admin_history_container_number: "Номер контейнера (необязательно)",
+    admin_history_container_number_placeholder: "напр. MSCU1234567 (или оставьте пустым)",
+    admin_history_no_history: "Записей пока нет.",
     admin_history_number_required: "Пожалуйста, введите номер контейнера."
   },
   uz: {
@@ -449,18 +452,19 @@ export const translations = {
     admin_settings_profile_title: "Profil ma'lumotlari",
     admin_settings_profile_desc: "Ismingiz, telefoningiz yoki parolingizni o'zgartiring.",
 
-    admin_history_title: "Qabul qilish tarixi",
+    admin_history_title: "Amaliyotlar tarixi",
     admin_history_table_container: "Konteyner",
     admin_history_table_number: "Raqam",
-    admin_history_table_date: "Qabul qilingan sana",
-    admin_history_container_number: "Konteyner raqami",
-    admin_history_container_number_placeholder: "masalan, MSCU1234567",
-    admin_history_no_history: "Hozircha qabul qilish qaydlari yo'q.",
+    admin_history_table_date: "Sana",
+    admin_history_table_type: "Turi",
+    admin_history_type_accepted: "Qabul qilindi",
+    admin_history_type_dispatched: "Yuborildi",
+    admin_history_container_number: "Konteyner raqami (ixtiyoriy)",
+    admin_history_container_number_placeholder: "masalan, MSCU1234567 (yoki bo'sh qoldiring)",
+    admin_history_no_history: "Hozircha yozuvlar yo'q.",
     admin_history_number_required: "Iltimos, konteyner raqamini kiriting."
   },
 };
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
-
-    

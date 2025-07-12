@@ -13,14 +13,33 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
+import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+
+type HistoryType = 'acceptance' | 'dispatch';
 
 interface HistoryItem {
   id: string;
   containerId: string;
   containerName: string;
   containerNumber: string;
-  acceptedAt: Timestamp;
+  date: Timestamp;
+  type: HistoryType;
 }
+
+const TypeBadge = ({ type, t }: { type: HistoryType, t: (key: any) => string }) => {
+    const isAcceptance = type === 'acceptance';
+    const Icon = isAcceptance ? ArrowDownCircle : ArrowUpCircle;
+    const text = isAcceptance ? t('admin_history_type_accepted') : t('admin_history_type_dispatched');
+    const variant = isAcceptance ? 'default' : 'secondary';
+    
+    return (
+        <Badge variant={variant} className="flex items-center gap-1.5 whitespace-nowrap">
+            <Icon className="h-3.5 w-3.5" />
+            <span>{text}</span>
+        </Badge>
+    );
+};
 
 
 export default function AdminHistoryPage() {
@@ -34,7 +53,7 @@ export default function AdminHistoryPage() {
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
     try {
-      const q = query(collection(db, "acceptanceHistory"), orderBy("acceptedAt", "desc"));
+      const q = query(collection(db, "acceptanceHistory"), orderBy("date", "desc"));
       const querySnapshot = await getDocs(q);
       const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryItem));
       setHistory(historyData);
@@ -57,6 +76,7 @@ export default function AdminHistoryPage() {
                 <TableRow key={index}>
                     <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-7 w-28" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-6 w-40 ml-auto" /></TableCell>
                 </TableRow>
             ))
@@ -64,9 +84,12 @@ export default function AdminHistoryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <Card key={index}>
-                        <CardHeader className="pb-4">
-                            <Skeleton className="h-6 w-3/4" />
-                            <Skeleton className="h-4 w-1/2" />
+                        <CardHeader className="pb-4 flex-row items-center justify-between">
+                            <div className="space-y-1">
+                                <Skeleton className="h-6 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
+                            <Skeleton className="h-7 w-24" />
                         </CardHeader>
                         <CardFooter className="pt-2">
                             <Skeleton className="h-4 w-2/3" />
@@ -80,7 +103,7 @@ export default function AdminHistoryPage() {
     if (history.length === 0) {
         return view === 'table' ? (
             <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">{t('admin_history_no_history')}</TableCell>
+                <TableCell colSpan={4} className="h-24 text-center">{t('admin_history_no_history')}</TableCell>
             </TableRow>
         ) : (
             <div className="col-span-full text-center py-12">
@@ -94,7 +117,8 @@ export default function AdminHistoryPage() {
             <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.containerName}</TableCell>
                 <TableCell>{item.containerNumber}</TableCell>
-                <TableCell className="text-right">{item.acceptedAt ? format(item.acceptedAt.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}</TableCell>
+                <TableCell><TypeBadge type={item.type || 'acceptance'} t={t} /></TableCell>
+                <TableCell className="text-right">{item.date ? format(item.date.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}</TableCell>
             </TableRow>
         ));
     }
@@ -103,15 +127,18 @@ export default function AdminHistoryPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {history.map((item) => (
                 <Card key={item.id} className="flex flex-col">
-                    <CardHeader className="flex-grow pb-4">
-                        <CardTitle className="text-lg">{item.containerName}</CardTitle>
-                        <CardDescription>
-                            {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
-                        </CardDescription>
+                    <CardHeader className="flex-grow pb-4 flex-row justify-between items-start">
+                        <div>
+                            <CardTitle className="text-lg">{item.containerName}</CardTitle>
+                            <CardDescription>
+                                {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
+                            </CardDescription>
+                        </div>
+                        <TypeBadge type={item.type || 'acceptance'} t={t} />
                     </CardHeader>
                     <CardFooter className="pt-2">
                          <p className="text-xs text-muted-foreground">
-                            {item.acceptedAt ? format(item.acceptedAt.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}
+                            {item.date ? format(item.date.toDate(), "PPP p", { locale: dateLocale }) : 'N/A'}
                          </p>
                     </CardFooter>
                 </Card>
@@ -138,6 +165,7 @@ export default function AdminHistoryPage() {
                     <TableRow>
                         <TableHead>{t('admin_history_table_container')}</TableHead>
                         <TableHead>{t('admin_history_table_number')}</TableHead>
+                        <TableHead>{t('admin_history_table_type')}</TableHead>
                         <TableHead className="text-right">{t('admin_history_table_date')}</TableHead>
                     </TableRow>
                     </TableHeader>
