@@ -59,6 +59,8 @@ export default function SettingsPage() {
                 
                 const roleOrder = { 'senior': 1, 'junior': 2, 'pending': 3 };
                 sessionsData.sort((a, b) => {
+                  if (a.role === 'senior') return -1;
+                  if (b.role === 'senior') return 1;
                   const roleComparison = (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
                   if (roleComparison !== 0) return roleComparison;
                   return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -99,6 +101,7 @@ export default function SettingsPage() {
           Name: name,
           phone: phone,
         };
+        
         if (password && password !== user.password) {
           updateData.password = password;
         }
@@ -412,11 +415,7 @@ export default function SettingsPage() {
                           {totalLoading ? (
                              Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
                           ) : sessions.filter(s => s.role !== 'pending').length > 0 ? (
-                               sessions.filter(s => s.role !== 'pending').sort((a, b) => {
-                                  if (a.role === 'senior') return -1;
-                                  if (b.role === 'senior') return 1;
-                                  return new Date(b.date).getTime() - new Date(a.date).getTime();
-                               }).map(renderSessionCard)
+                               sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
                            ) : (
                                <p className="text-muted-foreground text-center py-4">{t('admin_session_none_active')}</p>
                            )}
@@ -432,10 +431,8 @@ export default function SettingsPage() {
                             <CardContent className="space-y-4">
                                 {totalLoading ? (
                                     <Skeleton className="h-16 w-full" />
-                                 ) : sessions.filter(s => s.role === 'pending').length > 0 ? (
-                                    sessions.filter(s => s.role === 'pending').map(renderSessionCard)
                                  ) : (
-                                    <p className="text-muted-foreground text-center py-4">{t('admin_session_none_pending')}</p>
+                                    sessions.filter(s => s.role === 'pending').map(renderSessionCard)
                                  )}
                             </CardContent>
                         </Card>
