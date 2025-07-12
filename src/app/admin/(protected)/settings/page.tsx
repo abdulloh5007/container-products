@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface AlertDialogState {
   type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
@@ -281,10 +282,10 @@ export default function SettingsPage() {
     
     const renderSessionCard = (session: Session) => {
         const isCurrentSession = session.sessionToken === user?.currentSession.sessionToken;
-        const canManage = isSenior && !isCurrentSession;
+        const canManage = isSenior && !isCurrentSession && session.role !== 'senior';
 
         return (
-            <div key={session.sessionToken} className="flex items-center justify-between gap-4 rounded-lg border p-4">
+            <div key={session.sessionToken} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
                     <div className="flex-shrink-0">{renderRoleIcon(session.role)}</div>
                     <div>
@@ -299,38 +300,49 @@ export default function SettingsPage() {
                 </div>
 
                 {isSenior && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
                          {session.role === 'pending' ? (
-                            <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting} className="h-9">
+                            <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                 <UserCheck className="mr-2 h-4 w-4" />
-                                <span className="hidden sm:inline">{t('admin_session_confirm_button')}</span>
+                                <span>{t('admin_session_confirm_button')}</span>
                             </Button>
-                        ) : (
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-9 w-9" disabled={isSubmitting}>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        <span className="sr-only">Actions</span>
+                         ) : canManage && (
+                           <>
+                                {/* Desktop Buttons */}
+                                <div className="hidden md:flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', session })} disabled={isSubmitting}>
+                                        <Crown className="mr-2 h-4 w-4" />
+                                        {t('admin_session_promote_button')}
                                     </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    {session.role === 'junior' && (
-                                         <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'makeSenior', session })}>
-                                            <Crown className="mr-2 h-4 w-4" />
-                                            {t('admin_session_promote_button')}
-                                        </DropdownMenuItem>
-                                    )}
-                                    {canManage && (
-                                        <>
-                                            {session.role === 'junior' && <DropdownMenuSeparator />}
+                                    <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteSession', session })} disabled={isSubmitting}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        {t('admin_delete_button')}
+                                    </Button>
+                                </div>
+
+                                {/* Mobile Dropdown */}
+                                <div className="flex md:hidden">
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9" disabled={isSubmitting}>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                                <span className="sr-only">Actions</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'makeSenior', session })}>
+                                                <Crown className="mr-2 h-4 w-4" />
+                                                {t('admin_session_promote_button')}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'deleteSession', session })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 {t('admin_delete_button')}
                                             </DropdownMenuItem>
-                                        </>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                           </>
                         )}
                     </div>
                 )}
@@ -342,12 +354,12 @@ export default function SettingsPage() {
       <>
         <div className="space-y-8">
             <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" onClick={() => router.back()}>
+                <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
                     <ArrowLeft className="h-4 w-4" />
                     <span className="sr-only">{t('admin_back_button')}</span>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
                 </div>
             </div>
 
@@ -444,3 +456,5 @@ export default function SettingsPage() {
       </>
     );
 }
+
+    
