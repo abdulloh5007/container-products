@@ -26,6 +26,7 @@ type AuthContextType = {
   login: (phone: string, password:string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: Partial<AppUser>) => void;
+  updateUserProfile: (data: {Name: string, phone: string, password?: string}) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,10 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                     if (userDocSnap.exists()) {
                         const sessions = userDocSnap.data().sessionTokens as Session[] || [];
-                        const currentSessionValid = sessions.some(s => s.sessionToken === storedUser.currentSession.sessionToken && s.role !== 'pending');
+                        const currentSession = sessions.find(s => s.sessionToken === storedUser.currentSession.sessionToken);
                         
-                        if (currentSessionValid) {
-                           setUser(storedUser);
+                        if (currentSession && currentSession.role !== 'pending') {
+                           // Ensure local data is up-to-date with Firestore
+                           const updatedUser: AppUser = {
+                               ...storedUser,
+                               Name: userDocSnap.data().Name,
+                               phone: userDocSnap.data().phone,
+                               currentSession: currentSession
+                           }
+                           setUser(updatedUser);
+                           localStorage.setItem('user', JSON.stringify(updatedUser));
                         } else {
                            localStorage.removeItem('user');
                            setUser(null);
@@ -205,6 +214,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }
 
+  const updateUserProfile = async (data: { Name: string, phone: string, password?: string }) => {
+    if (!user) {
+        throw new Error("User not authenticated");
+    }
+
+    const currentUserId = user.phone.replace(/\D/g, '');
+    const userDocRef = doc(db, 'users', currentUserId);
+
+    const updateData: any = {
+        Name: data.Name,
+        phone: data.phone,
+    };
+    if (data.password) {
+        updateData.password = data.password;
+    }
+
+    await updateDoc(userDocRef, updateData);
+
+    // Also update the session in the local state
+    updateUser({ Name: data.Name, phone: data.phone });
+  };
+
+
   const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
@@ -212,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     updateUser,
+    updateUserProfile,
   }), [user, isLoading]);
 
   return (
@@ -228,3 +261,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

@@ -6,15 +6,18 @@ import { useRouter } from 'next/navigation';
 import { useAuth, Session } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Smartphone, UserCheck, Shield, Hourglass, Trash2, Crown, User } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ru, enUS } from 'date-fns/locale';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface AlertDialogState {
   type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
@@ -24,13 +27,21 @@ interface AlertDialogState {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user, logout, isLoading: isAuthLoading } = useAuth();
+    const { user, logout, isLoading: isAuthLoading, updateUserProfile } = useAuth();
     const router = useRouter();
     
     const [sessions, setSessions] = useState<Session[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
+
+    // Security tab state
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+
 
     const isSenior = user?.currentSession.role === 'senior';
     const dateLocale = language === 'ru' ? ru : enUS;
@@ -56,9 +67,45 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (!isAuthLoading) {
-            fetchSessions();
+            if (user) {
+              fetchSessions();
+              setName(user.Name);
+              setPhone(user.phone);
+            }
         }
     }, [user, isAuthLoading, fetchSessions]);
+    
+    const handleProfileUpdate = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!user) return;
+
+      if (newPassword && newPassword !== confirmPassword) {
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
+        return;
+      }
+      
+      setIsSubmitting(true);
+      try {
+        const updateData: { Name: string; phone: string; password?: string } = {
+          Name: name,
+          phone: phone,
+        };
+        if (newPassword) {
+          updateData.password = newPassword;
+        }
+
+        await updateUserProfile(updateData);
+        
+        toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
+        setNewPassword('');
+        setConfirmPassword('');
+      } catch (error) {
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
 
     const handleConfirmAccess = async (sessionToConfirm: Session) => {
         if (!user) return;
@@ -71,10 +118,10 @@ export default function SettingsPage() {
             );
             await updateDoc(userDocRef, { sessionTokens: updatedSessions });
             setSessions(updatedSessions);
-            toast({ title: "Доступ предоставлен", description: `Устройство ${sessionToConfirm.deviceName} теперь имеет доступ.` });
+            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: sessionToConfirm.deviceName }) });
         } catch (error) {
             console.error("Error confirming access:", error);
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось подтвердить доступ.' });
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
         } finally {
             setIsSubmitting(false);
             setAlertDialogState(null);
@@ -101,7 +148,7 @@ export default function SettingsPage() {
             
             await updateDoc(userDocRef, { sessionTokens: updatedSessions });
             
-            toast({ title: "Роль передана", description: `Устройство ${sessionToPromote.deviceName} теперь старший админ.` });
+            toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: sessionToPromote.deviceName }) });
 
             if (selfKicked) {
                 logout();
@@ -110,7 +157,7 @@ export default function SettingsPage() {
             }
         } catch (error) {
             console.error("Error making senior:", error);
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось передать роль.' });
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_promote_error_desc') });
         } finally {
             setIsSubmitting(false);
             setAlertDialogState(null);
@@ -129,11 +176,11 @@ export default function SettingsPage() {
                 logout();
             } else {
                 fetchSessions();
-                toast({ title: "Сессия удалена", description: `Доступ для устройства ${sessionToDelete.deviceName} отозван.` });
+                toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: sessionToDelete.deviceName }) });
             }
         } catch (error) {
             console.error("Error deleting session:", error);
-            toast({ variant: 'destructive', title: 'Ошибка', description: 'Не удалось удалить сессию.' });
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_delete_error_desc') });
         } finally {
             setIsSubmitting(false);
             setAlertDialogState(null);
@@ -145,14 +192,14 @@ export default function SettingsPage() {
         const { type, session } = alertDialogState;
         
         const titles = {
-            confirmAccess: 'Подтвердить доступ?',
-            makeSenior: 'Передать права старшего админа?',
-            deleteSession: 'Отозвать доступ?'
+            confirmAccess: t('admin_session_dialog_confirm_title'),
+            makeSenior: t('admin_session_dialog_promote_title'),
+            deleteSession: t('admin_session_dialog_delete_title')
         };
         const descriptions = {
-            confirmAccess: `Вы уверены, что хотите предоставить доступ устройству "${session.deviceName}"?`,
-            makeSenior: `Вы уверены, что хотите сделать устройство "${session.deviceName}" старшим админом? Вы потеряете свои права старшего админа.`,
-            deleteSession: `Вы уверены, что хотите отозвать доступ для устройства "${session.deviceName}"? Эта сессия будет немедленно прекращена.`
+            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: session.deviceName }),
+            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: session.deviceName }),
+            deleteSession: t('admin_session_dialog_delete_desc', { deviceName: session.deviceName })
         };
         const actions = {
             confirmAccess: () => handleConfirmAccess(session),
@@ -170,7 +217,7 @@ export default function SettingsPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setAlertDialogState(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
                         <AlertDialogAction onClick={actions[type]} disabled={isSubmitting}>
-                            {isSubmitting ? t('admin_saving_text') : 'Подтвердить'}
+                            {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -180,7 +227,7 @@ export default function SettingsPage() {
     
     const totalLoading = isLoading || isAuthLoading;
 
-    if (totalLoading) {
+    if (totalLoading && !user) {
         return (
           <div className="space-y-8">
             <Skeleton className="h-10 w-1/3" />
@@ -214,7 +261,7 @@ export default function SettingsPage() {
                     <div>
                         <p className="font-semibold flex items-center gap-2">
                            {session.deviceName}
-                           {isCurrentSession && <span className="text-xs font-normal text-primary">(текущая сессия)</span>}
+                           {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
                             {format(new Date(session.date), "PPP p", { locale: dateLocale })}
@@ -225,13 +272,13 @@ export default function SettingsPage() {
                     {isSenior && session.role === 'pending' && (
                         <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting}>
                             <UserCheck className="mr-2 h-4 w-4" />
-                            Подтвердить
+                            {t('admin_session_confirm_button')}
                         </Button>
                     )}
                     {isSenior && session.role === 'junior' && (
                          <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', session })} disabled={isSubmitting}>
                             <Crown className="mr-2 h-4 w-4" />
-                            Сделать старшим
+                            {t('admin_session_promote_button')}
                         </Button>
                     )}
                     {(isSenior && !isCurrentSession) && (
@@ -253,49 +300,108 @@ export default function SettingsPage() {
                     <span className="sr-only">{t('admin_back_button')}</span>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Управление доступом</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
                 </div>
             </div>
-            
-            <Card>
-                <CardHeader>
-                    <CardTitle>Активные сессии</CardTitle>
-                    <CardDescription>Здесь перечислены все устройства, имеющие доступ к этому аккаунту.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                   {sessions.filter(s => s.role !== 'pending').length > 0 ? (
-                       sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
-                   ) : (
-                       <p className="text-muted-foreground text-center py-4">Активных сессий не найдено.</p>
-                   )}
-                </CardContent>
-            </Card>
 
-            {isSenior && sessions.some(s => s.role === 'pending') && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Запросы на вход</CardTitle>
-                        <CardDescription>Эти устройства ожидают вашего подтверждения для входа в аккаунт.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {sessions.filter(s => s.role === 'pending').map(renderSessionCard)}
-                    </CardContent>
-                </Card>
-            )}
+            <Tabs defaultValue="security" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="security">{t('admin_settings_tab_security')}</TabsTrigger>
+                    <TabsTrigger value="devices">{t('admin_settings_tab_devices')}</TabsTrigger>
+                </TabsList>
+                <TabsContent value="security">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('admin_settings_profile_title')}</CardTitle>
+                            <CardDescription>{t('admin_settings_profile_desc')}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleProfileUpdate} className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">{t('admin_settings_name')}</Label>
+                                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">{t('admin_phone')}</Label>
+                                    <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting} />
+                                    <p className="text-xs text-muted-foreground">{t('admin_phone_update_warning_desc')}</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-password">{t('admin_settings_new_password')}</Label>
+                                     <div className="relative">
+                                      <Input
+                                        id="new-password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        disabled={isSubmitting}
+                                        placeholder={t('admin_settings_password_placeholder')}
+                                        className="pr-10"
+                                      />
+                                      <Button 
+                                          type="button" 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                                          onClick={() => setShowPassword(prev => !prev)}
+                                      >
+                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                      </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirm-password">{t('admin_settings_confirm_password')}</Label>
+                                    <Input id="confirm-password" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={isSubmitting} />
+                                </div>
+                                <div className="flex justify-end">
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="devices">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('admin_session_active_title')}</CardTitle>
+                            <CardDescription>{t('admin_session_active_desc')}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {totalLoading ? (
+                             Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+                          ) : sessions.filter(s => s.role !== 'pending').length > 0 ? (
+                               sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
+                           ) : (
+                               <p className="text-muted-foreground text-center py-4">{t('admin_session_none_active')}</p>
+                           )}
+                        </CardContent>
+                    </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Общая информация</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">
-                        Ваш аккаунт защищён. Только один человек может быть "Старшим админом". При входе с нового устройства старший получит уведомление, чтобы подтвердить доступ. Только подтверждённые пользователи смогут использовать аккаунт как "младшие". Вы можете в любой момент передать полномочия старшего другому пользователю.
-                    </p>
-                </CardContent>
-            </Card>
-
+                    {isSenior && (
+                        <Card className="mt-8">
+                            <CardHeader>
+                                <CardTitle>{t('admin_session_pending_title')}</CardTitle>
+                                <CardDescription>{t('admin_session_pending_desc')}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {totalLoading ? (
+                                    <Skeleton className="h-16 w-full" />
+                                 ) : sessions.filter(s => s.role === 'pending').length > 0 ? (
+                                    sessions.filter(s => s.role === 'pending').map(renderSessionCard)
+                                 ) : (
+                                    <p className="text-muted-foreground text-center py-4">{t('admin_session_none_pending')}</p>
+                                 )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
+            </Tabs>
         </div>
         {renderAlertDialog()}
       </>
     );
 }
+
+    

@@ -70,10 +70,9 @@ export default function LoginPage() {
     const success = await login(phone, password);
     
     if (success) {
-        // If login is successful but user is not authenticated, it means session is pending
-        if (!isAuthenticated) {
-             setLoginState('pending');
-        }
+        // If login call is successful but user is not authenticated yet in the context,
+        // it means their session is pending approval.
+        setLoginState('pending');
     } else {
         setLoginState('failed');
         toast({
@@ -105,9 +104,9 @@ export default function LoginPage() {
           {loginState === 'pending' ? (
               <Alert>
                   <Hourglass className="h-4 w-4" />
-                  <AlertTitle>Ожидание подтверждения</AlertTitle>
+                  <AlertTitle>{t('admin_login_pending_title')}</AlertTitle>
                   <AlertDescription>
-                      Ваш запрос на вход отправлен старшему админу. Пожалуйста, ожидайте подтверждения.
+                      {t('admin_login_pending_desc')}
                   </AlertDescription>
               </Alert>
           ) : (
@@ -156,3 +155,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
