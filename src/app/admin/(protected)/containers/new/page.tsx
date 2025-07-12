@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -281,9 +281,24 @@ export default function NewContainerPage() {
     }
   };
 
-  const filteredProducts = availableProducts.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
+
+    const filtered = availableProducts.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
+        const typeA = a.type || 'unit';
+        const typeB = b.type || 'unit';
+        const orderA = sortOrder[typeA] || 99;
+        const orderB = sortOrder[typeB] || 99;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return a.name.localeCompare(b.name);
+    });
+  }, [availableProducts, searchQuery]);
   
   const renderProductQuantity = (product: IncludedProduct) => {
     if (product.type === 'area') {

@@ -75,9 +75,22 @@ export default function AdminProductsPage() {
   }, [fetchProducts]);
   
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
+    const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
+
+    const filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    return filtered.sort((a, b) => {
+        const typeA = a.type || 'unit';
+        const typeB = b.type || 'unit';
+        const orderA = sortOrder[typeA] || 99;
+        const orderB = sortOrder[typeB] || 99;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return a.name.localeCompare(b.name);
+    });
   }, [products, searchQuery]);
 
   const resetForm = () => {
