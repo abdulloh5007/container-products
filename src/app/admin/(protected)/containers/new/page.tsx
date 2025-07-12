@@ -18,17 +18,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
+type ProductType = 'kit' | 'unit';
 interface Product {
   id: string;
   name: string;
   quantity: number;
   imageUrls: string[];
+  type: ProductType;
+  m2PerKit?: number;
 }
 
 interface IncludedProduct {
   id: string;
   name: string;
   quantity: number;
+  type: ProductType;
+  m2PerKit?: number;
 }
 
 interface ContainerData {
@@ -43,7 +48,6 @@ interface FullscreenState {
   startIndex: number;
 }
 
-// Helper to convert a file to a Base64 data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -123,7 +127,6 @@ export default function NewContainerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
-  // Fetch all data on component mount
   useEffect(() => {
     const containerIdParam = searchParams.get('id');
     const isEditing = !!containerIdParam;
@@ -136,13 +139,11 @@ export default function NewContainerPage() {
     const fetchAllData = async () => {
         setIsLoading(true);
         try {
-            // 1. Fetch all available products
             const productsQuery = query(collection(db, "products"), orderBy("name"));
             const productsSnapshot = await getDocs(productsQuery);
-            const allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            const allProducts = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: doc.data().type || 'unit' } as Product));
             setAvailableProducts(allProducts);
 
-            // 2. If in edit mode, fetch container data and validate its products
             if (isEditing && containerIdParam) {
                 const containerDocRef = doc(db, 'containers', containerIdParam);
                 const containerDocSnap = await getDoc(containerDocRef);
@@ -152,16 +153,17 @@ export default function NewContainerPage() {
                     setContainerName(containerData.name);
                     setContainerImageUrl(containerData.imageUrl || null);
 
-                    // 3. Filter included products to ensure they still exist
                     const existingProductIds = new Set(allProducts.map(p => p.id));
                     const validIncludedProducts = (containerData.products || [])
                         .filter(p => existingProductIds.has(p.id))
-                        // Also, map to include the product name from the allProducts list
                         .map(p => {
                             const fullProduct = allProducts.find(ap => ap.id === p.id);
                             return {
-                                ...p,
-                                name: fullProduct?.name || 'Unknown Product'
+                                id: p.id,
+                                name: fullProduct?.name || 'Unknown Product',
+                                quantity: p.quantity,
+                                type: fullProduct?.type || 'unit',
+                                m2PerKit: fullProduct?.m2PerKit,
                             }
                         });
                     
@@ -191,8 +193,7 @@ export default function NewContainerPage() {
       if (existing) {
         return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p);
       }
-      // Only include necessary fields
-      return [...prev, { id: product.id, name: product.name, quantity: 1 }];
+      return [...prev, { id: product.id, name: product.name, quantity: 1, type: product.type, m2PerKit: product.m2PerKit }];
     });
   };
 
@@ -223,7 +224,6 @@ export default function NewContainerPage() {
             finalImageUrl = await fileToDataUri(containerImage);
         }
         
-        // Remove name from included products before saving
         const productsToSave = includedProducts.map(({ id, quantity }) => ({ id, quantity }));
 
         const containerData = {
@@ -255,7 +255,49 @@ export default function NewContainerPage() {
   );
   
   const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/40x40.png';
-
+  
+  const renderProductQuantity = (product: IncludedProduct) => {
+    if (product.type === 'kit') {
+      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+      return (
+        <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center gap-1">
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
+                    <Minus className="h-3 w-3" />
+                </Button>
+                <Input 
+                    type="number" 
+                    value={product.quantity} 
+                    onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
+                    className="w-14 h-8 text-center" 
+                    min="1"
+                />
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
+                    <Plus className="h-3 w-3" />
+                </Button>
+            </div>
+            <span className="text-xs text-muted-foreground mt-1">{`= ${totalM2} ${t('admin_m2_unit')}`}</span>
+        </div>
+      );
+    }
+    return (
+        <div className="flex items-center justify-center gap-1">
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
+                <Minus className="h-3 w-3" />
+            </Button>
+            <Input 
+                type="number" 
+                value={product.quantity} 
+                onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
+                className="w-14 h-8 text-center" 
+                min="1"
+            />
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
+                <Plus className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+  };
   
   const openFullscreen = (imageUrls: string[], startIndex: number = 0) => {
     if (imageUrls && imageUrls.length > 0) {
@@ -318,7 +360,6 @@ export default function NewContainerPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Left Panel: Available Products */}
         <Card>
           <CardHeader>
             <CardTitle>{t('admin_available_products')}</CardTitle>
@@ -362,7 +403,6 @@ export default function NewContainerPage() {
           </CardContent>
         </Card>
 
-        {/* Right Panel: Container Details */}
         <Card>
           <CardHeader>
             <CardTitle>{t('admin_container_details')}</CardTitle>
@@ -401,21 +441,7 @@ export default function NewContainerPage() {
                                     <TableRow key={product.id}>
                                         <TableCell className="font-medium">{product.name}</TableCell>
                                         <TableCell>
-                                            <div className="flex items-center justify-center gap-1">
-                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
-                                                    <Minus className="h-3 w-3" />
-                                                </Button>
-                                                <Input 
-                                                    type="number" 
-                                                    value={product.quantity} 
-                                                    onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
-                                                    className="w-14 h-8 text-center" 
-                                                    min="1"
-                                                />
-                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
-                                                    <Plus className="h-3 w-3" />
-                                                </Button>
-                                            </div>
+                                            {renderProductQuantity(product)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeProduct(product.id)}>

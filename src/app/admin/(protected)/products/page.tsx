@@ -4,11 +4,11 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { PlusCircle, Edit, Trash2, UploadCloud, Search, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,12 +22,17 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+type ProductType = 'kit' | 'unit';
 
 interface Product {
     id: string; // Firestore document ID
     name: string;
     quantity: number;
     imageUrls: string[];
+    type: ProductType;
+    m2PerKit?: number;
 }
 
 interface FullscreenState {
@@ -48,24 +53,21 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
     reader.readAsDataURL(file);
 });
 
-// A new type to handle both existing URLs (string) and new files (File)
 type ImageItem = {
-    id: string; // Unique ID for list key
+    id: string; 
     type: 'url' | 'file';
     value: string | File;
-    preview: string; // URL for image preview
+    preview: string; 
 };
 
 
 function MultiImageUploader({
     items,
     setItems,
-    onView,
     disabled
 }: {
     items: ImageItem[],
     setItems: (items: ImageItem[]) => void,
-    onView: (imageUrls: string[], startIndex: number) => void,
     disabled?: boolean,
 }) {
     const { t } = useLanguage();
@@ -109,8 +111,6 @@ function MultiImageUploader({
         setItems(items.filter((item) => item.id !== idToRemove));
     };
     
-    const allImagePreviews = items.map(item => item.preview);
-
     return (
         <div className="space-y-4">
             <div
@@ -135,7 +135,7 @@ function MultiImageUploader({
                     className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
                 >
                     <AnimatePresence>
-                        {items.map((item, index) => (
+                        {items.map((item) => (
                              <Reorder.Item
                                 key={item.id}
                                 value={item}
@@ -144,7 +144,7 @@ function MultiImageUploader({
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 className="relative group aspect-square rounded-md bg-muted cursor-grab active:cursor-grabbing"
                             >
-                                <div className="relative w-full h-full cursor-pointer" onClick={() => { /* Fullscreen view is disabled here */ }}>
+                                <div className="relative w-full h-full cursor-pointer">
                                   <Image draggable={false} src={item.preview} alt="Preview" layout="fill" objectFit="cover" className="rounded-md pointer-events-none" />
                                 </div>
                                 {!disabled && (
@@ -184,7 +184,9 @@ export default function AdminProductsPage() {
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const [newProductName, setNewProductName] = useState('');
+  const [productType, setProductType] = useState<ProductType>('unit');
   const [newProductQuantity, setNewProductQuantity] = useState(1);
+  const [m2PerKit, setM2PerKit] = useState(1);
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
 
 
@@ -193,7 +195,7 @@ export default function AdminProductsPage() {
     try {
       const q = query(collection(db, "products"), orderBy("name"));
       const querySnapshot = await getDocs(q);
-      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: doc.data().type || 'unit' } as Product));
       setProducts(productsData);
     } catch (error) {
       console.error("Error fetching products: ", error);
@@ -215,7 +217,9 @@ export default function AdminProductsPage() {
 
   const resetForm = () => {
       setNewProductName('');
+      setProductType('unit');
       setNewProductQuantity(1);
+      setM2PerKit(1);
       setProductToEdit(null);
       setImageItems([]);
   }
@@ -231,6 +235,8 @@ export default function AdminProductsPage() {
     if (productToEdit) {
       setNewProductName(productToEdit.name);
       setNewProductQuantity(productToEdit.quantity);
+      setProductType(productToEdit.type || 'unit');
+      setM2PerKit(productToEdit.m2PerKit || 1);
       const items: ImageItem[] = (productToEdit.imageUrls || []).map((url, index) => ({
           id: `url-${index}-${productToEdit.id}`,
           type: 'url',
@@ -244,7 +250,7 @@ export default function AdminProductsPage() {
   }, [productToEdit]);
 
   const handleSaveProduct = async () => {
-    if (!newProductName || newProductQuantity < 0) {
+    if (!newProductName) {
       toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_form_error_desc') });
       return;
     }
@@ -256,15 +262,17 @@ export default function AdminProductsPage() {
             if (item.type === 'file') {
                 return fileToDataUri(item.value as File);
             }
-            return Promise.resolve(item.value as string); // It's already a URL string
+            return Promise.resolve(item.value as string); 
         });
 
         const finalImageUrls = await Promise.all(uploadPromises);
 
-        const productData = {
+        const productData: Omit<Product, 'id'> = {
             name: newProductName,
-            quantity: newProductQuantity,
-            imageUrls: finalImageUrls
+            imageUrls: finalImageUrls,
+            type: productType,
+            quantity: productType === 'kit' ? newProductQuantity : newProductQuantity,
+            m2PerKit: productType === 'kit' ? m2PerKit : 0,
         };
 
         if (productToEdit) {
@@ -276,7 +284,7 @@ export default function AdminProductsPage() {
             toast({ title: t('admin_product_create_success_title'), description: t('admin_product_create_success_desc', { productName: newProductName }) });
         }
 
-        fetchProducts(); // Refresh data
+        fetchProducts();
         onModalOpenChange(false);
     } catch (error) {
         console.error("Error saving product: ", error);
@@ -319,7 +327,7 @@ export default function AdminProductsPage() {
         await batch.commit();
 
         toast({ title: t('admin_product_delete_success_title'), description: t('admin_product_delete_success_desc', { productName: productToDelete.name }) });
-        fetchProducts(); // Refresh data
+        fetchProducts(); 
     } catch (error) {
         console.error("Error deleting product and updating containers: ", error);
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_save_error') });
@@ -337,6 +345,13 @@ export default function AdminProductsPage() {
   const closeFullscreen = () => {
     setFullscreenState(null);
   };
+  
+  const renderProductQuantity = (product: Product) => {
+    if (product.type === 'kit') {
+      return `${product.quantity} ${t('admin_kit_unit')} (${(product.quantity * (product.m2PerKit || 0)).toFixed(2)} ${t('admin_m2_unit')})`
+    }
+    return product.quantity;
+  }
 
   const renderContent = () => {
     if (isLoading) {
@@ -390,7 +405,7 @@ export default function AdminProductsPage() {
     if (view === 'table') {
         return filteredProducts.map((product) => (
             <TableRow key={product.id}>
-                <TableCell>
+                <TableCell className="w-[100px]">
                     <Image
                     src={getFirstImage(product)}
                     alt={product.name}
@@ -401,8 +416,8 @@ export default function AdminProductsPage() {
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>{product.quantity}</TableCell>
-                <TableCell className="text-right space-x-2">
+                <TableCell className="w-[200px]">{renderProductQuantity(product)}</TableCell>
+                <TableCell className="text-right w-[120px] space-x-2">
                     <Button variant="outline" size="icon" onClick={() => handleOpenModalForEdit(product)}>
                     <Edit className="h-4 w-4" />
                     </Button>
@@ -427,7 +442,7 @@ export default function AdminProductsPage() {
                         transition={{ duration: 0.3 }}
                         layout
                     >
-                        <Card>
+                        <Card className="flex flex-col h-full">
                              <CardHeader className="p-0 relative">
                                 <Carousel className="w-full relative group">
                                     <CarouselContent>
@@ -468,9 +483,9 @@ export default function AdminProductsPage() {
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent className="pt-4 space-y-1">
+                            <CardContent className="pt-4 space-y-1 flex-grow">
                                 <CardTitle className="text-lg">{product.name}</CardTitle>
-                                <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
+                                <CardDescription>{t('admin_product_quantity')}: {renderProductQuantity(product)}</CardDescription>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -512,7 +527,7 @@ export default function AdminProductsPage() {
                     <TableRow>
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                         <TableHead>{t('admin_products_table_name')}</TableHead>
-                        <TableHead className="w-[120px]">{t('admin_product_quantity')}</TableHead>
+                        <TableHead className="w-[200px]">{t('admin_product_quantity')}</TableHead>
                         <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
@@ -536,16 +551,48 @@ export default function AdminProductsPage() {
               <Label htmlFor="name">{t('admin_product_name')}</Label>
               <Input id="name" value={newProductName} onChange={e => setNewProductName(e.target.value)} disabled={isSubmitting} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-              <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
+
+            <div className="space-y-3">
+                <Label>{t('admin_product_save_type')}</Label>
+                <RadioGroup value={productType} onValueChange={(value) => setProductType(value as ProductType)} className="flex gap-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="unit" id="type-unit" />
+                        <Label htmlFor="type-unit">{t('admin_product_save_type_unit')}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="kit" id="type-kit" />
+                        <Label htmlFor="type-kit">{t('admin_product_save_type_kit')}</Label>
+                    </div>
+                </RadioGroup>
             </div>
+            
+            {productType === 'kit' ? (
+                <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
+                     <div className="space-y-2">
+                        <Label htmlFor="kit-quantity">{t('admin_kit_unit')}</Label>
+                        <Input id="kit-quantity" type="number" value={1} disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="m2-per-kit">{t('admin_m2_per_kit')}</Label>
+                        <Input id="m2-per-kit" type="number" min="0" value={m2PerKit} onChange={(e) => setM2PerKit(parseFloat(e.target.value) || 0)} disabled={isSubmitting} />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                      <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
+                  <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
+                </div>
+            )}
+
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
                 <MultiImageUploader
                     items={imageItems}
                     setItems={setImageItems}
-                    onView={openFullscreen}
                     disabled={isSubmitting}
                 />
             </div>
@@ -586,3 +633,4 @@ export default function AdminProductsPage() {
   );
 }
 
+    

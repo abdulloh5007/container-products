@@ -19,11 +19,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 
+type ProductType = 'kit' | 'unit';
 interface Product {
     id: string;
     name: string;
     quantity: number;
     imageUrls: string[];
+    type: ProductType;
+    m2PerKit?: number;
 }
 
 interface FullscreenState {
@@ -53,7 +56,7 @@ export default function AdminStockPage() {
     try {
       const q = query(collection(db, "products"), orderBy("name"));
       const querySnapshot = await getDocs(q);
-      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: doc.data().type || 'unit' } as Product));
       setProducts(productsData);
     } catch (error) {
       console.error("Error fetching products: ", error);
@@ -74,7 +77,7 @@ export default function AdminStockPage() {
   }, [products, searchQuery]);
 
   const handleQuantityChange = async (product: Product, amount: number) => {
-    if (product.quantity + amount < 0) return; // Prevent negative stock
+    if (product.quantity + amount < 0) return;
 
     setUpdatingProductId(product.id);
     try {
@@ -83,7 +86,6 @@ export default function AdminStockPage() {
             quantity: increment(amount)
         });
         
-        // Update state locally for immediate feedback
         setProducts(prevProducts => 
             prevProducts.map(p => 
                 p.id === product.id ? { ...p, quantity: p.quantity + amount } : p
@@ -110,6 +112,34 @@ export default function AdminStockPage() {
   };
   
   const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/64x64.png';
+  
+  const renderProductQuantity = (product: Product) => {
+    if (product.type === 'kit') {
+      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+      return (
+        <div className="flex flex-col">
+          <span className="font-semibold text-lg">{product.quantity} <span className="text-sm text-muted-foreground">{t('admin_kit_unit')}</span></span>
+          <span className="text-sm text-muted-foreground">{totalM2} {t('admin_m2_unit')}</span>
+        </div>
+      );
+    }
+    return <span className="font-semibold text-lg">{product.quantity}</span>;
+  }
+  
+  const renderCardQuantity = (product: Product) => {
+      if (product.type === 'kit') {
+      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+      return (
+        <CardDescription>
+            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span> {t('admin_kit_unit')}
+            <span className="text-muted-foreground"> ({totalM2} {t('admin_m2_unit')})</span>
+        </CardDescription>
+      )
+    }
+    return (
+        <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
+    )
+  }
 
 
   const renderContent = () => {
@@ -160,7 +190,7 @@ export default function AdminStockPage() {
     if (view === 'table') {
         return filteredProducts.map((product) => (
             <TableRow key={product.id}>
-                <TableCell>
+                <TableCell className="w-[100px]">
                     <Image
                     src={getFirstImage(product)}
                     alt={product.name}
@@ -171,8 +201,8 @@ export default function AdminStockPage() {
                     />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell className="font-semibold text-lg">{product.quantity}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="w-[200px]">{renderProductQuantity(product)}</TableCell>
+                <TableCell className="text-right w-[150px]">
                     <div className="flex items-center justify-end gap-2">
                         <Button 
                             variant="outline" 
@@ -182,12 +212,6 @@ export default function AdminStockPage() {
                         >
                             <Minus className="h-4 w-4" />
                         </Button>
-                        <Input 
-                            type="number" 
-                            className="w-20 text-center h-9"
-                            value={product.quantity}
-                            disabled={true}
-                        />
                          <Button 
                             variant="outline" 
                             size="icon" 
@@ -250,7 +274,7 @@ export default function AdminStockPage() {
                             </CardHeader>
                             <CardContent className="pt-4 space-y-1">
                                 <CardTitle className="text-lg">{product.name}</CardTitle>
-                                <CardDescription>{t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span></CardDescription>
+                                {renderCardQuantity(product)}
                             </CardContent>
                             <CardFooter>
                                  <div className="flex w-full items-center justify-center gap-2">
@@ -305,13 +329,13 @@ export default function AdminStockPage() {
        {view === 'table' ? (
             <Card>
                 <CardContent className="pt-6">
-                <Table className="min-w-[640px]">
+                <Table className="min-w-[720px]">
                     <TableHeader>
                     <TableRow>
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                         <TableHead>{t('admin_stock_table_product')}</TableHead>
-                        <TableHead>{t('admin_stock_table_quantity')}</TableHead>
-                        <TableHead className="text-right w-[220px]">{t('admin_stock_table_actions')}</TableHead>
+                        <TableHead className="w-[200px]">{t('admin_stock_table_quantity')}</TableHead>
+                        <TableHead className="text-right w-[150px]">{t('admin_stock_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -333,7 +357,5 @@ export default function AdminStockPage() {
     </>
   );
 }
-
-    
 
     

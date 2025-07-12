@@ -169,7 +169,13 @@ export const translations = {
     admin_product_image_limit: "Осталось мест для изображений: {count}",
     admin_product_image_size_error: "Размер файла не должен превышать {size} МБ.",
     admin_product_image_max_files_error: "Можно загрузить не более {max} изображений.",
-    admin_product_image_accepted_formats: "Допустимые форматы: JPG, PNG"
+    admin_product_image_accepted_formats: "Допустимые форматы: JPG, PNG",
+    admin_product_save_type: "Тип сохранения",
+    admin_product_save_type_unit: "Только количество",
+    admin_product_save_type_kit: "Комплект + М²",
+    admin_kit_unit: "комплект",
+    admin_m2_per_kit: "м² в комплекте",
+    admin_m2_unit: "м²"
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -340,7 +346,13 @@ export const translations = {
     admin_product_image_limit: "Rasmlar uchun qolgan joylar soni: {count}",
     admin_product_image_size_error: "Fayl hajmi {size} MB dan oshmasligi kerak.",
     admin_product_image_max_files_error: "{max} tadan ko'p rasm yuklab bo'lmaydi.",
-    admin_product_image_accepted_formats: "Ruxsat etilgan formatlar: JPG, PNG"
+    admin_product_image_accepted_formats: "Ruxsat etilgan formatlar: JPG, PNG",
+    admin_product_save_type: "Saqlash turi",
+    admin_product_save_type_unit: "Faqat miqdor",
+    admin_product_save_type_kit: "Komplekt + M²",
+    admin_kit_unit: "komplekt",
+    admin_m2_per_kit: "m² komplektda",
+    admin_m2_unit: "m²"
   },
 };
 

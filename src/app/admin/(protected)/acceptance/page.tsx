@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, writeBatch, increment, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, increment, query, orderBy, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -17,10 +17,15 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
+type ProductType = 'kit' | 'unit';
 interface IncludedProduct {
   id: string;
-  name: string;
   quantity: number;
+}
+interface ProductDetails {
+    name: string;
+    type: ProductType;
+    m2PerKit?: number;
 }
 interface Container {
   id: string;
@@ -87,6 +92,8 @@ export default function AdminAcceptancePage() {
             title: t('admin_acceptance_success_title'),
             description: t('admin_acceptance_success_desc', { containerName: containerToAccept.name }),
         });
+        // Refetch containers to show updated state (or just remove the accepted one)
+        setContainers(prev => prev.filter(c => c.id !== containerToAccept.id));
         
     } catch(error) {
         console.error("Error accepting container:", error);
@@ -95,6 +102,11 @@ export default function AdminAcceptancePage() {
         setAcceptingContainerId(null);
         setContainerToAccept(null);
     }
+  }
+
+  const getTotalProducts = (container: Container) => {
+    if (!container.products) return 0;
+    return container.products.reduce((acc, p) => acc + p.quantity, 0);
   }
   
   const openFullscreen = (imageUrl: string) => {
@@ -155,7 +167,7 @@ export default function AdminAcceptancePage() {
     if (view === 'table') {
         return containers.map((container) => (
             <TableRow key={container.id}>
-                <TableCell>
+                <TableCell className="w-[100px]">
                     <Image
                         src={container.imageUrl || 'https://placehold.co/64x64.png'}
                         alt={container.name}
@@ -166,8 +178,8 @@ export default function AdminAcceptancePage() {
                     />
                 </TableCell>
                 <TableCell className="font-medium">{container.name}</TableCell>
-                <TableCell className="text-center">{container.products.reduce((acc, p) => acc + p.quantity, 0)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-center w-[180px]">{getTotalProducts(container)}</TableCell>
+                <TableCell className="text-right w-[150px]">
                     <Button 
                         onClick={() => setContainerToAccept(container)}
                         disabled={acceptingContainerId === container.id || !container.products || container.products.length === 0}
@@ -195,7 +207,7 @@ export default function AdminAcceptancePage() {
                     </CardHeader>
                     <CardContent className="pt-4 space-y-1">
                         <CardTitle className="text-lg">{container.name}</CardTitle>
-                        <CardDescription>{t('admin_acceptance_table_products')}: {container.products.reduce((acc, p) => acc + p.quantity, 0)}</CardDescription>
+                        <CardDescription>{t('admin_acceptance_table_products')}: {getTotalProducts(container)}</CardDescription>
                     </CardContent>
                     <CardFooter>
                          <Button 
@@ -232,8 +244,8 @@ export default function AdminAcceptancePage() {
                     <TableRow>
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                         <TableHead>{t('admin_acceptance_table_container')}</TableHead>
-                        <TableHead className="text-center">{t('admin_acceptance_table_products')}</TableHead>
-                        <TableHead className="text-right">{t('admin_acceptance_table_actions')}</TableHead>
+                        <TableHead className="text-center w-[180px]">{t('admin_acceptance_table_products')}</TableHead>
+                        <TableHead className="text-right w-[150px]">{t('admin_acceptance_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
