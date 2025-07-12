@@ -180,7 +180,10 @@ export default function AdminAcceptancePage() {
                     <TableCell><Skeleton className="h-6 w-40" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
                     <TableCell className="text-right">
-                        <Skeleton className="h-10 w-32 ml-auto" />
+                        <div className="flex justify-end space-x-2">
+                           <Skeleton className="h-10 w-32" />
+                           <Skeleton className="h-10 w-32" />
+                        </div>
                     </TableCell>
                 </TableRow>
             ))
@@ -195,8 +198,9 @@ export default function AdminAcceptancePage() {
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardContent>
-                        <CardFooter>
-                            <Skeleton className="h-10 w-full" />
+                        <CardFooter className="flex-col gap-2">
+                           <Skeleton className="h-10 w-full" />
+                           <Skeleton className="h-10 w-full" />
                         </CardFooter>
                     </Card>
                 ))}
