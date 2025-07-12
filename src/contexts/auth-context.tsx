@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                ...storedUser,
                                Name: userDocSnap.data().Name,
                                phone: userDocSnap.data().phone,
+                               password: userDocSnap.data().password, // Ensure password is set from DB
                                currentSession: currentSession
                            }
                            setUser(updatedUser);
@@ -233,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateDoc(userDocRef, updateData);
 
     // Also update the session in the local state
-    updateUser({ Name: data.Name, phone: data.phone });
+    updateUser({ Name: data.Name, phone: data.phone, password: data.password });
   };
 
 
@@ -261,5 +262,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

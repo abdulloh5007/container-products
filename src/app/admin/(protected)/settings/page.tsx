@@ -38,7 +38,7 @@ export default function SettingsPage() {
     // Security tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [newPassword, setNewPassword] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
 
@@ -70,6 +70,7 @@ export default function SettingsPage() {
               fetchSessions();
               setName(user.Name);
               setPhone(user.phone);
+              setPassword(user.password || '');
             }
         }
     }, [user, isAuthLoading, fetchSessions]);
@@ -84,14 +85,13 @@ export default function SettingsPage() {
           Name: name,
           phone: phone,
         };
-        if (newPassword) {
-          updateData.password = newPassword;
+        if (password) {
+          updateData.password = password;
         }
 
         await updateUserProfile(updateData);
         
         toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
-        setNewPassword('');
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
       } finally {
@@ -320,15 +320,14 @@ export default function SettingsPage() {
                                     <p className="text-xs text-muted-foreground">{t('admin_phone_update_warning_desc')}</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="new-password">{t('admin_settings_new_password')}</Label>
+                                    <Label htmlFor="password">{t('admin_password')}</Label>
                                      <div className="relative">
                                       <Input
-                                        id="new-password"
+                                        id="password"
                                         type={showPassword ? "text" : "password"}
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                         disabled={isSubmitting}
-                                        placeholder={t('admin_settings_password_placeholder')}
                                         className="pr-10"
                                       />
                                       <Button 
@@ -392,5 +391,3 @@ export default function SettingsPage() {
       </>
     );
 }
-
-    
