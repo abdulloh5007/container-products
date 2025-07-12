@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,19 +10,11 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
-import { Carousel, CarouselContent, CarouselItem, CarouselDots } from '@/components/ui/carousel';
 
 interface Product {
     id: string;
     name: string;
     quantity: number;
-    imageUrls: string[];
-}
-
-interface FullscreenState {
-  imageUrls: string[];
-  startIndex: number;
 }
 
 const cardVariants = {
@@ -38,7 +29,6 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -65,23 +55,12 @@ export default function Home() {
     );
   }, [products, searchQuery]);
   
-  const openFullscreen = (imageUrls: string[], startIndex: number) => {
-    if (imageUrls && imageUrls.length > 0) {
-      setFullscreenState({ imageUrls, startIndex });
-    }
-  };
-  
-  const closeFullscreen = () => {
-    setFullscreenState(null);
-  };
-
   const renderContent = () => {
     if (isLoading) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {Array.from({ length: 3 }).map((_, index) => (
             <Card key={index} className="overflow-hidden shadow-lg">
-              <Skeleton className="w-full h-60" />
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
@@ -114,36 +93,6 @@ export default function Home() {
               layout
             >
               <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-                 <Carousel className="w-full relative group">
-                  <CarouselContent>
-                    {(product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls.map((url, index) => (
-                      <CarouselItem key={index}>
-                        <div className="relative w-full h-60 cursor-pointer" onClick={() => openFullscreen(product.imageUrls, index)}>
-                          <Image
-                            src={url}
-                            alt={`${product.name} - image ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      </CarouselItem>
-                    )) : (
-                       <CarouselItem>
-                         <div className="relative w-full h-60" onClick={() => openFullscreen(['https://placehold.co/600x400.png'], 0)}>
-                            <Image
-                                src={'https://placehold.co/600x400.png'}
-                                alt={product.name}
-                                fill
-                                className="object-cover"
-                            />
-                         </div>
-                       </CarouselItem>
-                    )}
-                  </CarouselContent>
-                  {product.imageUrls && product.imageUrls.length > 1 && (
-                    <CarouselDots className="absolute bottom-2 left-1/2 -translate-x-1/2" />
-                  )}
-                </Carousel>
                 <CardHeader>
                   <CardTitle className="font-headline">{product.name}</CardTitle>
                   <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
@@ -179,12 +128,6 @@ export default function Home() {
 
       {renderContent()}
     </div>
-    <ImageFullscreenViewer 
-        isOpen={!!fullscreenState}
-        onClose={closeFullscreen}
-        imageUrls={fullscreenState?.imageUrls}
-        startIndex={fullscreenState?.startIndex}
-    />
     </>
   );
 }

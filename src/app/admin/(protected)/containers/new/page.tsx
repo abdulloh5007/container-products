@@ -23,7 +23,6 @@ interface Product {
   id: string;
   name: string;
   quantity: number;
-  imageUrls: string[];
   type: ProductType;
   m2PerKit?: number;
 }
@@ -254,8 +253,6 @@ export default function NewContainerPage() {
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const getFirstImage = (product: Product) => (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : 'https://placehold.co/40x40.png';
-  
   const renderProductQuantity = (product: IncludedProduct) => {
     if (product.type === 'kit') {
       const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
@@ -383,14 +380,6 @@ export default function NewContainerPage() {
                     className="flex items-center justify-between p-2 border rounded-lg"
                   >
                     <div className="flex items-center gap-4">
-                      <Image
-                          src={getFirstImage(product)}
-                          alt={product.name}
-                          width={40}
-                          height={40}
-                          className="rounded-md object-cover h-10 w-10 cursor-pointer"
-                          onClick={() => openFullscreen(product.imageUrls, 0)}
-                      />
                       <span>{product.name}</span>
                     </div>
                     <Button size="sm" onClick={() => addProduct(product)}>
