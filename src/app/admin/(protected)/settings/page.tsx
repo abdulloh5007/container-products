@@ -55,7 +55,14 @@ export default function SettingsPage() {
         const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const sessionsData = (docSnap.data().sessionTokens || []) as Session[];
-                sessionsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                
+                const roleOrder = { 'senior': 1, 'junior': 2, 'pending': 3 };
+                sessionsData.sort((a, b) => {
+                  const roleComparison = (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
+                  if (roleComparison !== 0) return roleComparison;
+                  return new Date(b.date).getTime() - new Date(a.date).getTime();
+                });
+
                 setSessions(sessionsData);
                 const pending = sessionsData.filter(s => s.role === 'pending');
                 setPendingRequests(pending.length);
@@ -381,7 +388,7 @@ export default function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {isSenior && (
+                    {isSenior && sessions.filter(s => s.role === 'pending').length > 0 && (
                         <Card className="mt-8">
                             <CardHeader>
                                 <CardTitle>{t('admin_session_pending_title')}</CardTitle>
