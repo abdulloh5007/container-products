@@ -28,12 +28,9 @@ export function Sidebar() {
   
   const closeSheet = () => setSheetOpen(false);
 
-  const mainNavItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, mobileOnly: true },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, mobileOnly: true },
-  ];
-  
-  const managementNavItems = [
+  const navItems = [
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: 'hidden md:flex' },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: 'hidden md:flex' },
     { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
     { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ];
@@ -43,7 +40,7 @@ export function Sidebar() {
     closeSheet();
   };
 
-  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, mobileOnly?: boolean}[]) => (
+  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => (
      items.map((item) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
@@ -57,7 +54,7 @@ export function Sidebar() {
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
-                item.mobileOnly && 'md:hidden'
+                item.className
               )}
             >
               <Icon className="h-6 w-6" />
@@ -98,8 +95,7 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {renderNavGrid(mainNavItems)}
-                   {renderNavGrid(managementNavItems)}
+                   {renderNavGrid(navItems)}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
