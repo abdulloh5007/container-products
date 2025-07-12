@@ -19,14 +19,23 @@ interface AppUser {
     currentSession: Session;
 }
 
+type LoginResult = {
+  success: boolean;
+  isPending?: boolean;
+  session?: Session;
+}
+
 type AuthContextType = {
   user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, password:string) => Promise<boolean>;
+  pendingRequests: number;
+  setPendingRequests: (count: number) => void;
+  login: (phone: string, password:string) => Promise<LoginResult>;
   logout: () => void;
   updateUser: (data: Partial<AppUser>) => void;
   updateUserProfile: (data: {Name: string, phone: string, password?: string}) => Promise<void>;
+  manuallySetUser: (user: AppUser) => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +58,7 @@ const getDeviceName = () => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -67,12 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const currentSession = sessions.find(s => s.sessionToken === storedUser.currentSession.sessionToken);
                         
                         if (currentSession && currentSession.role !== 'pending') {
-                           // Ensure local data is up-to-date with Firestore
                            const updatedUser: AppUser = {
                                ...storedUser,
                                Name: userDocSnap.data().Name,
                                phone: userDocSnap.data().phone,
-                               password: userDocSnap.data().password, // Ensure password is set from DB
+                               password: userDocSnap.data().password,
                                currentSession: currentSession
                            }
                            setUser(updatedUser);
@@ -98,9 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     validateSession();
   }, []);
 
-  const login = async (phone: string, password: string): Promise<boolean> => {
+  const login = async (phone: string, password: string): Promise<LoginResult> => {
     const userId = phone.replace(/\D/g, '');
-    if (!userId || !password) return false;
+    if (!userId || !password) return { success: false };
     
     setIsLoading(true);
     try {
@@ -111,17 +120,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             sessionToken: generateSessionToken(),
             deviceName: getDeviceName(),
             date: new Date().toISOString(),
-            role: 'pending' // Default to pending
+            role: 'pending'
         };
 
         if (userDocSnap.exists()) { // Existing user login
-            if (userDocSnap.data().password !== password) return false;
+            if (userDocSnap.data().password !== password) return { success: false };
 
             const userData = userDocSnap.data();
             const sessions: Session[] = userData.sessionTokens || [];
             
             const seniorExists = sessions.some(s => s.role === 'senior');
-            if (!seniorExists) { // No senior admin, this login becomes senior
+            if (!seniorExists) {
                 newSession.role = 'senior';
             }
 
@@ -131,8 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             
              if (newSession.role === 'pending') {
-                // Don't log in yet, wait for senior approval
-                return true; // Indicate success to show pending message
+                return { success: true, isPending: true, session: newSession };
             }
             
             const appUser: AppUser = {
@@ -144,17 +152,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setUser(appUser);
             localStorage.setItem('user', JSON.stringify(appUser));
-            return true;
+            return { success: true, isPending: false };
 
-        } else { // First-ever login for this system
+        } else { // First-ever login
             const usersQuery = await getDocs(collection(db, 'users'));
-            if (usersQuery.empty) { // This is the very first user
+            if (usersQuery.empty) {
                 newSession.role = 'senior';
                 
                 const newUserAccount = {
                     phone: `+${userId}`,
                     password: password,
-                    Name: 'Admin', // Default name
+                    Name: 'Admin',
                     sessionTokens: [newSession],
                     createdAt: serverTimestamp(),
                     lastLogin: serverTimestamp(),
@@ -170,13 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 setUser(appUser);
                 localStorage.setItem('user', JSON.stringify(appUser));
-                return true;
+                return { success: true, isPending: false };
             }
-            return false; // No existing user and it's not the first-ever user
+            return { success: false };
         }
     } catch (error) {
         console.error("Firestore error during login:", error);
-        return false;
+        return { success: false };
     } finally {
         setIsLoading(false);
     }
@@ -191,7 +199,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userId = currentUser.phone.replace(/\D/g, '');
         const userDocRef = doc(db, 'users', userId);
         
-        // Atomically remove the session object from the array
         await updateDoc(userDocRef, {
             sessionTokens: arrayRemove(currentUser.currentSession)
         });
@@ -214,6 +221,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return newUser;
       });
   }
+  
+  const manuallySetUser = (userToSet: AppUser) => {
+    setUser(userToSet);
+    localStorage.setItem('user', JSON.stringify(userToSet));
+  };
+
 
   const updateUserProfile = async (data: { Name: string, phone: string, password?: string }) => {
     if (!user) {
@@ -233,7 +246,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     await updateDoc(userDocRef, updateData);
 
-    // Also update the session in the local state
     updateUser({ Name: data.Name, phone: data.phone, password: data.password });
   };
 
@@ -246,7 +258,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUser,
     updateUserProfile,
-  }), [user, isLoading]);
+    pendingRequests,
+    setPendingRequests,
+    manuallySetUser,
+  }), [user, isLoading, pendingRequests]);
 
   return (
     <AuthContext.Provider value={value}>

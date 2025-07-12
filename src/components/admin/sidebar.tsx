@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, pendingRequests } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
 
@@ -92,9 +92,12 @@ export function Sidebar() {
                    })}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
-                   <Button variant="ghost" className="w-full justify-start gap-3 text-base" onClick={() => handleSheetLinkClick('/admin/settings')}>
+                   <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
                      <Settings className="h-5 w-5" />
                      {t('admin_sidebar_settings')}
+                      {pendingRequests > 0 && (
+                        <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
+                      )}
                    </Button>
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base text-destructive hover:text-destructive" onClick={handleLogout}>
                      <LogOut className="h-5 w-5" />

@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth, Session } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container, Eye, EyeOff, ShieldCheck, Hourglass } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const formatPhoneNumberInput = (value: string): string => {
     if (!value) return '';
@@ -41,7 +43,7 @@ const formatPhoneNumberInput = (value: string): string => {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, manuallySetUser } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [phone, setPhone] = useState('');
@@ -49,6 +51,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginState, setLoginState] = useState<'form' | 'pending' | 'failed'>('form');
+  const [pendingSession, setPendingSession] = useState<Session | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -60,6 +63,42 @@ export default function LoginPage() {
     const formatted = formatPhoneNumberInput(e.target.value);
     setPhone(formatted);
   };
+  
+  const listenForApproval = useCallback((userId: string, session: Session) => {
+    const userDocRef = doc(db, 'users', userId);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const sessions = docSnap.data().sessionTokens as Session[] || [];
+            const updatedSession = sessions.find(s => s.sessionToken === session.sessionToken);
+
+            if (updatedSession && updatedSession.role !== 'pending') {
+                const userData = docSnap.data();
+                 const appUser = {
+                    phone: userData.phone,
+                    Name: userData.Name,
+                    password: userData.password,
+                    currentSession: updatedSession,
+                };
+                manuallySetUser(appUser);
+                unsubscribe();
+            }
+        }
+    });
+    return unsubscribe;
+  }, [manuallySetUser]);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    if (loginState === 'pending' && pendingSession) {
+        const userId = phone.replace(/\D/g, '');
+        unsubscribe = listenForApproval(userId, pendingSession);
+    }
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
+  }, [loginState, pendingSession, phone, listenForApproval]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -67,12 +106,14 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setLoginState('form');
     
-    const success = await login(phone, password);
+    const result = await login(phone, password);
     
-    if (success) {
-        // If login call is successful but user is not authenticated yet in the context,
-        // it means their session is pending approval.
+    if (result.success) {
+      if (result.isPending && result.session) {
+        setPendingSession(result.session);
         setLoginState('pending');
+      }
+      // If not pending, the useEffect for isAuthenticated will handle the redirect.
     } else {
         setLoginState('failed');
         toast({

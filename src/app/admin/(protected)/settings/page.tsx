@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, Session } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayRemove, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +27,7 @@ interface AlertDialogState {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user, logout, isLoading: isAuthLoading, updateUserProfile } = useAuth();
+    const { user, logout, isLoading: isAuthLoading, updateUserProfile, setPendingRequests } = useAuth();
     const router = useRouter();
     
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -45,35 +45,41 @@ export default function SettingsPage() {
     const isSenior = user?.currentSession.role === 'senior';
     const dateLocale = language === 'ru' ? ru : enUS;
 
-    const fetchSessions = useCallback(async () => {
-        if (!user) return;
+    useEffect(() => {
+        if (!user?.phone) return;
+
         setIsLoading(true);
-        try {
-            const userDocRef = doc(db, 'users', user.phone.replace(/\D/g, ''));
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                const sessionsData = (userDocSnap.data().sessionTokens || []) as Session[];
+        const userId = user.phone.replace(/\D/g, '');
+        const userDocRef = doc(db, 'users', userId);
+
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const sessionsData = (docSnap.data().sessionTokens || []) as Session[];
                 sessionsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 setSessions(sessionsData);
+                const pending = sessionsData.filter(s => s.role === 'pending');
+                setPendingRequests(pending.length);
+            } else {
+                setSessions([]);
+                setPendingRequests(0);
             }
-        } catch (error) {
-            console.error("Error fetching sessions:", error);
+             setIsLoading(false);
+        }, (error) => {
+            console.error("Error listening to sessions:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-        } finally {
             setIsLoading(false);
-        }
-    }, [user, t, toast]);
+        });
+
+        return () => unsubscribe();
+    }, [user?.phone, t, toast, setPendingRequests]);
 
     useEffect(() => {
-        if (!isAuthLoading) {
-            if (user) {
-              fetchSessions();
-              setName(user.Name);
-              setPhone(user.phone);
-              setPassword(user.password || '');
-            }
+        if (!isAuthLoading && user) {
+            setName(user.Name);
+            setPhone(user.phone);
+            setPassword(user.password || '');
         }
-    }, [user, isAuthLoading, fetchSessions]);
+    }, [user, isAuthLoading]);
     
     const handleProfileUpdate = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -85,7 +91,7 @@ export default function SettingsPage() {
           Name: name,
           phone: phone,
         };
-        if (password) {
+        if (password && password !== user.password) {
           updateData.password = password;
         }
 
@@ -106,11 +112,16 @@ export default function SettingsPage() {
         const userDocRef = doc(db, 'users', user.phone.replace(/\D/g, ''));
         
         try {
-            const updatedSessions = sessions.map(s => 
+            const docSnap = await getDoc(userDocRef);
+            if (!docSnap.exists()) throw new Error("User doc not found");
+
+            const currentSessions = (docSnap.data().sessionTokens || []) as Session[];
+
+            const updatedSessions = currentSessions.map(s => 
                 s.sessionToken === sessionToConfirm.sessionToken ? { ...s, role: 'junior' as const } : s
             );
             await updateDoc(userDocRef, { sessionTokens: updatedSessions });
-            setSessions(updatedSessions);
+            
             toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: sessionToConfirm.deviceName }) });
         } catch (error) {
             console.error("Error confirming access:", error);
@@ -128,7 +139,13 @@ export default function SettingsPage() {
         
         try {
             let selfKicked = false;
-            const updatedSessions = sessions.map(s => {
+            
+            const docSnap = await getDoc(userDocRef);
+            if (!docSnap.exists()) throw new Error("User doc not found");
+
+            const currentSessions = (docSnap.data().sessionTokens || []) as Session[];
+            
+            const updatedSessions = currentSessions.map(s => {
                 if (s.sessionToken === sessionToPromote.sessionToken) {
                     return { ...s, role: 'senior' as const };
                 }
@@ -145,8 +162,6 @@ export default function SettingsPage() {
 
             if (selfKicked) {
                 logout();
-            } else {
-                fetchSessions();
             }
         } catch (error) {
             console.error("Error making senior:", error);
@@ -168,7 +183,6 @@ export default function SettingsPage() {
             if (sessionToDelete.sessionToken === user.currentSession.sessionToken) {
                 logout();
             } else {
-                fetchSessions();
                 toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: sessionToDelete.deviceName }) });
             }
         } catch (error) {
@@ -220,7 +234,7 @@ export default function SettingsPage() {
     
     const totalLoading = isLoading || isAuthLoading;
 
-    if (totalLoading && !user) {
+    if (totalLoading && !sessions.length) {
         return (
           <div className="space-y-8">
             <Skeleton className="h-10 w-1/3" />
@@ -312,11 +326,11 @@ export default function SettingsPage() {
                             <form onSubmit={handleProfileUpdate} className="space-y-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="name">{t('admin_settings_name')}</Label>
-                                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting} />
+                                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || isAuthLoading} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">{t('admin_phone')}</Label>
-                                    <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting} />
+                                    <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading} />
                                     <p className="text-xs text-muted-foreground">{t('admin_phone_update_warning_desc')}</p>
                                 </div>
                                 <div className="space-y-2">
@@ -327,7 +341,7 @@ export default function SettingsPage() {
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        disabled={isSubmitting}
+                                        disabled={isSubmitting || isAuthLoading}
                                         className="pr-10"
                                       />
                                       <Button 
@@ -342,7 +356,7 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
                                 <div className="flex justify-end">
-                                    <Button type="submit" disabled={isSubmitting}>
+                                    <Button type="submit" disabled={isSubmitting || isAuthLoading}>
                                         {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
                                     </Button>
                                 </div>
