@@ -106,7 +106,7 @@ export default function AdminAcceptancePage() {
 
   const getTotalProducts = (container: Container) => {
     if (!container.products) return 0;
-    return container.products.reduce((acc, p) => acc + p.quantity, 0);
+    return container.products.length;
   }
   
   const openFullscreen = (imageUrl: string) => {
