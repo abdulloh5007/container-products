@@ -58,7 +58,7 @@ export default function SettingsPage() {
             if (docSnap.exists()) {
                 const sessionsData = (docSnap.data().sessionTokens || []) as Session[];
                 
-                const roleOrder = { 'senior': 1, 'junior': 2, 'pending': 3 };
+                const roleOrder: Record<Session['role'], number> = { 'senior': 1, 'junior': 2, 'pending': 3 };
                 sessionsData.sort((a, b) => {
                   const roleComparison = (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
                   if (roleComparison !== 0) return roleComparison;
@@ -255,17 +255,23 @@ export default function SettingsPage() {
 
     if (totalLoading && !sessions.length) {
         return (
-          <div className="max-w-4xl mx-auto space-y-8">
-            <Skeleton className="h-10 w-1/3" />
-            <Card>
-              <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
-              <CardContent className="space-y-4">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-              </CardContent>
-            </Card>
-          </div>
+            <div className="max-w-4xl mx-auto space-y-8">
+                 <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 shrink-0" />
+                    <Skeleton className="h-8 w-64" />
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6">
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
         )
     }
 
@@ -280,7 +286,6 @@ export default function SettingsPage() {
     
     const renderSessionCard = (session: Session) => {
         const isCurrentSession = session.sessionToken === user?.currentSession.sessionToken;
-        const canManage = isSenior && !isCurrentSession && session.role !== 'senior';
         const isJunior = session.role === 'junior';
 
         return (
@@ -298,14 +303,14 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {isSenior && (
+                {isSenior && !isCurrentSession && (
                     <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
                          {session.role === 'pending' ? (
                             <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                 <UserCheck className="mr-2 h-4 w-4" />
                                 <span>{t('admin_session_confirm_button')}</span>
                             </Button>
-                         ) : (isJunior && !isCurrentSession) && (
+                         ) : isJunior && (
                            <>
                                 {/* Desktop Buttons */}
                                 <div className="hidden md:flex items-center gap-2">
@@ -424,7 +429,7 @@ export default function SettingsPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                               {totalLoading ? (
-                                 Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
+                                 Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
                               ) : sessions.filter(s => s.role !== 'pending').length > 0 ? (
                                    sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
                                ) : (
@@ -441,7 +446,7 @@ export default function SettingsPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     {totalLoading ? (
-                                        <Skeleton className="h-16 w-full" />
+                                        <Skeleton className="h-20 w-full" />
                                      ) : (
                                         sessions.filter(s => s.role === 'pending').map(renderSessionCard)
                                      )}
