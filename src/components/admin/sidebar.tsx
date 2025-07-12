@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck } from 'lucide-react';
+import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -29,10 +29,11 @@ export function Sidebar() {
   const closeSheet = () => setSheetOpen(false);
 
   const navItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: 'hidden md:flex' },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: 'hidden md:flex' },
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
     { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
     { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
+    { href: '/admin/history', label: t('admin_sidebar_history'), icon: History },
   ];
 
   const handleSheetLinkClick = (href: string) => {
@@ -117,3 +118,5 @@ export function Sidebar() {
       </header>
   );
 }
+
+    

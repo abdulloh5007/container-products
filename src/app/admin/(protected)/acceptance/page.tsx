@@ -9,13 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, writeBatch, increment, query, orderBy, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, increment, query, orderBy, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle, ArrowUpRightFromSquare } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type ProductType = 'kit' | 'unit' | 'area';
 interface IncludedProduct {
@@ -48,6 +50,7 @@ export default function AdminAcceptancePage() {
   const [acceptingContainerId, setAcceptingContainerId] = useState<string | null>(null);
   const [dispatchingContainerId, setDispatchingContainerId] = useState<string | null>(null);
   const [containerToAccept, setContainerToAccept] = useState<Container | null>(null);
+  const [containerNumber, setContainerNumber] = useState('');
   const [containerToDispatch, setContainerToDispatch] = useState<Container | null>(null);
   const { view, setView } = useViewSwitcher('acceptance');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
@@ -73,9 +76,14 @@ export default function AdminAcceptancePage() {
   
   const handleAcceptContainer = async () => {
     if (!containerToAccept) return;
+    
+    if (!containerNumber.trim()) {
+        toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_history_number_required') });
+        return;
+    }
 
     if (!containerToAccept.products || containerToAccept.products.length === 0) {
-        setContainerToAccept(null);
+        closeAcceptDialog();
         return;
     }
     
@@ -84,11 +92,23 @@ export default function AdminAcceptancePage() {
     try {
         const batch = writeBatch(db);
         
+        // Update product quantities
         for (const product of containerToAccept.products) {
             const productRef = doc(db, 'products', product.id);
             batch.update(productRef, { quantity: increment(product.quantity) });
         }
         
+        // Create history record
+        const historyRef = doc(collection(db, 'acceptanceHistory'));
+        batch.set(historyRef, {
+            containerId: containerToAccept.id,
+            containerName: containerToAccept.name,
+            containerImageUrl: containerToAccept.imageUrl || '',
+            containerNumber: containerNumber.trim(),
+            acceptedAt: serverTimestamp(),
+            products: containerToAccept.products
+        });
+
         await batch.commit();
         
         toast({
@@ -101,8 +121,13 @@ export default function AdminAcceptancePage() {
         toast({ variant: 'destructive', title: t('admin_acceptance_error_title'), description: t('admin_acceptance_error_desc') });
     } finally {
         setAcceptingContainerId(null);
-        setContainerToAccept(null);
+        closeAcceptDialog();
     }
+  }
+  
+  const closeAcceptDialog = () => {
+      setContainerToAccept(null);
+      setContainerNumber('');
   }
 
   const handleDispatchContainer = async () => {
@@ -238,8 +263,8 @@ export default function AdminAcceptancePage() {
                     />
                 </TableCell>
                 <TableCell className="font-medium">{container.name}</TableCell>
-                <TableCell className="text-center w-[180px]">{getTotalProducts(container)}</TableCell>
-                <TableCell className="text-right w-[250px] space-x-2">
+                <TableCell className="text-center">{getTotalProducts(container)}</TableCell>
+                <TableCell className="text-right space-x-2 whitespace-nowrap">
                      <Button 
                         onClick={() => setContainerToDispatch(container)}
                         disabled={isActionDisabled(container)}
@@ -278,7 +303,7 @@ export default function AdminAcceptancePage() {
                         <CardDescription>{t('admin_acceptance_table_products')}: {getTotalProducts(container)}</CardDescription>
                     </CardContent>
                     <CardFooter className="flex-col gap-2">
-                         <Button 
+                        <Button 
                             onClick={() => setContainerToAccept(container)}
                             disabled={isActionDisabled(container)}
                             className="w-full"
@@ -322,7 +347,7 @@ export default function AdminAcceptancePage() {
                         <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                         <TableHead>{t('admin_acceptance_table_container')}</TableHead>
                         <TableHead className="text-center w-[180px]">{t('admin_acceptance_table_products')}</TableHead>
-                        <TableHead className="text-right w-[250px]">{t('admin_acceptance_table_actions')}</TableHead>
+                        <TableHead className="text-right w-[300px]">{t('admin_acceptance_table_actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -335,7 +360,7 @@ export default function AdminAcceptancePage() {
         renderContent()
       )}
 
-      <AlertDialog open={!!containerToAccept} onOpenChange={(open) => !open && setContainerToAccept(null)}>
+      <AlertDialog open={!!containerToAccept} onOpenChange={(open) => !open && closeAcceptDialog()}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>{t('admin_acceptance_confirm_title')}</AlertDialogTitle>
@@ -343,11 +368,21 @@ export default function AdminAcceptancePage() {
                     {t('admin_acceptance_confirm_desc', { containerName: containerToAccept?.name || '' })}
                 </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="py-4 space-y-2">
+                <Label htmlFor="container-number">{t('admin_history_container_number')}</Label>
+                <Input
+                    id="container-number"
+                    value={containerNumber}
+                    onChange={(e) => setContainerNumber(e.target.value)}
+                    placeholder={t('admin_history_container_number_placeholder')}
+                    disabled={!!acceptingContainerId}
+                />
+            </div>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setContainerToAccept(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleAcceptContainer} className={buttonVariants({ variant: "default" })}>
+                <AlertDialogCancel onClick={closeAcceptDialog}>{t('admin_cancel_button')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleAcceptContainer} className={buttonVariants({ variant: "default" })} disabled={!!acceptingContainerId}>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    {t('admin_acceptance_button')}
+                    {acceptingContainerId ? t('admin_saving_text') : t('admin_acceptance_button')}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -380,3 +415,5 @@ export default function AdminAcceptancePage() {
     </>
   );
 }
+
+    

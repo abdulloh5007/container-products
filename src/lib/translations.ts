@@ -58,6 +58,7 @@ export const translations = {
     admin_sidebar_settings: "Настройки",
     admin_sidebar_acceptance: "Приёмка",
     admin_sidebar_stock: "Склад",
+    admin_sidebar_history: "История",
     admin_containers_title: "Управление контейнерами",
     admin_containers_desc: "Просмотр, добавление и управление вашими контейнерами.",
     admin_containers_add: "Добавить контейнер",
@@ -217,7 +218,16 @@ export const translations = {
     admin_settings_tab_security: "Безопасность",
     admin_settings_tab_devices: "Устройства",
     admin_settings_profile_title: "Данные профиля",
-    admin_settings_profile_desc: "Измените ваше имя, телефон или пароль."
+    admin_settings_profile_desc: "Измените ваше имя, телефон или пароль.",
+
+    admin_history_title: "История приёмки",
+    admin_history_table_container: "Контейнер",
+    admin_history_table_number: "Номер",
+    admin_history_table_date: "Дата приёмки",
+    admin_history_container_number: "Номер контейнера",
+    admin_history_container_number_placeholder: "например, MSCU1234567",
+    admin_history_no_history: "Записей о приёмке пока нет.",
+    admin_history_number_required: "Пожалуйста, введите номер контейнера."
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -277,6 +287,7 @@ export const translations = {
     admin_sidebar_settings: "Sozlamalar",
     admin_sidebar_acceptance: "Qabul qilish",
     admin_sidebar_stock: "Ombor",
+    admin_sidebar_history: "Tarix",
     admin_containers_title: "Konteynerlarni boshqarish",
     admin_containers_desc: "Konteynerlaringizni ko'rish, qo'shish va boshqarish.",
     admin_containers_add: "Konteyner qo'shish",
@@ -436,9 +447,20 @@ export const translations = {
     admin_settings_tab_security: "Xavfsizlik",
     admin_settings_tab_devices: "Qurilmalar",
     admin_settings_profile_title: "Profil ma'lumotlari",
-    admin_settings_profile_desc: "Ismingiz, telefoningiz yoki parolingizni o'zgartiring."
+    admin_settings_profile_desc: "Ismingiz, telefoningiz yoki parolingizni o'zgartiring.",
+
+    admin_history_title: "Qabul qilish tarixi",
+    admin_history_table_container: "Konteyner",
+    admin_history_table_number: "Raqam",
+    admin_history_table_date: "Qabul qilingan sana",
+    admin_history_container_number: "Konteyner raqami",
+    admin_history_container_number_placeholder: "masalan, MSCU1234567",
+    admin_history_no_history: "Hozircha qabul qilish qaydlari yo'q.",
+    admin_history_number_required: "Iltimos, konteyner raqamini kiriting."
   },
 };
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
+
+    
