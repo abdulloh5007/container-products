@@ -53,7 +53,7 @@ export default function AdminHistoryPage() {
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
     try {
-      const q = query(collection(db, "acceptanceHistory"), orderBy("date", "desc"));
+      const q = query(collection(db, "history"), orderBy("date", "desc"));
       const querySnapshot = await getDocs(q);
       const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryItem));
       setHistory(historyData);
