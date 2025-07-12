@@ -229,7 +229,7 @@ export default function AdminAcceptancePage() {
                             <Skeleton className="h-6 w-3/4" />
                             <Skeleton className="h-4 w-1/2" />
                         </CardContent>
-                        <CardFooter className="flex flex-row gap-2">
+                        <CardFooter className="flex flex-col gap-2">
                            <Skeleton className="h-10 w-full" />
                            <Skeleton className="h-10 w-full" />
                         </CardFooter>
@@ -308,7 +308,7 @@ export default function AdminAcceptancePage() {
                         <CardTitle className="text-lg">{container.name}</CardTitle>
                         <CardDescription>{t('admin_acceptance_table_products')}: {getTotalProducts(container)}</CardDescription>
                     </CardContent>
-                    <CardFooter className="flex flex-row gap-2">
+                    <CardFooter className="flex flex-col gap-2">
                         <Button 
                             onClick={() => setContainerToDispatch(container)}
                             disabled={isActionDisabled(container)}
