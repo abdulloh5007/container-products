@@ -16,7 +16,7 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type ProductType = 'kit' | 'unit';
+type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
     id: string;
     name: string;
@@ -101,6 +101,9 @@ export default function AdminStockPage() {
         </div>
       );
     }
+     if (product.type === 'area') {
+      return <span className="font-semibold text-lg">{product.quantity.toFixed(2)} <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span></span>;
+    }
     return <span className="font-semibold text-lg">{product.quantity}</span>;
   }
   
@@ -111,6 +114,13 @@ export default function AdminStockPage() {
         <CardDescription>
             {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity}</span> {t('admin_kit_unit')}
             <span className="text-muted-foreground"> ({totalM2} {t('admin_m2_unit')})</span>
+        </CardDescription>
+      )
+    }
+    if (product.type === 'area') {
+      return (
+        <CardDescription>
+            {t('admin_product_quantity')}: <span className="text-lg font-bold text-foreground">{product.quantity.toFixed(2)}</span> {t('admin_m2_unit')}
         </CardDescription>
       )
     }
@@ -284,5 +294,3 @@ export default function AdminStockPage() {
     </>
   );
 }
-
-    

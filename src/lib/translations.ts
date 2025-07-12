@@ -67,6 +67,7 @@ export const translations = {
     admin_products_title: "Управление продуктами",
     admin_products_desc: "Просмотр, добавление и управление вашими продуктами.",
     admin_products_add: "Добавить продукт",
+    admin_products_table_number: "#",
     admin_products_table_name: "Название",
     admin_products_table_desc: "Описание",
     admin_products_table_actions: "Действия",
@@ -173,6 +174,7 @@ export const translations = {
     admin_product_save_type: "Тип сохранения",
     admin_product_save_type_unit: "Только количество",
     admin_product_save_type_kit: "Комплект + М²",
+    admin_product_save_type_area: "Только м²",
     admin_kit_unit: "комплект",
     admin_m2_per_kit: "м² в комплекте",
     admin_m2_unit: "м²"
@@ -244,6 +246,7 @@ export const translations = {
     admin_products_title: "Mahsulotlarni boshqarish",
     admin_products_desc: "Mahsulotlaringizni ko'rish, qo'shish va boshqarish.",
     admin_products_add: "Mahsulot qo'shish",
+    admin_products_table_number: "#",
     admin_products_table_name: "Nomi",
     admin_products_table_desc: "Tavsifi",
     admin_products_table_actions: "Harakatlar",
@@ -350,6 +353,7 @@ export const translations = {
     admin_product_save_type: "Saqlash turi",
     admin_product_save_type_unit: "Faqat miqdor",
     admin_product_save_type_kit: "Komplekt + M²",
+    admin_product_save_type_area: "Faqat m²",
     admin_kit_unit: "komplekt",
     admin_m2_per_kit: "m² komplektda",
     admin_m2_unit: "m²"
@@ -358,5 +362,3 @@ export const translations = {
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
-
-    

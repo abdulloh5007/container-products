@@ -17,7 +17,7 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
-type ProductType = 'kit' | 'unit';
+type ProductType = 'kit' | 'unit' | 'area';
 interface IncludedProduct {
   id: string;
   quantity: number;
@@ -81,10 +81,10 @@ export default function AdminAcceptancePage() {
     try {
         const batch = writeBatch(db);
         
-        containerToAccept.products.forEach(product => {
+        for (const product of containerToAccept.products) {
             const productRef = doc(db, 'products', product.id);
             batch.update(productRef, { quantity: increment(product.quantity) });
-        });
+        }
         
         await batch.commit();
         
@@ -298,5 +298,3 @@ export default function AdminAcceptancePage() {
     </>
   );
 }
-
-    

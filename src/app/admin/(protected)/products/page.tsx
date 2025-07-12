@@ -20,7 +20,7 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-type ProductType = 'kit' | 'unit';
+type ProductType = 'kit' | 'unit' | 'area';
 
 interface Product {
     id: string; // Firestore document ID
@@ -51,7 +51,7 @@ export default function AdminProductsPage() {
 
   const [newProductName, setNewProductName] = useState('');
   const [productType, setProductType] = useState<ProductType>('unit');
-  const [newProductQuantity, setNewProductQuantity] = useState<number | ''>('');
+  const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
 
 
@@ -98,7 +98,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (productToEdit) {
       setNewProductName(productToEdit.name);
-      setNewProductQuantity(productToEdit.quantity ?? '');
+      setNewProductQuantity(productToEdit.quantity?.toString() ?? '');
       setProductType(productToEdit.type || 'unit');
       setM2PerKit(productToEdit.m2PerKit?.toString() ?? '');
     } else {
@@ -106,10 +106,10 @@ export default function AdminProductsPage() {
     }
   }, [productToEdit]);
   
-  const handleM2PerKitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNumericInputChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setM2PerKit(value);
+      setter(value);
     }
   };
 
@@ -194,6 +194,9 @@ export default function AdminProductsPage() {
     if (product.type === 'kit') {
       return `${product.quantity} ${t('admin_kit_unit')} (${(product.quantity * (product.m2PerKit || 0)).toFixed(2)} ${t('admin_m2_unit')})`
     }
+    if (product.type === 'area') {
+        return `${product.quantity} ${t('admin_m2_unit')}`
+    }
     return product.quantity;
   }
 
@@ -202,6 +205,7 @@ export default function AdminProductsPage() {
         return view === 'table' ? (
             Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={index}>
+                    <TableCell><Skeleton className="h-6 w-8" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell className="text-right space-x-2">
@@ -233,7 +237,7 @@ export default function AdminProductsPage() {
     if (filteredProducts.length === 0) {
         return view === 'table' ? (
             <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
+                <TableCell colSpan={4} className="h-24 text-center">{t('admin_product_no_products')}</TableCell>
             </TableRow>
         ) : (
              <div className="col-span-full text-center py-12">
@@ -243,8 +247,9 @@ export default function AdminProductsPage() {
     }
     
     if (view === 'table') {
-        return filteredProducts.map((product) => (
+        return filteredProducts.map((product, index) => (
             <TableRow key={product.id}>
+                <TableCell className="font-medium w-[50px]">{index + 1}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell className="w-[200px]">{renderProductQuantity(product)}</TableCell>
                 <TableCell className="text-right w-[120px] space-x-2">
@@ -325,6 +330,7 @@ export default function AdminProductsPage() {
                 <Table className="min-w-[640px]">
                     <TableHeader>
                     <TableRow>
+                        <TableHead className="w-[50px]">{t('admin_products_table_number')}</TableHead>
                         <TableHead>{t('admin_products_table_name')}</TableHead>
                         <TableHead className="w-[200px]">{t('admin_product_quantity')}</TableHead>
                         <TableHead className="text-right w-[120px]">{t('admin_products_table_actions')}</TableHead>
@@ -362,6 +368,10 @@ export default function AdminProductsPage() {
                         <RadioGroupItem value="kit" id="type-kit" />
                         <Label htmlFor="type-kit">{t('admin_product_save_type_kit')}</Label>
                     </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="area" id="type-area" />
+                        <Label htmlFor="type-area">{t('admin_product_save_type_area')}</Label>
+                    </div>
                 </RadioGroup>
             </div>
             
@@ -377,7 +387,7 @@ export default function AdminProductsPage() {
                             id="m2-per-kit" 
                             type="text"
                             value={m2PerKit} 
-                            onChange={handleM2PerKitChange} 
+                            onChange={handleNumericInputChange(setM2PerKit)} 
                             disabled={isSubmitting}
                             placeholder="e.g. 2.5"
                          />
@@ -386,16 +396,18 @@ export default function AdminProductsPage() {
             )}
             
              <div className="space-y-2">
-                  <Label htmlFor="initial-quantity">{t('admin_product_quantity')}</Label>
-                  <Input 
-                    id="initial-quantity" 
-                    type="number" 
-                    min="0" 
-                    value={newProductQuantity} 
-                    onChange={(e) => setNewProductQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
-                    disabled={isSubmitting} 
-                    placeholder="e.g. 10"
-                  />
+                <Label htmlFor="initial-quantity">
+                  {productType === 'area' ? t('admin_m2_unit') : t('admin_product_quantity')}
+                </Label>
+                <Input 
+                  id="initial-quantity" 
+                  type="text" 
+                  min="0" 
+                  value={newProductQuantity} 
+                  onChange={handleNumericInputChange(setNewProductQuantity)}
+                  disabled={isSubmitting} 
+                  placeholder={productType === 'area' ? "e.g. 24.55" : "e.g. 10"}
+                />
             </div>
 
           </div>
@@ -428,5 +440,3 @@ export default function AdminProductsPage() {
     </>
   );
 }
-
-    

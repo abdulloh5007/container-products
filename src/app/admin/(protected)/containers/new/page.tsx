@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
-type ProductType = 'kit' | 'unit';
+type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
   id: string;
   name: string;
@@ -200,8 +200,12 @@ export default function NewContainerPage() {
     setIncludedProducts(prev => prev.filter(p => p.id !== productId));
   };
   
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
+  const updateQuantity = (productId: string, newQuantityStr: string) => {
+    const newQuantity = parseFloat(newQuantityStr);
+    if (isNaN(newQuantity) || newQuantity < 0) {
+        return; 
+    }
+     if (newQuantity === 0) {
         removeProduct(productId);
         return;
     }
@@ -254,22 +258,42 @@ export default function NewContainerPage() {
   );
   
   const renderProductQuantity = (product: IncludedProduct) => {
+    const isArea = product.type === 'area';
+    const isInt = Number.isInteger(product.quantity);
+
+    if (isArea) {
+      return (
+          <div className="flex items-center justify-center gap-1">
+              <Input 
+                  type="number" 
+                  value={product.quantity} 
+                  onChange={(e) => updateQuantity(product.id, e.target.value)} 
+                  className="w-24 h-8 text-center" 
+                  min="0"
+                  step="0.01"
+              />
+              <span className="text-sm text-muted-foreground">{t('admin_m2_unit')}</span>
+          </div>
+      );
+    }
+
     if (product.type === 'kit') {
       const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
       return (
         <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1">
-                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity - 1))}>
                     <Minus className="h-3 w-3" />
                 </Button>
                 <Input 
                     type="number" 
                     value={product.quantity} 
-                    onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
+                    onChange={(e) => updateQuantity(product.id, e.target.value)} 
                     className="w-14 h-8 text-center" 
                     min="1"
+                    step="1"
                 />
-                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
+                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity + 1))}>
                     <Plus className="h-3 w-3" />
                 </Button>
             </div>
@@ -277,19 +301,22 @@ export default function NewContainerPage() {
         </div>
       );
     }
+    
+    // Type 'unit'
     return (
         <div className="flex items-center justify-center gap-1">
-            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity - 1)}>
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity - 1))}>
                 <Minus className="h-3 w-3" />
             </Button>
             <Input 
                 type="number" 
                 value={product.quantity} 
-                onChange={(e) => updateQuantity(product.id, parseInt(e.target.value, 10) || 1)} 
+                onChange={(e) => updateQuantity(product.id, e.target.value)} 
                 className="w-14 h-8 text-center" 
                 min="1"
+                step="1"
             />
-            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, product.quantity + 1)}>
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(product.quantity + 1))}>
                 <Plus className="h-3 w-3" />
             </Button>
         </div>
@@ -414,7 +441,7 @@ export default function NewContainerPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>{t('admin_products_table_name')}</TableHead>
-                                <TableHead className="w-[150px] text-center">{t('admin_product_quantity')}</TableHead>
+                                <TableHead className="w-[180px] text-center">{t('admin_product_quantity')}</TableHead>
                                 <TableHead className="text-right w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -463,5 +490,3 @@ export default function NewContainerPage() {
     </>
   );
 }
-
-    
