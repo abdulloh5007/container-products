@@ -135,7 +135,7 @@ function MultiImageUploader({
                     className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"
                 >
                     <AnimatePresence>
-                        {items.map((item) => (
+                        {items.map((item, index) => (
                              <Reorder.Item
                                 key={item.id}
                                 value={item}
@@ -185,8 +185,8 @@ export default function AdminProductsPage() {
 
   const [newProductName, setNewProductName] = useState('');
   const [productType, setProductType] = useState<ProductType>('unit');
-  const [newProductQuantity, setNewProductQuantity] = useState(1);
-  const [m2PerKit, setM2PerKit] = useState(1);
+  const [newProductQuantity, setNewProductQuantity] = useState<number | ''>('');
+  const [m2PerKit, setM2PerKit] = useState<number | ''>('');
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
 
 
@@ -218,8 +218,8 @@ export default function AdminProductsPage() {
   const resetForm = () => {
       setNewProductName('');
       setProductType('unit');
-      setNewProductQuantity(1);
-      setM2PerKit(1);
+      setNewProductQuantity('');
+      setM2PerKit('');
       setProductToEdit(null);
       setImageItems([]);
   }
@@ -234,9 +234,9 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (productToEdit) {
       setNewProductName(productToEdit.name);
-      setNewProductQuantity(productToEdit.quantity);
+      setNewProductQuantity(productToEdit.quantity ?? '');
       setProductType(productToEdit.type || 'unit');
-      setM2PerKit(productToEdit.m2PerKit || 1);
+      setM2PerKit(productToEdit.m2PerKit ?? '');
       const items: ImageItem[] = (productToEdit.imageUrls || []).map((url, index) => ({
           id: `url-${index}-${productToEdit.id}`,
           type: 'url',
@@ -248,6 +248,14 @@ export default function AdminProductsPage() {
       resetForm();
     }
   }, [productToEdit]);
+  
+  const handleM2PerKitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string, a number, or a number with up to two decimal places
+    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+      setM2PerKit(value === '' ? '' : value);
+    }
+  };
 
   const handleSaveProduct = async () => {
     if (!newProductName) {
@@ -271,8 +279,8 @@ export default function AdminProductsPage() {
             name: newProductName,
             imageUrls: finalImageUrls,
             type: productType,
-            quantity: productType === 'kit' ? newProductQuantity : newProductQuantity,
-            m2PerKit: productType === 'kit' ? m2PerKit : 0,
+            quantity: Number(newProductQuantity) || 0,
+            m2PerKit: productType === 'kit' ? (Number(m2PerKit) || 0) : 0,
         };
 
         if (productToEdit) {
@@ -574,19 +582,42 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="m2-per-kit">{t('admin_m2_per_kit')}</Label>
-                        <Input id="m2-per-kit" type="number" min="0" value={m2PerKit} onChange={(e) => setM2PerKit(parseFloat(e.target.value) || 0)} disabled={isSubmitting} />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                      <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
+                        <Input 
+                            id="m2-per-kit" 
+                            type="number" 
+                            value={m2PerKit} 
+                            onChange={handleM2PerKitChange} 
+                            disabled={isSubmitting}
+                            placeholder="e.g. 2.5"
+                         />
                     </div>
                 </div>
             ) : (
                 <div className="space-y-2">
                   <Label htmlFor="quantity">{t('admin_product_quantity')}</Label>
-                  <Input id="quantity" type="number" min="0" value={newProductQuantity} onChange={(e) => setNewProductQuantity(parseInt(e.target.value, 10) || 0)} disabled={isSubmitting} />
+                  <Input 
+                    id="quantity" 
+                    type="number" 
+                    min="0" 
+                    value={newProductQuantity} 
+                    onChange={(e) => setNewProductQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
+                    disabled={isSubmitting} 
+                    placeholder="e.g. 10"
+                  />
                 </div>
             )}
+             <div className="space-y-2">
+                  <Label htmlFor="initial-quantity">{t('admin_product_quantity')}</Label>
+                  <Input 
+                    id="initial-quantity" 
+                    type="number" 
+                    min="0" 
+                    value={newProductQuantity} 
+                    onChange={(e) => setNewProductQuantity(e.target.value === '' ? '' : parseInt(e.target.value, 10))} 
+                    disabled={isSubmitting || productType === 'kit'} 
+                    placeholder="e.g. 10"
+                  />
+            </div>
 
             <div className="space-y-2">
                 <Label>{t('admin_product_image')}</Label>
@@ -632,5 +663,3 @@ export default function AdminProductsPage() {
     </>
   );
 }
-
-    
