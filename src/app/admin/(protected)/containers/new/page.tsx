@@ -30,7 +30,7 @@ interface Product {
 interface IncludedProduct {
   id: string;
   name: string;
-  quantity: number;
+  quantity: number | string; // Allow string for input control
   type: ProductType;
   m2PerKit?: number;
 }
@@ -191,12 +191,11 @@ export default function NewContainerPage() {
       const existing = prev.find(p => p.id === product.id);
       if (existing) {
           if (product.type !== 'area') {
-            return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p);
+            return prev.map(p => p.id === product.id ? { ...p, quantity: Number(p.quantity) + 1 } : p);
           }
           return prev; // Do not increment area products on re-add
       }
-      const initialQuantity = product.type === 'area' ? 0 : 1;
-      return [...prev, { id: product.id, name: product.name, quantity: initialQuantity, type: product.type, m2PerKit: product.m2PerKit }];
+      return [...prev, { id: product.id, name: product.name, quantity: 0, type: product.type, m2PerKit: product.m2PerKit }];
     });
   };
 
@@ -209,22 +208,31 @@ export default function NewContainerPage() {
     if (!product) return;
 
     if (product.type === 'area') {
-      // Correctly handle decimal input
-      if (newQuantityStr === '' || /^\d*\.?\d{0,2}$/.test(newQuantityStr)) {
-          setIncludedProducts(prev => prev.map(p => 
-            p.id === productId 
-              ? { ...p, quantity: newQuantityStr } // Keep as string for input value
-              : p
-          ));
+      const sanitizedValue = newQuantityStr.replace(/[^0-9.]/g, '');
+      const parts = sanitizedValue.split('.');
+      if (parts.length > 2) { // More than one dot
+        return;
       }
+      if (parts[1] && parts[1].length > 2) { // More than 2 decimal places
+        return;
+      }
+
+      setIncludedProducts(prev => prev.map(p => 
+        p.id === productId 
+          ? { ...p, quantity: sanitizedValue }
+          : p
+      ));
     } else { // 'kit' or 'unit'
       const newQuantity = parseInt(newQuantityStr, 10);
       if (isNaN(newQuantity) || newQuantity < 0) {
-        return; // Do nothing for invalid input like 'e', '-', etc.
+        if (newQuantityStr === '') { // Allow clearing the input
+          setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: '' } : p));
+        }
+        return;
       }
       if (newQuantity === 0) {
-        removeProduct(productId);
-        return;
+         setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: 0 } : p));
+         return;
       }
       setIncludedProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
     }
@@ -279,7 +287,6 @@ export default function NewContainerPage() {
   
   const renderProductQuantity = (product: IncludedProduct) => {
     if (product.type === 'area') {
-      // Show empty string if quantity is 0, otherwise show the number
       const displayValue = product.quantity === 0 ? '' : String(product.quantity);
       return (
           <div className="flex items-center justify-center gap-1">
@@ -287,7 +294,7 @@ export default function NewContainerPage() {
                   type="text" 
                   value={displayValue}
                   onChange={(e) => updateQuantity(product.id, e.target.value)}
-                  onBlur={(e) => { // Final conversion to number on blur
+                  onBlur={(e) => {
                       const numericValue = parseFloat(e.target.value) || 0;
                       setIncludedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: numericValue } : p));
                   }}
@@ -299,8 +306,10 @@ export default function NewContainerPage() {
       );
     }
 
+    const displayValue = product.quantity === 0 ? '' : String(product.quantity);
+
     if (product.type === 'kit') {
-      const totalM2 = (product.quantity * (product.m2PerKit || 0)).toFixed(2);
+      const totalM2 = (Number(product.quantity) * (product.m2PerKit || 0)).toFixed(2);
       return (
         <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1">
@@ -309,11 +318,16 @@ export default function NewContainerPage() {
                 </Button>
                 <Input 
                     type="number" 
-                    value={product.quantity} 
+                    value={displayValue} 
                     onChange={(e) => updateQuantity(product.id, e.target.value)} 
+                    onBlur={(e) => {
+                      const numericValue = parseInt(e.target.value) || 0;
+                      setIncludedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: numericValue } : p));
+                    }}
                     className="w-14 h-8 text-center" 
-                    min="1"
+                    min="0"
                     step="1"
+                    placeholder='0'
                 />
                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) + 1))}>
                     <Plus className="h-3 w-3" />
@@ -332,11 +346,16 @@ export default function NewContainerPage() {
             </Button>
             <Input 
                 type="number" 
-                value={product.quantity} 
+                value={displayValue} 
                 onChange={(e) => updateQuantity(product.id, e.target.value)} 
+                onBlur={(e) => {
+                      const numericValue = parseInt(e.target.value) || 0;
+                      setIncludedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: numericValue } : p));
+                }}
                 className="w-14 h-8 text-center" 
-                min="1"
+                min="0"
                 step="1"
+                placeholder='0'
             />
             <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(product.id, String(Number(product.quantity) + 1))}>
                 <Plus className="h-3 w-3" />
@@ -512,5 +531,3 @@ export default function NewContainerPage() {
     </>
   );
 }
-
-    
