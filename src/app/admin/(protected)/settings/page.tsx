@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff, MoreHorizontal } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
-import { ru, enUS } from 'date-fns/locale';
+import { ru, uz } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -45,7 +45,7 @@ export default function SettingsPage() {
 
 
     const isSenior = user?.currentSession.role === 'senior';
-    const dateLocale = language === 'ru' ? ru : enUS;
+    const dateLocale = language === 'uz' ? uz : ru;
 
     useEffect(() => {
         if (!user?.phone) return;
