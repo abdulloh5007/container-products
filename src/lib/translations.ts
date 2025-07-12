@@ -230,7 +230,15 @@ export const translations = {
     admin_history_container_number: "Номер контейнера (необязательно)",
     admin_history_container_number_placeholder: "напр. MSCU1234567 (или оставьте пустым)",
     admin_history_no_history: "Записей пока нет.",
-    admin_history_number_required: "Пожалуйста, введите номер контейнера."
+    admin_history_number_required: "Пожалуйста, введите номер контейнера.",
+    
+    admin_settings_management_mode_title: "Режим Управления",
+    admin_settings_management_mode_desc: "Включает или отключает доступ к разделам Продукты и Контейнеры.",
+    admin_settings_management_mode_label: "Режим Управления",
+    admin_settings_management_mode_status_on: "Включен. Разделы Продукты и Контейнеры видны.",
+    admin_settings_management_mode_status_off: "Выключен. Разделы Продукты и Контейнеры скрыты.",
+    admin_settings_management_mode_on_desc: "Режим управления включен.",
+    admin_settings_management_mode_off_desc: "Режим управления выключен."
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -462,7 +470,15 @@ export const translations = {
     admin_history_container_number: "Konteyner raqami (ixtiyoriy)",
     admin_history_container_number_placeholder: "masalan, MSCU1234567 (yoki bo'sh qoldiring)",
     admin_history_no_history: "Hozircha yozuvlar yo'q.",
-    admin_history_number_required: "Iltimos, konteyner raqamini kiriting."
+    admin_history_number_required: "Iltimos, konteyner raqamini kiriting.",
+    
+    admin_settings_management_mode_title: "Boshqaruv Rejimi",
+    admin_settings_management_mode_desc: "Mahsulotlar va Konteynerlar bo'limlariga kirishni yoqadi yoki o'chiradi.",
+    admin_settings_management_mode_label: "Boshqaruv Rejimi",
+    admin_settings_management_mode_status_on: "Yoqilgan. Mahsulotlar va Konteynerlar bo'limlari ko'rinadi.",
+    admin_settings_management_mode_status_off: "O'chirilgan. Mahsulotlar va Konteynerlar bo'limlari yashiringan.",
+    admin_settings_management_mode_on_desc: "Boshqaruv rejimi yoqildi.",
+    admin_settings_management_mode_off_desc: "Boshqaruv rejimi o'chirildi."
   },
 };
 

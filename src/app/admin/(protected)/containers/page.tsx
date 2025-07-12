@@ -17,6 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 interface IncludedProduct {
   id: string;
@@ -38,11 +40,19 @@ interface FullscreenState {
 export default function AdminContainersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const router = useRouter();
+  const { isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
+
+  useEffect(() => {
+      if (!isAuthLoading && !isManagementModeEnabled) {
+          router.replace('/admin/acceptance');
+      }
+  }, [isAuthLoading, isManagementModeEnabled, router]);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -60,8 +70,10 @@ export default function AdminContainersPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    fetchContainers();
-  }, [fetchContainers]);
+    if (isManagementModeEnabled) {
+      fetchContainers();
+    }
+  }, [fetchContainers, isManagementModeEnabled]);
 
   const handleDelete = async () => {
     if (!containerToDelete) return;
@@ -92,7 +104,7 @@ export default function AdminContainersPage() {
   };
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading || isAuthLoading) {
         return view === 'table' ? (
              Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={index}>
@@ -124,6 +136,10 @@ export default function AdminContainersPage() {
                 ))}
             </div>
         )
+    }
+
+    if (!isManagementModeEnabled) {
+        return null; // Redirect is handling this
     }
 
     if (containers.length === 0) {
@@ -198,6 +214,10 @@ export default function AdminContainersPage() {
             ))}
         </div>
     )
+  }
+
+  if (!isManagementModeEnabled && !isAuthLoading) {
+    return null; // Render nothing while redirecting
   }
 
   return (

@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +20,7 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useAuth } from '@/contexts/auth-context';
 
 type ProductType = 'kit' | 'unit' | 'area';
 
@@ -39,6 +41,8 @@ const cardVariants = {
 export default function AdminProductsPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const router = useRouter();
+  const { isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +57,12 @@ export default function AdminProductsPage() {
   const [productType, setProductType] = useState<ProductType>('unit');
   const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
+
+  useEffect(() => {
+      if (!isAuthLoading && !isManagementModeEnabled) {
+          router.replace('/admin/acceptance');
+      }
+  }, [isAuthLoading, isManagementModeEnabled, router]);
 
 
   const fetchProducts = useCallback(async () => {
@@ -71,8 +81,10 @@ export default function AdminProductsPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    if (isManagementModeEnabled) {
+      fetchProducts();
+    }
+  }, [fetchProducts, isManagementModeEnabled]);
   
   const filteredProducts = useMemo(() => {
     const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
@@ -217,7 +229,7 @@ export default function AdminProductsPage() {
   }
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading || isAuthLoading) {
         return view === 'table' ? (
             Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={index}>
@@ -248,6 +260,10 @@ export default function AdminProductsPage() {
                 ))}
             </div>
         )
+    }
+
+    if (!isManagementModeEnabled) {
+        return null;
     }
 
     if (filteredProducts.length === 0) {
@@ -314,6 +330,10 @@ export default function AdminProductsPage() {
             </AnimatePresence>
         </div>
     )
+  }
+
+  if (!isManagementModeEnabled && !isAuthLoading) {
+    return null; // Render nothing while redirecting
   }
 
   return (

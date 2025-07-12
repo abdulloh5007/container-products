@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout, pendingRequests } = useAuth();
+  const { logout, pendingRequests, isManagementModeEnabled, user } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
 
@@ -28,13 +28,24 @@ export function Sidebar() {
   
   const closeSheet = () => setSheetOpen(false);
 
-  const navItems = [
+  const baseNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
-    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
-    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
-    { href: '/admin/history', label: t('admin_sidebar_history'), icon: History },
   ];
+  
+  const managementNavItems = [
+      { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
+      { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
+  ]
+  
+  const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
+
+  const allNavItems = [...baseNavItems];
+  if (isManagementModeEnabled) {
+      allNavItems.push(...managementNavItems);
+  }
+  allNavItems.push(historyNavItem);
+
 
   const handleSheetLinkClick = (href: string) => {
     router.push(href);
@@ -96,7 +107,7 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {renderNavGrid(navItems)}
+                   {renderNavGrid(allNavItems)}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
@@ -118,5 +129,3 @@ export function Sidebar() {
       </header>
   );
 }
-
-    

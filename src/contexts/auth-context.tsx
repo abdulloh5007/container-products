@@ -3,7 +3,7 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, setDoc, getDocs, collection } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, setDoc, getDocs, collection, onSnapshot } from 'firebase/firestore';
 
 export interface Session {
     role: 'senior' | 'junior' | 'pending';
@@ -30,7 +30,10 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   pendingRequests: number;
+  isManagementModeEnabled: boolean;
+  isLoadingSettings: boolean;
   setPendingRequests: (count: number) => void;
+  toggleManagementMode: () => Promise<void>;
   login: (phone: string, password:string) => Promise<LoginResult>;
   logout: () => void;
   updateUser: (data: Partial<AppUser>) => void;
@@ -59,6 +62,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [isManagementModeEnabled, setIsManagementModeEnabled] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    const settingsDocRef = doc(db, 'settings', 'global');
+    const unsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setIsManagementModeEnabled(!!docSnap.data().isManagementModeEnabled);
+        } else {
+            // Default to enabled if not set
+            setIsManagementModeEnabled(true);
+        }
+        setIsLoadingSettings(false);
+    }, (error) => {
+        console.error("Error fetching settings:", error);
+        setIsManagementModeEnabled(true); // Default on error
+        setIsLoadingSettings(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -249,6 +273,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUser({ Name: data.Name, phone: data.phone, password: data.password });
   };
 
+  const toggleManagementMode = async () => {
+    const settingsDocRef = doc(db, 'settings', 'global');
+    try {
+        await updateDoc(settingsDocRef, {
+            isManagementModeEnabled: !isManagementModeEnabled
+        });
+    } catch (error) {
+        // If doc doesn't exist, create it
+        if ((error as any).code === 'not-found') {
+            await setDoc(settingsDocRef, {
+                isManagementModeEnabled: !isManagementModeEnabled
+            });
+        } else {
+            console.error("Failed to toggle management mode", error);
+            throw error;
+        }
+    }
+  }
+
 
   const value = useMemo(() => ({
     user,
@@ -261,7 +304,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     pendingRequests,
     setPendingRequests,
     manuallySetUser,
-  }), [user, isLoading, pendingRequests]);
+    isManagementModeEnabled,
+    isLoadingSettings,
+    toggleManagementMode,
+  }), [user, isLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff, MoreHorizontal, Settings2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 interface AlertDialogState {
   type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
@@ -29,12 +31,13 @@ interface AlertDialogState {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user, logout, isLoading: isAuthLoading, updateUserProfile, setPendingRequests } = useAuth();
+    const { user, logout, isLoading: isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings } = useAuth();
     const router = useRouter();
     
     const [sessions, setSessions] = useState<Session[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
 
     // Security tab state
@@ -114,6 +117,21 @@ export default function SettingsPage() {
         setIsSubmitting(false);
       }
     };
+    
+    const handleToggleManagementMode = async () => {
+        setIsUpdatingMode(true);
+        try {
+            await toggleManagementMode();
+            toast({
+                title: t('admin_settings_management_mode_title'),
+                description: !isManagementModeEnabled ? t('admin_settings_management_mode_on_desc') : t('admin_settings_management_mode_off_desc')
+            })
+        } catch (error) {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
+        } finally {
+            setIsUpdatingMode(false);
+        }
+    }
 
 
     const handleConfirmAccess = async (sessionToConfirm: Session) => {
@@ -420,6 +438,36 @@ export default function SettingsPage() {
                                 </form>
                             </CardContent>
                         </Card>
+                         {isSenior && (
+                            <Card className="mt-8">
+                                <CardHeader>
+                                    <CardTitle>{t('admin_settings_management_mode_title')}</CardTitle>
+                                    <CardDescription>{t('admin_settings_management_mode_desc')}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center space-x-4 rounded-lg border p-4">
+                                        <Settings2 className="h-6 w-6" />
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm font-medium leading-none">
+                                                {t('admin_settings_management_mode_label')}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
+                                            </p>
+                                        </div>
+                                        {isLoadingSettings || isUpdatingMode ? (
+                                            <Skeleton className="h-6 w-11 rounded-full" />
+                                        ) : (
+                                            <Switch
+                                                checked={isManagementModeEnabled}
+                                                onCheckedChange={handleToggleManagementMode}
+                                                aria-label="Toggle management mode"
+                                            />
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </TabsContent>
                     <TabsContent value="devices">
                         <Card>
