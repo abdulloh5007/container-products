@@ -271,8 +271,19 @@ export const translations = {
     admin_account_delete_confirm_title: "Вы уверены, что хотите удалить аккаунт?",
     admin_account_delete_confirm_desc: "Все ваши данные, включая сессии и настройки, будут удалены навсегда. Это действие нельзя отменить.",
     admin_account_delete_success_title: "Аккаунт удален",
-    admin_account_delete_success_desc: "Ваш аккаунт был успешно удален."
+    admin_account_delete_success_desc: "Ваш аккаунт был успешно удален.",
+    
+    admin_settings_password_min_chars: "Минимум 6 символов",
+    admin_password_update_success_title: "Пароль обновлен",
+    admin_password_update_success_desc: "Все остальные сеансы были завершены. Пожалуйста, войдите снова на других устройствах.",
 
+    'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
+    'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
+    'firebase_error_auth_email-already-in-use': "Этот email уже используется другим аккаунтом.",
+    'firebase_error_auth_weak-password': "Пароль слишком слабый. Используйте не менее 6 символов.",
+    'firebase_error_auth_requires-recent-login': "Эта операция требует недавней аутентификации. Пожалуйста, выйдите из системы и войдите снова.",
+    'firebase_error_auth_operation-not-allowed': "Эта операция не разрешена. Обратитесь в поддержку.",
+    'firebase_error_unknown': "Произошла неизвестная ошибка. Пожалуйста, попробуйте позже."
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -550,7 +561,19 @@ export const translations = {
     admin_account_delete_confirm_title: "Hisobni o'chirishni xohlaysizmi?",
     admin_account_delete_confirm_desc: "Barcha ma'lumotlaringiz, jumladan, sessiyalar va sozlamalar butunlay o'chiriladi. Bu amalni bekor qilib bo'lmaydi.",
     admin_account_delete_success_title: "Hisob o'chirildi",
-    admin_account_delete_success_desc: "Sizning hisobingiz muvaffaqiyatli o'chirildi."
+    admin_account_delete_success_desc: "Sizning hisobingiz muvaffaqiyatli o'chirildi.",
+
+    admin_settings_password_min_chars: "Kamida 6 ta belgi",
+    admin_password_update_success_title: "Parol yangilandi",
+    admin_password_update_success_desc: "Boshqa barcha seanslar tugatildi. Iltimos, boshqa qurilmalarda qayta kiring.",
+
+    'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
+    'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",
+    'firebase_error_auth_email-already-in-use': "Ushbu email boshqa hisob tomonidan ishlatilmoqda.",
+    'firebase_error_auth_weak-password': "Parol juda oddiy. Kamida 6 ta belgidan foydalaning.",
+    'firebase_error_auth_requires-recent-login': "Ushbu operatsiya yaqinda tasdiqlashni talab qiladi. Iltimos, tizimdan chiqib, qayta kiring.",
+    'firebase_error_auth_operation-not-allowed': "Ushbu operatsiyaga ruxsat berilmagan. Yordam xizmatiga murojaat qiling.",
+    'firebase_error_unknown': "Noma'lum xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
   },
 };
 

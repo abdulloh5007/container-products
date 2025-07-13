@@ -40,7 +40,7 @@ export default function RegisterPage() {
       toast({
         variant: 'destructive',
         title: t('admin_register_failure_title'),
-        description: (error as Error).message || t('admin_register_failure_desc'),
+        description: (error as Error).message,
       });
     } finally {
       setIsSubmitting(false);
@@ -101,6 +101,7 @@ export default function RegisterPage() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                 <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
             </div>
             <Button
                 type="submit"
@@ -121,5 +122,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-    

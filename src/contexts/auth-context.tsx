@@ -3,9 +3,10 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser, updateEmail } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import UAParser from 'ua-parser-js';
+import { translations } from '@/lib/translations';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
 
@@ -41,12 +42,14 @@ type AuthContextType = {
   logout: () => void;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
+  updateUserEmail: (email: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
   approveSession: (session: Session) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   makeSenior: (session: Session) => Promise<void>;
   deleteUserAccount: () => Promise<void>;
+  translateFirebaseError: (errorCode: string) => string;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,8 +72,8 @@ const getDeviceName = (): string => {
         if (result.device.vendor && result.device.model) {
             return `${result.device.vendor} ${result.device.model} (${os})`;
         }
-        if (result.device.vendor) {
-            return `${result.device.vendor} (${os})`;
+        if (result.device.type) {
+             return `${result.device.type} (${os})`;
         }
         
         return `${browser} on ${os}`;
@@ -89,13 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [loginState, setLoginState] = useState<LoginState>('form');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [language, setLanguage] = useState<keyof typeof translations>('ru');
+
 
   useEffect(() => {
     const storedSessionId = localStorage.getItem('sessionId');
     if (storedSessionId) {
         setCurrentSessionId(storedSessionId);
     }
+    const storedLang = localStorage.getItem('language');
+    if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
+        setLanguage(storedLang);
+    }
   }, []);
+
+  const translateFirebaseError = useCallback((errorCode: string): string => {
+        const errorKey = `firebase_error_${errorCode.replace(/[^a-z0-9-]/g, '_')}` as keyof typeof translations.ru;
+        const fallbackKey = 'firebase_error_unknown' as keyof typeof translations.ru;
+        return translations[language][errorKey] || translations[language][fallbackKey];
+  }, [language]);
 
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'global');
@@ -169,9 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const login = async (email: string, password: string) => {
     setLoginState('form');
-    await signInWithEmailAndPassword(auth, email, password);
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch(error: any) {
+        throw new Error(translateFirebaseError(error.code));
+    }
     const firebaseUser = auth.currentUser;
-    if (!firebaseUser) throw new Error("Authentication failed.");
+    if (!firebaseUser) throw new Error(translateFirebaseError('auth/user-not-found'));
 
     const userDocRef = doc(db, "users", firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
@@ -179,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!userDocSnap.exists()) {
         setLoginState('no_account');
         await signOut(auth);
-        throw new Error("No account found with this email.");
+        throw new Error(translateFirebaseError('auth/user-not-found'));
     }
     
     const existingSessions = userDocSnap.data().sessions || [];
@@ -217,28 +236,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const firebaseUser = userCredential.user;
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
 
-    const newSessionId = generateSessionId();
-    const newSession: Session = {
-        id: newSessionId,
-        deviceName: getDeviceName(),
-        role: isThereAnySenior ? 'pending' : 'senior',
-        createdAt: Timestamp.now()
+        const newSessionId = generateSessionId();
+        const newSession: Session = {
+            id: newSessionId,
+            deviceName: getDeviceName(),
+            role: isThereAnySenior ? 'pending' : 'senior',
+            createdAt: Timestamp.now()
+        }
+
+        const newUser: Omit<AppUser, 'currentSession'> = {
+           uid: firebaseUser.uid,
+           name: name,
+           email: firebaseUser.email,
+           sessions: [newSession]
+        };
+        
+        await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+        
+        localStorage.setItem('sessionId', newSessionId);
+        setCurrentSessionId(newSessionId);
+
+    } catch(error: any) {
+        throw new Error(translateFirebaseError(error.code));
     }
-
-    const newUser: Omit<AppUser, 'currentSession'> = {
-       uid: firebaseUser.uid,
-       name: name,
-       email: firebaseUser.email,
-       sessions: [newSession]
-    };
-    
-    await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-    
-    localStorage.setItem('sessionId', newSessionId);
-    setCurrentSessionId(newSessionId);
   };
   
   const logout = async () => {
@@ -248,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentSession = user.currentSession;
     let newSessions = user.sessions.filter(s => s.id !== currentSession.id);
 
-    if (currentSession.role === 'senior' && newSessions.some(s => s.role === 'junior')) {
+    if (currentSession.role === 'senior' && !newSessions.some(s => s.role === 'senior')) {
         const juniorSessions = newSessions
             .filter(s => s.role === 'junior')
             .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()); // Oldest junior gets promoted
@@ -281,24 +305,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUserPassword = async (newPassword: string) => {
     const firebaseUser = auth.currentUser;
-    if (!firebaseUser) {
-        throw new Error("User not authenticated.");
+    if (!firebaseUser || !user?.currentSession) {
+        throw new Error(translateFirebaseError('auth/user-not-found'));
     }
     try {
         await updatePassword(firebaseUser, newPassword);
+        
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        await updateDoc(userDocRef, {
+            sessions: [user.currentSession] // Keep only the current senior session
+        });
+
     } catch (error: any) {
-        console.error("Password update error:", error);
-        if (error.code === 'auth/requires-recent-login') {
-            throw new Error("This operation is sensitive and requires recent authentication. Please log out and log back in to update your password.");
-        }
-        throw new Error("Failed to update password.");
+        throw new Error(translateFirebaseError(error.code));
+    }
+  };
+  
+  const updateUserEmail = async (newEmail: string) => {
+    const firebaseUser = auth.currentUser;
+     if (!firebaseUser || !user?.currentSession) {
+        throw new Error(translateFirebaseError('auth/user-not-found'));
+    }
+     try {
+        await updateEmail(firebaseUser, newEmail);
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        await updateDoc(userDocRef, { email: newEmail });
+    } catch (error: any) {
+        throw new Error(translateFirebaseError(error.code));
     }
   };
   
   const deleteUserAccount = async () => {
       const firebaseUser = auth.currentUser;
       if (!firebaseUser || !user || user.currentSession?.role !== 'senior') {
-          throw new Error("Only senior users can delete accounts.");
+          throw new Error(translateFirebaseError('auth/operation-not-allowed'));
       }
 
       try {
@@ -311,11 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setLoginState('form');
       } catch (error: any) {
-          console.error("Account deletion error:", error);
-          if (error.code === 'auth/requires-recent-login') {
-              throw new Error("This operation is sensitive. Please log out and log back in to delete your account.");
-          }
-          throw new Error("Failed to delete account.");
+          throw new Error(translateFirebaseError(error.code));
       }
   };
 
@@ -380,6 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     updateUserPassword,
+    updateUserEmail,
     deleteUserAccount,
     pendingRequests,
     setPendingRequests,
@@ -390,7 +427,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     approveSession,
     deleteSession,
     makeSenior,
-  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState]);
+    translateFirebaseError,
+  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -33,7 +33,7 @@ const getDeviceIcon = (deviceName: string) => {
     if (!deviceName) return <Monitor className="h-6 w-6 text-muted-foreground" />;
     
     const lowerDeviceName = deviceName.toLowerCase();
-    const mobileKeywords = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy', 'pixel', 'redmi', 'oneplus', 'ios'];
+    const mobileKeywords = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy', 'pixel', 'redmi', 'oneplus', 'ios', 'phone'];
     const isMobile = mobileKeywords.some(keyword => lowerDeviceName.includes(keyword));
 
     if (isMobile) {
@@ -45,7 +45,7 @@ const getDeviceIcon = (deviceName: string) => {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount, updateUserEmail } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,8 +56,8 @@ export default function SettingsPage() {
     // Profile tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
 
     const isSenior = currentUser?.currentSession?.role === 'senior';
     const dateLocale = language === 'uz' ? uz : ru;
@@ -73,6 +73,7 @@ export default function SettingsPage() {
         if (!isAuthLoading && currentUser) {
             setName(currentUser.name || '');
             setPhone(formatPhoneNumber(currentUser.phone || ''));
+            setEmail(currentUser.email || '');
         }
     }, [currentUser, isAuthLoading]);
     
@@ -83,16 +84,20 @@ export default function SettingsPage() {
       setIsSubmitting(true);
       try {
         await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
+        
+        if (isSenior && email && email !== currentUser.email) {
+            await updateUserEmail(email);
+        }
 
         if (isSenior && password) {
-          if (password !== confirmPassword) {
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
+          if (password.length < 6) {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('firebase_error_auth_weak-password') });
             setIsSubmitting(false);
             return;
           }
           await updateUserPassword(password);
           setPassword('');
-          setConfirmPassword('');
+          toast({ title: t('admin_password_update_success_title'), description: t('admin_password_update_success_desc') });
         }
 
         toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
@@ -356,6 +361,17 @@ export default function SettingsPage() {
                                      {isSenior && (
                                       <>
                                         <div className="space-y-2">
+                                          <Label htmlFor="email">{t('admin_email')}</Label>
+                                          <Input 
+                                            id="email" 
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            disabled={isSubmitting || isAuthLoading} 
+                                            placeholder="example@gmail.com"
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
                                           <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
                                           <div className="relative">
                                             <Input 
@@ -375,26 +391,7 @@ export default function SettingsPage() {
                                               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                             </button>
                                           </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                          <Label htmlFor="confirm-password">{t('admin_settings_confirm_password')}</Label>
-                                           <div className="relative">
-                                            <Input 
-                                              id="confirm-password" 
-                                              type={showPassword ? 'text' : 'password'} 
-                                              value={confirmPassword}
-                                              onChange={(e) => setConfirmPassword(e.target.value)}
-                                              disabled={isSubmitting || isAuthLoading || !password} 
-                                              className="pr-10"
-                                            />
-                                             <button
-                                              type="button"
-                                              onClick={() => setShowPassword(!showPassword)}
-                                              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                                            >
-                                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                            </button>
-                                          </div>
+                                          <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
                                         </div>
                                       </>
                                     )}

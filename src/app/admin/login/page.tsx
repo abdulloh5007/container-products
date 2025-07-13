@@ -44,8 +44,8 @@ function NoAccountAlert() {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isAuthLoading, loginState, user } = useAuth();
-  const { toast } = useLanguage();
+  const { login, isAuthenticated, isAuthLoading, loginState, user, translateFirebaseError } = useAuth();
+  const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,15 +66,11 @@ export default function LoginPage() {
       await login(email, password);
     } catch (error) {
       console.error(error);
-      if ((error as Error).message.includes("No account found")) {
-        // The context already set the state, so we just catch to prevent unhandled promise rejection.
-      } else {
-        toast({
-            variant: 'destructive',
-            title: t('admin_login_failure_title'),
-            description: (error as Error).message || t('admin_login_failure_desc'),
-        });
-      }
+      toast({
+          variant: 'destructive',
+          title: t('admin_login_failure_title'),
+          description: (error as Error).message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -165,5 +161,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
