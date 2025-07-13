@@ -1,61 +1,45 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow public read for products, as they are displayed on the main page.
+    // --- Default Security: Deny all access unless specified below ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Public Access Rules ---
+    // Anyone can read product information for the public-facing pages.
     match /products/{productId} {
       allow read: if true;
+      // Only authenticated users can modify products (from the admin panel).
       allow write: if request.auth != null;
     }
     
-    // Allow authenticated users to manage containers and history logs.
-    match /containers/{docId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    match /history/{docId} {
-        allow read, write: if request.auth != null;
-    }
-
-    // Rules for user documents.
+    // --- Authenticated User Rules ---
+    // An authenticated user can manage their OWN user document completely.
+    // This allows them to update their profile, add sessions on login,
+    // and remove sessions on logout. This is the key rule that fixes the permission errors.
     match /users/{userId} {
-      // Allow listing users to check if registration should be enabled.
+      allow read, update, delete: if request.auth.uid == userId;
+      // Anyone can check if users exist (for registration purposes).
       allow list: if true;
+      // An authenticated user can create their own user document during registration.
+      allow create: if request.auth.uid == userId;
+    }
 
-      // Allow a user to read their own document.
-      allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow a user to update their own profile data (name, phone, etc.),
-      // but NOT the sessions array.
-      allow update: if request.auth != null 
-                    && request.auth.uid == userId
-                    && !('sessions' in request.resource.data);
-
-      // Allow a user to update ONLY the sessions array of their own document.
-      // This is crucial for logging out, approving sessions, etc.
-      allow update: if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.data.keys().hasOnly(['sessions'])
-                    && request.resource.data.sessions is list;
-
-      // Allow creation during the registration process.
-      allow create: if request.auth != null;
-
-      // Allow a user to delete their own account.
-      allow delete: if request.auth != null && request.auth.uid == userId;
+    // Only authenticated users can access these collections from the admin panel.
+    match /containers/{containerId} {
+        allow read, write: if request.auth != null;
     }
     
-    // Allow any authenticated user to read/write global settings.
-    // App-level logic restricts write access to senior users.
+    match /history/{historyId} {
+        allow read, write: if request.auth != null;
+    }
+
+    // Only authenticated users can manage global settings.
     match /settings/global {
       allow read, write: if request.auth != null;
-    }
-
-    // By default, deny all other reads and writes.
-    match /{document=**} {
-      allow read, write: if false;
     }
   }
 }

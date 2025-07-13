@@ -8,6 +8,8 @@ import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, q
 import UAParser from 'ua-parser-js';
 import Cookies from 'js-cookie';
 import { translations } from '@/lib/translations';
+import { useRouter } from 'next/navigation';
+
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
 
@@ -96,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginState, setLoginState] = useState<LoginState>('form');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
-
+  const router = useRouter()
 
   useEffect(() => {
     const lsSessionId = localStorage.getItem('sessionId');
@@ -303,50 +305,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const firebaseUser = auth.currentUser;
     const localSessionId = currentSessionId;
-    if (!firebaseUser || !user || !localSessionId) {
-      // If something is wrong, just perform a local logout
-      await forceLocalLogout();
-      return;
-    }
-
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-
+    
     try {
-      const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists()) {
-        const sessionList = (docSnap.data().sessions || []) as Session[];
-        const loggingOutSession = sessionList.find(s => s.id === localSessionId);
-
-        if (loggingOutSession) {
-          let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
-
-          if (loggingOutSession.role === 'senior' && !updatedSessions.some(s => s.role === 'senior')) {
-            const juniorSessions = updatedSessions
-              .filter(s => s.role === 'junior')
-              .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-
-            if (juniorSessions.length > 0) {
-              const nextSeniorId = juniorSessions[0].id;
-              updatedSessions = updatedSessions.map(s =>
-                s.id === nextSeniorId ? { ...s, role: 'senior' } : s
-              );
+      if (firebaseUser && user && localSessionId) {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const docSnap = await getDoc(userDocRef);
+  
+        if (docSnap.exists()) {
+          const sessionList = (docSnap.data().sessions || []) as Session[];
+          const loggingOutSession = sessionList.find(s => s.id === localSessionId);
+  
+          if (loggingOutSession) {
+            let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
+  
+            if (loggingOutSession.role === 'senior' && !updatedSessions.some(s => s.role === 'senior')) {
+              const juniorSessions = updatedSessions
+                .filter(s => s.role === 'junior')
+                .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+  
+              if (juniorSessions.length > 0) {
+                const nextSeniorId = juniorSessions[0].id;
+                updatedSessions = updatedSessions.map(s =>
+                  s.id === nextSeniorId ? { ...s, role: 'senior' } : s
+                );
+              }
             }
+  
+            await updateDoc(userDocRef, { sessions: updatedSessions });
           }
-          await updateDoc(userDocRef, { sessions: updatedSessions });
         }
       }
     } catch (error) {
-      console.error("Error updating sessions on logout:", error);
-      // Even if Firestore update fails, proceed to log the user out locally
+      console.error("Firestore update error during logout:", error);
     } finally {
-      // This part now happens AFTER database operations.
       await signOut(auth);
       localStorage.removeItem('sessionId');
       Cookies.remove('sessionId');
       setCurrentSessionId(null);
       setUser(null);
+      router.push('/admin/login'); // ✅ Добавь это обязательно!
     }
-  };
+  };  
 
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
