@@ -283,7 +283,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
+                <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
                     <div className="flex-shrink-0 self-start sm:self-center">{renderRoleIcon(role)}</div>
                      {isSenior && !isCurrentSession && (
                         <>
