@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type HistoryType = 'acceptance' | 'dispatch';
 
@@ -27,14 +28,14 @@ interface HistoryItem {
   type: HistoryType;
 }
 
-const TypeBadge = ({ type, t }: { type: HistoryType, t: (key: any) => string }) => {
+const TypeBadge = ({ type, t, className }: { type: HistoryType, t: (key: any) => string, className?: string }) => {
     const isAcceptance = type === 'acceptance';
     const Icon = isAcceptance ? ArrowDownCircle : ArrowUpCircle;
     const text = isAcceptance ? t('admin_history_type_accepted') : t('admin_history_type_dispatched');
     const variant = isAcceptance ? 'default' : 'secondary';
     
     return (
-        <Badge variant={variant} className="flex items-center gap-1.5 whitespace-nowrap">
+        <Badge variant={variant} className={cn("flex items-center gap-1.5 whitespace-nowrap", className)}>
             <Icon className="h-3.5 w-3.5" />
             <span>{text}</span>
         </Badge>
@@ -83,14 +84,14 @@ export default function AdminHistoryPage() {
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, index) => (
-                    <Card key={index} className="flex flex-col">
-                        <CardHeader className="pb-4 flex-grow">
-                             <Skeleton className="h-6 w-3/4" />
-                             <Skeleton className="h-4 w-1/2 mt-1" />
+                     <Card key={index} className="flex flex-col justify-between">
+                        <CardHeader>
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-1/2 mt-1" />
+                            <Skeleton className="h-4 w-1/3 mt-2" />
                         </CardHeader>
-                        <CardFooter className="pt-2 flex justify-between items-center">
-                            <Skeleton className="h-4 w-1/3" />
-                            <Skeleton className="h-7 w-24" />
+                        <CardFooter className="p-0">
+                            <Skeleton className="h-9 w-full rounded-t-none" />
                         </CardFooter>
                     </Card>
                 ))}
@@ -124,19 +125,21 @@ export default function AdminHistoryPage() {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {history.map((item) => (
-                <Card key={item.id} className="flex flex-col">
-                    <CardHeader className="flex-grow pb-4">
+                <Card key={item.id} className="flex flex-col justify-between overflow-hidden">
+                    <div className="p-6">
                         <CardTitle className="text-lg">{item.containerName}</CardTitle>
-                        <CardDescription>
+                        <CardDescription className="mt-1">
                             {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
                         </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="pt-2 flex justify-between items-center w-full">
-                         <p className="text-xs text-muted-foreground">
+                         <p className="text-xs text-muted-foreground mt-2">
                             {item.date ? format(item.date.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
                          </p>
-                         <TypeBadge type={item.type || 'acceptance'} t={t} />
-                    </CardFooter>
+                    </div>
+                     <TypeBadge 
+                        type={item.type || 'acceptance'} 
+                        t={t} 
+                        className="w-full justify-center rounded-none rounded-b-lg h-9 text-sm" 
+                    />
                 </Card>
             ))}
         </div>
