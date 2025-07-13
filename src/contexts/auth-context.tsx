@@ -99,15 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    // Redundant session ID retrieval
     const lsSessionId = localStorage.getItem('sessionId');
     const cookieSessionId = Cookies.get('sessionId');
     let sessionId = lsSessionId || cookieSessionId || null;
 
     if (sessionId) {
-      // Sync stores if one is missing
       if (!lsSessionId) localStorage.setItem('sessionId', sessionId);
-      if (!cookieSessionId) Cookies.set('sessionId', sessionId);
+      if (!cookieSessionId) Cookies.set('sessionId', sessionId, { expires: 365 });
       setCurrentSessionId(sessionId);
     }
 
@@ -124,9 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [language]);
   
   const forceLocalLogout = useCallback(async (denied: boolean = false) => {
-    if (auth.currentUser) {
-        await signOut(auth);
-    }
+    await signOut(auth);
     localStorage.removeItem('sessionId');
     Cookies.remove('sessionId');
     setCurrentSessionId(null);
@@ -193,12 +189,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     } else {
                        if (localSessionId) {
                            forceLocalLogout(true);
+                        } else {
+                           setIsAuthLoading(false);
                         }
                     }
                 } else {
                    forceLocalLogout();
                 }
-                setIsAuthLoading(false);
+                if(isAuthLoading) setIsAuthLoading(false);
             });
             return () => unsubscribeUser();
 
@@ -213,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubscribeAuth();
         unsubscribeSettings();
     }
-  }, [currentSessionId, forceLocalLogout]);
+  }, [currentSessionId, forceLocalLogout, isAuthLoading]);
   
   const login = async (email: string, password: string) => {
     setLoginState('form');
@@ -252,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     localStorage.setItem('sessionId', newSessionId);
-    Cookies.set('sessionId', newSessionId);
+    Cookies.set('sessionId', newSessionId, { expires: 365 });
     setCurrentSessionId(newSessionId);
     
     if (newSession.role === 'pending') {
@@ -304,64 +302,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const logout = async () => {
     const firebaseUser = auth.currentUser;
-    const localUser = user;
     const localSessionId = currentSessionId;
-
-    if (!firebaseUser || !localUser || !localSessionId) return;
+    if (!firebaseUser || !user || !localSessionId) {
+      // If something is wrong, just perform a local logout
+      await forceLocalLogout();
+      return;
+    }
 
     const userDocRef = doc(db, 'users', firebaseUser.uid);
 
     try {
-        const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) {
-            await signOut(auth);
-            localStorage.removeItem('sessionId');
-            Cookies.remove('sessionId');
-            setCurrentSessionId(null);
-            setUser(null);
-            return;
-        };
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists()) {
+        const sessionList = (docSnap.data().sessions || []) as Session[];
+        const loggingOutSession = sessionList.find(s => s.id === localSessionId);
 
-        const sessionList = docSnap.data().sessions || [];
-        const loggingOutSession = sessionList.find((s: Session) => s.id === localSessionId);
+        if (loggingOutSession) {
+          let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
 
-        if (!loggingOutSession) {
-            await signOut(auth);
-            localStorage.removeItem('sessionId');
-            Cookies.remove('sessionId');
-            setCurrentSessionId(null);
-            setUser(null);
-            return;
-        };
-
-        // Filter out the session that is logging out
-        let updatedSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
-
-        // If the logging out user was a senior, and no other seniors are left, promote the oldest junior
-        if (loggingOutSession.role === 'senior' && !updatedSessions.some((s: Session) => s.role === 'senior')) {
+          if (loggingOutSession.role === 'senior' && !updatedSessions.some(s => s.role === 'senior')) {
             const juniorSessions = updatedSessions
-                .filter((s: Session) => s.role === 'junior')
-                .sort((a: Session, b: Session) => a.createdAt.toMillis() - b.createdAt.toMillis());
+              .filter(s => s.role === 'junior')
+              .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
             if (juniorSessions.length > 0) {
-                const nextSeniorId = juniorSessions[0].id;
-                updatedSessions = updatedSessions.map((s: Session) =>
-                    s.id === nextSeniorId ? { ...s, role: 'senior' } : s
-                );
+              const nextSeniorId = juniorSessions[0].id;
+              updatedSessions = updatedSessions.map(s =>
+                s.id === nextSeniorId ? { ...s, role: 'senior' } : s
+              );
             }
+          }
+          await updateDoc(userDocRef, { sessions: updatedSessions });
         }
-        
-        // Update the document with the new sessions array
-        await updateDoc(userDocRef, { sessions: updatedSessions });
-
+      }
     } catch (error) {
-        console.error("Error updating sessions on logout:", error);
+      console.error("Error updating sessions on logout:", error);
+      // Even if Firestore update fails, proceed to log the user out locally
     } finally {
-        await signOut(auth);
-        localStorage.removeItem('sessionId');
-        Cookies.remove('sessionId');
-        setCurrentSessionId(null);
-        setUser(null);
+      // This part now happens AFTER database operations.
+      await signOut(auth);
+      localStorage.removeItem('sessionId');
+      Cookies.remove('sessionId');
+      setCurrentSessionId(null);
+      setUser(null);
     }
   };
 
@@ -487,7 +470,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteSession,
     makeSenior,
     translateFirebaseError,
-  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, setPendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, setLoginState, approveSession, deleteSession, makeSenior, translateFirebaseError]);
+  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, approveSession, deleteSession, makeSenior, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>
