@@ -5,6 +5,7 @@ import { createContext, useState, ReactNode, useContext, useMemo, useEffect, use
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch } from 'firebase/firestore';
+import UAParser from 'ua-parser-js';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
 
@@ -53,26 +54,27 @@ const generateSessionId = () => {
 }
 
 const getDeviceName = (): string => {
-    if (typeof window === 'undefined') return 'Unknown';
-
-    const ua = navigator.userAgent;
-    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
-        return "Tablet";
+    if (typeof window === 'undefined') {
+        return 'Unknown Server';
     }
-    if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
-        return "Mobile";
+    try {
+        const parser = new UAParser();
+        const result = parser.getResult();
+        
+        const browser = result.browser.name || 'Browser';
+        const os = result.os.name ? `${result.os.name} ${result.os.version || ''}`.trim() : 'OS';
+        
+        if (result.device.vendor) {
+            return `${result.device.vendor} ${result.device.model || ''} (${os})`;
+        }
+        
+        return `${browser} on ${os}`;
+    } catch (error) {
+        console.error("Error parsing user agent:", error);
+        return "Web Browser";
     }
-     if (/(Macintosh|MacIntel|MacPPC|Mac_PowerPC)/.test(ua)) {
-        return "Mac Device";
-    }
-    if (/(Windows|Win32|Win64|WOW64)/.test(ua)) {
-        return "Windows Device";
-    }
-    if (/(Linux)/.test(ua)) {
-        return "Linux Device";
-    }
-    return "Web Browser";
 }
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
