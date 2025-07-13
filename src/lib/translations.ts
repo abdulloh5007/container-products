@@ -43,14 +43,14 @@ export const translations = {
 
     admin_title: "Панель администратора",
     admin_login_title: "Вход в панель администратора",
-    admin_login_subtitle: "Для доступа используйте аккаунт Google.",
+    admin_login_subtitle: "Для доступа используйте ваш email и пароль.",
     admin_login_google_button: "Войти через Google",
     admin_email: "Email",
     admin_password: "Пароль",
     admin_login_button: "Войти",
     admin_login_submitting: "Вход...",
     admin_login_failure_title: "Ошибка входа",
-    admin_login_failure_desc: "Не удалось войти. Пожалуйста, попробуйте еще раз.",
+    admin_login_failure_desc: "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     admin_login_failure_invalid_phone: "Неверный формат номера телефона.",
     admin_logout: "Выйти",
     admin_sidebar_dashboard: "Панель",
@@ -239,7 +239,20 @@ export const translations = {
     admin_settings_management_mode_status_on: "Включен. Разделы Продукты и Контейнеры видны.",
     admin_settings_management_mode_status_off: "Выключен. Разделы Продукты и Контейнеры скрыты.",
     admin_settings_management_mode_on_desc: "Режим управления включен.",
-    admin_settings_management_mode_off_desc: "Режим управления выключен."
+    admin_settings_management_mode_off_desc: "Режим управления выключен.",
+
+    admin_register_title: "Регистрация администратора",
+    admin_register_subtitle: "Создайте аккаунт для доступа к панели.",
+    admin_register_button: "Зарегистрироваться",
+    admin_register_submitting: "Регистрация...",
+    admin_register_success_title: "Регистрация успешна",
+    admin_register_success_desc: "Теперь вы можете войти в систему.",
+    admin_register_failure_title: "Ошибка регистрации",
+    admin_register_failure_desc: "Не удалось создать аккаунт. Возможно, пользователь с таким email уже существует.",
+    admin_register_prompt: "Нет аккаунта?",
+    admin_register_link: "Зарегистрироваться",
+    admin_login_prompt: "Уже есть аккаунт?",
+    admin_login_link: "Войти"
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -284,14 +297,14 @@ export const translations = {
     
     admin_title: "Administrator paneli",
     admin_login_title: "Administrator paneliga kirish",
-    admin_login_subtitle: "Kirish uchun Google hisobingizdan foydalaning.",
+    admin_login_subtitle: "Kirish uchun email va parolingizdan foydalaning.",
     admin_login_google_button: "Google orqali kirish",
     admin_email: "Email",
     admin_password: "Parol",
     admin_login_button: "Kirish",
     admin_login_submitting: "Kirilmoqda...",
     admin_login_failure_title: "Kirishda xatolik",
-    admin_login_failure_desc: "Kirish amalga oshmadi. Iltimos, qayta urinib ko'ring.",
+    admin_login_failure_desc: "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     admin_login_failure_invalid_phone: "Telefon raqami formati noto'g'ri.",
     admin_logout: "Chiqish",
     admin_sidebar_dashboard: "Boshqaruv paneli",
@@ -480,7 +493,20 @@ export const translations = {
     admin_settings_management_mode_status_on: "Yoqilgan. Mahsulotlar va Konteynerlar bo'limlari ko'rinadi.",
     admin_settings_management_mode_status_off: "O'chirilgan. Mahsulotlar va Konteynerlar bo'limlari yashiringan.",
     admin_settings_management_mode_on_desc: "Boshqaruv rejimi yoqildi.",
-    admin_settings_management_mode_off_desc: "Boshqaruv rejimi o'chirildi."
+    admin_settings_management_mode_off_desc: "Boshqaruv rejimi o'chirildi.",
+    
+    admin_register_title: "Administratorni ro'yxatdan o'tkazish",
+    admin_register_subtitle: "Panelga kirish uchun hisob yarating.",
+    admin_register_button: "Ro'yxatdan o'tish",
+    admin_register_submitting: "Ro'yxatdan o'tilmoqda...",
+    admin_register_success_title: "Muvaffaqiyatli ro'yxatdan o'tildi",
+    admin_register_success_desc: "Endi tizimga kirishingiz mumkin.",
+    admin_register_failure_title: "Ro'yxatdan o'tishda xatolik",
+    admin_register_failure_desc: "Hisob yaratib bo'lmadi. Bunday email bilan foydalanuvchi allaqachon mavjud bo'lishi mumkin.",
+    admin_register_prompt: "Hisobingiz yo'qmi?",
+    admin_register_link: "Ro'yxatdan o'tish",
+    admin_login_prompt: "Hisobingiz bormi?",
+    admin_login_link: "Kirish"
   },
 };
 

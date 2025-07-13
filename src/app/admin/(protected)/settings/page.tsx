@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, Session, AppUser } from '@/contexts/auth-context';
+import { useAuth, AppUser, SessionRole } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -13,8 +13,6 @@ import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
-import { ru, uz } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -28,7 +26,7 @@ interface AlertDialogState {
 }
 
 export default function SettingsPage() {
-    const { t, language } = useLanguage();
+    const { t } = useLanguage();
     const { toast } = useToast();
     const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings } = useAuth();
     const router = useRouter();
@@ -44,31 +42,25 @@ export default function SettingsPage() {
     const [phone, setPhone] = useState('');
 
     const isSenior = currentUser?.role === 'senior';
-    const dateLocale = language === 'uz' ? uz : ru;
 
     useEffect(() => {
         setIsLoading(true);
-        const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
-            if (docSnap.exists()) {
-                const userData = (docSnap.data().users || []) as AppUser[];
-                
-                const roleOrder: Record<Session['role'], number> = { 'senior': 1, 'junior': 2, 'pending': 3 };
-                userData.sort((a, b) => {
-                  const roleA = a.role || 'pending';
-                  const roleB = b.role || 'pending';
-                  const roleComparison = (roleOrder[roleA]) - (roleOrder[roleB]);
-                  if (roleComparison !== 0) return roleComparison;
-                  return (a.name || '').localeCompare(b.name || '');
-                });
-                
-                setUsers(userData);
-                const pending = userData.filter(u => u.role === 'pending');
-                setPendingRequests(pending.length);
-            } else {
-                setUsers([]);
-                setPendingRequests(0);
-            }
-             setIsLoading(false);
+        const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+            const userData = snapshot.docs.map(doc => doc.data() as AppUser);
+            
+            const roleOrder: Record<SessionRole, number> = { 'senior': 1, 'junior': 2, 'pending': 3 };
+            userData.sort((a, b) => {
+                const roleA = a.role || 'pending';
+                const roleB = b.role || 'pending';
+                const roleComparison = (roleOrder[roleA]) - (roleOrder[roleB]);
+                if (roleComparison !== 0) return roleComparison;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            setUsers(userData);
+            const pending = userData.filter(u => u.role === 'pending');
+            setPendingRequests(pending.length);
+            setIsLoading(false);
         }, (error) => {
             console.error("Error listening to users:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
@@ -118,14 +110,10 @@ export default function SettingsPage() {
 
     const handleConfirmAccess = async (userToConfirm: AppUser) => {
         setIsSubmitting(true);
-        const settingsDocRef = doc(db, 'settings', 'global');
+        const userDocRef = doc(db, 'users', userToConfirm.uid);
         
         try {
-            const updatedUsers = users.map(u => 
-                u.uid === userToConfirm.uid ? { ...u, role: 'junior' as const } : u
-            );
-            
-            await updateDoc(settingsDocRef, { users: updatedUsers });
+            await updateDoc(userDocRef, { role: 'junior' });
             
             toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: userToConfirm.name || 'user' }) });
         } catch (error) {
@@ -138,30 +126,25 @@ export default function SettingsPage() {
     };
 
     const handleMakeSenior = async (userToPromote: AppUser) => {
+        if (!currentUser) return;
         setIsSubmitting(true);
-        const settingsDocRef = doc(db, 'settings', 'global');
         
         try {
-            let selfDemoted = false;
+            const batch = writeBatch(db);
+            const userToPromoteRef = doc(db, 'users', userToPromote.uid);
+            batch.update(userToPromoteRef, { role: 'senior' });
+
+            const currentSeniorRef = doc(db, 'users', currentUser.uid);
+            batch.update(currentSeniorRef, { role: 'junior' });
             
-            const updatedUsers = users.map(u => {
-                if (u.uid === userToPromote.uid) {
-                    return { ...u, role: 'senior' as const };
-                }
-                if (u.role === 'senior') {
-                    if (u.uid === currentUser?.uid) selfDemoted = true;
-                    return { ...u, role: 'junior' as const };
-                }
-                return u;
-            });
-            
-            await updateDoc(settingsDocRef, { users: updatedUsers });
+            await batch.commit();
             
             toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: userToPromote.name || 'user' }) });
 
-            if (selfDemoted) {
-                logout();
-            }
+            // Since the current user is no longer senior, we log them out.
+            // They will need to log back in to get their new 'junior' role.
+            logout();
+
         } catch (error) {
             console.error("Error making senior:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_promote_error_desc') });
@@ -172,25 +155,16 @@ export default function SettingsPage() {
     };
 
     const handleDeleteUser = async (userToDelete: AppUser) => {
-        setIsSubmitting(true);
-        const settingsDocRef = doc(db, 'settings', 'global');
-        
-        try {
-            const updatedUsers = users.filter(u => u.uid !== userToDelete.uid);
-            await updateDoc(settingsDocRef, { users: updatedUsers });
-
-            toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: userToDelete.name || 'user' }) });
-            
-            if (userToDelete.uid === currentUser?.uid) {
-                logout();
-            }
-        } catch (error) {
-            console.error("Error deleting user:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_delete_error_desc') });
-        } finally {
-            setIsSubmitting(false);
-            setAlertDialogState(null);
-        }
+        // This is a complex operation and should be handled by a Cloud Function
+        // to delete the user from both Firestore and Firebase Auth.
+        // For now, we will just show a toast message.
+        console.warn("User deletion should be handled by a backend function for security.");
+        toast({
+            variant: "destructive",
+            title: "Operation not implemented",
+            description: "User deletion must be done from a secure backend environment."
+        })
+        setAlertDialogState(null);
     };
     
     const renderAlertDialog = () => {
@@ -264,7 +238,7 @@ export default function SettingsPage() {
         )
     }
 
-    const renderRoleIcon = (role?: Session['role']) => {
+    const renderRoleIcon = (role?: SessionRole) => {
         switch (role) {
             case 'senior': return <Crown className="h-5 w-5 text-amber-500" />;
             case 'junior': return <User className="h-5 w-5 text-blue-500" />;
@@ -280,7 +254,7 @@ export default function SettingsPage() {
             <div key={user.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
                      <Avatar>
-                        <AvatarImage src={user.photoURL} alt={user.name} />
+                        <AvatarImage src={user.photoURL ?? undefined} alt={user.name ?? ''} />
                         <AvatarFallback>{getInitials(user.name || '')}</AvatarFallback>
                     </Avatar>
                     <div>
@@ -340,7 +314,7 @@ export default function SettingsPage() {
                 <Tabs defaultValue="profile" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="profile">{t('admin_settings_tab_profile')}</TabsTrigger>
-                        <TabsTrigger value="users">{t('admin_settings_tab_users')}</TabsTrigger>
+                        {isSenior && <TabsTrigger value="users">{t('admin_settings_tab_users')}</TabsTrigger>}
                     </TabsList>
                     <TabsContent value="profile">
                         <Card>
@@ -439,4 +413,3 @@ export default function SettingsPage() {
       </>
     );
 }
-

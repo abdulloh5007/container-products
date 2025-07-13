@@ -2,45 +2,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth, Session } from '@/contexts/auth-context';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container, Hourglass } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FcGoogle } from 'react-icons/fc';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithGoogle, isAuthenticated, isAuthLoading, loginState, listenForApproval, user } = useAuth();
+  const searchParams = useSearchParams();
+  const { login, isAuthenticated, isAuthLoading, loginState } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
-      router.replace('/admin/acceptance');
+      const redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
+      router.replace(redirectTo);
     }
-  }, [isAuthenticated, isAuthLoading, router]);
+  }, [isAuthenticated, isAuthLoading, router, searchParams]);
 
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    if (loginState === 'pending' && user?.currentSession) {
-      unsubscribe = listenForApproval(user.uid, user.currentSession);
-    }
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [loginState, user, listenForApproval]);
-
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     try {
-      await signInWithGoogle();
+      await login(email, password);
       // On success, the useEffect for isAuthenticated will handle the redirect.
     } catch (error) {
       console.error(error);
@@ -55,7 +50,6 @@ export default function LoginPage() {
   };
 
   if (isAuthLoading || isAuthenticated) {
-    // Show a blank page or a spinner while loading or redirecting
     return <div className="flex min-h-screen items-center justify-center bg-background" />;
   }
 
@@ -79,17 +73,43 @@ export default function LoginPage() {
               </AlertDescription>
             </Alert>
           ) : (
-            <div className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
+               <div className="space-y-2">
+                 <Label htmlFor="email">{t('admin_email')}</Label>
+                 <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label htmlFor="password">{t('admin_password')}</Label>
+                 <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                 />
+               </div>
               <Button
-                onClick={handleGoogleLogin}
+                type="submit"
                 className="w-full"
                 disabled={isSubmitting}
-                variant="outline"
               >
-                <FcGoogle className="mr-2 h-5 w-5" />
-                {isSubmitting ? t('admin_login_submitting') : t('admin_login_google_button')}
+                {isSubmitting ? t('admin_login_submitting') : t('admin_login_button')}
               </Button>
-            </div>
+              <p className="text-center text-sm text-muted-foreground">
+                {t('admin_register_prompt')}{' '}
+                <Link href="/admin/register" className="underline hover:text-primary">
+                    {t('admin_register_link')}
+                </Link>
+              </p>
+            </form>
           )}
         </CardContent>
       </Card>

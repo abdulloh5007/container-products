@@ -3,26 +3,18 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
 
-export interface Session {
-    role: SessionRole;
-    sessionToken: string;
-    deviceName: string;
-    date: string;
-}
-
 export interface AppUser {
     uid: string;
-    role?: SessionRole;
+    role: SessionRole;
     name?: string | null;
     email?: string | null;
     phone?: string | null;
     photoURL?: string | null;
-    currentSession?: Session; // Kept for potential compatibility, but role is now top-level
 }
 
 export type LoginState = 'form' | 'pending' | 'failed';
@@ -37,10 +29,10 @@ type AuthContextType = {
   loginState: LoginState;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
-  listenForApproval: (uid: string, session: Session) => () => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,54 +45,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [loginState, setLoginState] = useState<LoginState>('form');
 
-  // Listen for global settings like management mode
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'global');
     const unsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
         if (docSnap.exists()) {
             setIsManagementModeEnabled(!!docSnap.data().isManagementModeEnabled);
+            const users = (docSnap.data().users || []) as AppUser[];
+            const pending = users.filter(u => u.role === 'pending');
+            setPendingRequests(pending.length);
         } else {
             setIsManagementModeEnabled(true);
+            setPendingRequests(0);
         }
         setIsLoadingSettings(false);
     }, () => {
         setIsManagementModeEnabled(true);
         setIsLoadingSettings(false);
+        setPendingRequests(0);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        let userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data() as AppUser;
-          if (userData.role === 'pending') {
-            setUser(userData);
-            setLoginState('pending');
-          } else {
-            setUser(userData);
-            setLoginState('form');
-          }
-        } else {
-          // This case should ideally be handled by signInWithGoogle,
-          // but as a fallback, we can treat them as pending.
+        if (!userDocSnap.exists()) {
+          // This case handles users that exist in Auth but not in Firestore.
+          // This can happen if registration was interrupted.
+          // We create a document for them. We assume 'pending' role as a safe default.
           const newUser: AppUser = {
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName,
-              email: firebaseUser.email,
-              photoURL: firebaseUser.photoURL,
-              role: 'pending',
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'New User',
+            email: firebaseUser.email,
+            role: 'pending',
           };
           await setDoc(userDocRef, newUser);
-          setUser(newUser);
-          setLoginState('pending');
+          userDocSnap = await getDoc(userDocRef); // Re-fetch the document
         }
+        
+        const userData = userDocSnap.data() as AppUser;
+        setUser(userData);
+        if (userData.role === 'pending') {
+            setLoginState('pending');
+        } else {
+            setLoginState('form');
+        }
+
       } else {
         setUser(null);
         setLoginState('form');
@@ -110,59 +104,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
   
-  const listenForApproval = useCallback((uid: string) => {
-    const userDocRef = doc(db, 'users', uid);
-    return onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const userData = docSnap.data() as AppUser;
-            if (userData.role !== 'pending') {
-                setUser(userData);
-                setLoginState('form');
-            }
-        }
-    });
-  }, []);
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle the rest
+  };
+  
+  const register = async (name: string, email: string, password: string) => {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("role", "==", "senior"));
+    const seniorSnapshot = await getDocs(q);
+    
+    const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
 
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-
-      const userDocRef = doc(db, "users", firebaseUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        // This is a new user (registration)
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("role", "==", "senior"));
-        const seniorSnapshot = await getDocs(q);
-        
-        const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
-
-        const newUser: AppUser = {
-          uid: firebaseUser.uid,
-          name: firebaseUser.displayName,
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
-          role: newRole,
-          phone: '',
-        };
-        
-        await setDoc(userDocRef, newUser);
-        // Let onAuthStateChanged handle setting the user state
-      } else {
-        // Existing user, just update last login
-        await updateDoc(userDocRef, {
-            lastLogin: serverTimestamp(),
-        });
-        // Let onAuthStateChanged handle setting the user state
-      }
-    } catch (error) {
-      console.error("Error during Google Sign-In:", error);
-      throw error;
-    }
+    const newUser: AppUser = {
+      uid: firebaseUser.uid,
+      name: name,
+      email: firebaseUser.email,
+      role: newRole,
+      phone: '',
+    };
+    
+    await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+    
+    // After registration, sign the user out so they have to log in.
+    await signOut(auth);
   };
   
   const logout = async () => {
@@ -173,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
         setUser(null);
         setLoginState('form');
-        // No need for window.location.href, component will re-render
     }
   };
 
@@ -207,12 +174,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-
   const value = useMemo(() => ({
     user,
     isAuthenticated: !!user && user.role !== 'pending',
     isAuthLoading,
-    signInWithGoogle,
+    login,
+    register,
     logout,
     updateUserProfile,
     pendingRequests,
@@ -221,8 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoadingSettings,
     toggleManagementMode,
     loginState,
-    listenForApproval,
-  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, listenForApproval]);
+  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState]);
 
   return (
     <AuthContext.Provider value={value}>
