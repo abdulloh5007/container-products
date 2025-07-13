@@ -66,8 +66,11 @@ const getDeviceName = (): string => {
         const browser = result.browser.name || 'Browser';
         const os = result.os.name ? `${result.os.name} ${result.os.version || ''}`.trim() : 'OS';
         
+        if (result.device.vendor && result.device.model) {
+            return `${result.device.vendor} ${result.device.model} (${os})`;
+        }
         if (result.device.vendor) {
-            return `${result.device.vendor} ${result.device.model || ''} (${os})`;
+            return `${result.device.vendor} (${os})`;
         }
         
         return `${browser} on ${os}`;
@@ -179,11 +182,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("No account found with this email.");
     }
     
+    const existingSessions = userDocSnap.data().sessions || [];
+    const hasSenior = existingSessions.some((s: Session) => s.role === 'senior');
+
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
         deviceName: getDeviceName(),
-        role: 'pending',
+        role: hasSenior ? 'pending' : 'senior',
         createdAt: Timestamp.now()
     }
     
@@ -193,7 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     localStorage.setItem('sessionId', newSessionId);
     setCurrentSessionId(newSessionId);
-    setLoginState('pending');
+    
+    if (newSession.role === 'pending') {
+        setLoginState('pending');
+    }
   };
   
   const register = async (name: string, email: string, password: string) => {
@@ -239,10 +248,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentSession = user.currentSession;
     let newSessions = user.sessions.filter(s => s.id !== currentSession.id);
 
-    if (currentSession.role === 'senior') {
+    if (currentSession.role === 'senior' && newSessions.some(s => s.role === 'junior')) {
         const juniorSessions = newSessions
             .filter(s => s.role === 'junior')
-            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()); // Oldest junior gets promoted
 
         if (juniorSessions.length > 0) {
             const nextSeniorId = juniorSessions[0].id;
