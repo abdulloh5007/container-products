@@ -25,7 +25,7 @@ function PendingAlert() {
     );
 }
 
-function NoAccountAlert() {
+function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
     const { t } = useLanguage();
     return (
         <Alert variant="destructive">
@@ -33,9 +33,9 @@ function NoAccountAlert() {
             <AlertTitle>{t('admin_login_no_account_title')}</AlertTitle>
             <AlertDescription>
                 {t('admin_login_no_account_desc')}{' '}
-                <Link href="/admin/register" className="font-bold underline hover:text-destructive-foreground">
+                <button onClick={onRegisterClick} className="font-bold underline hover:text-destructive-foreground">
                     {t('admin_register_link')}
-                </Link>
+                </button>
             </AlertDescription>
         </Alert>
     );
@@ -44,7 +44,7 @@ function NoAccountAlert() {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isAuthLoading, loginState, user, translateFirebaseError } = useAuth();
+  const { login, isAuthenticated, isAuthLoading, loginState, user, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -89,7 +89,7 @@ export default function LoginPage() {
         case 'pending':
             return <PendingAlert />;
         case 'no_account':
-            return <NoAccountAlert />;
+            return <NoAccountAlert onRegisterClick={() => router.push('/admin/register')} />;
         default:
             return (
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -132,12 +132,14 @@ export default function LoginPage() {
                   >
                     {isSubmitting ? t('admin_login_submitting') : t('admin_login_button')}
                   </Button>
-                  <p className="text-center text-sm text-muted-foreground">
-                    {t('admin_register_prompt')}{' '}
-                    <Link href="/admin/register" className="underline hover:text-primary">
-                        {t('admin_register_link')}
-                    </Link>
-                  </p>
+                  {isRegistrationAllowed && (
+                    <p className="text-center text-sm text-muted-foreground">
+                      {t('admin_register_prompt')}{' '}
+                      <Link href="/admin/register" className="underline hover:text-primary">
+                          {t('admin_register_link')}
+                      </Link>
+                    </p>
+                  )}
                 </form>
             )
     }
