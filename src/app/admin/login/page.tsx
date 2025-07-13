@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { Container, Hourglass, ShieldAlert } from 'lucide-react';
+import { Container, Hourglass, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 
@@ -45,11 +45,12 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isAuthLoading, loginState, user } = useAuth();
-  const { toast } = useToast();
+  const { toast } = useLanguage();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
@@ -109,14 +110,24 @@ export default function LoginPage() {
                    </div>
                    <div className="space-y-2">
                      <Label htmlFor="password">{t('admin_password')}</Label>
-                     <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                     />
+                      <div className="relative">
+                       <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          disabled={isSubmitting}
+                          className="pr-10"
+                       />
+                       <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
                    </div>
                   <Button
                     type="submit"

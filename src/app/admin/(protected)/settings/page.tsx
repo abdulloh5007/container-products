@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, AppUser, SessionRole, Session } from '@/contexts/auth-context';
+import { useAuth, SessionRole, Session } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc, writeBatch, collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,14 +11,14 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getInitials } from '@/lib/utils';
+import { getInitials, formatPhoneNumber, deformatPhoneNumber } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 
@@ -30,16 +30,19 @@ interface AlertDialogState {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Profile tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const isSenior = currentUser?.currentSession?.role === 'senior';
     const dateLocale = language === 'uz' ? uz : ru;
@@ -54,7 +57,7 @@ export default function SettingsPage() {
     useEffect(() => {
         if (!isAuthLoading && currentUser) {
             setName(currentUser.name || '');
-            setPhone(currentUser.phone || '');
+            setPhone(formatPhoneNumber(currentUser.phone || ''));
         }
     }, [currentUser, isAuthLoading]);
     
@@ -64,7 +67,18 @@ export default function SettingsPage() {
       
       setIsSubmitting(true);
       try {
-        await updateUserProfile({ name, phone });
+        await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
+
+        if (isSenior && password) {
+          if (password !== confirmPassword) {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
+            return;
+          }
+          await updateUserPassword(password);
+          setPassword('');
+          setConfirmPassword('');
+        }
+
         toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
@@ -292,8 +306,59 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="phone">{t('admin_phone')}</Label>
-                                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading} placeholder="+998 XX XXX XX XX" />
+                                        <Input 
+                                          id="phone" 
+                                          value={phone} 
+                                          onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} 
+                                          disabled={isSubmitting || isAuthLoading} 
+                                          placeholder="+998 (XX) XXX-XX-XX" />
                                     </div>
+                                    
+                                     {isSenior && (
+                                      <>
+                                        <div className="space-y-2">
+                                          <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
+                                          <div className="relative">
+                                            <Input 
+                                              id="password" 
+                                              type={showPassword ? 'text' : 'password'} 
+                                              value={password}
+                                              onChange={(e) => setPassword(e.target.value)}
+                                              disabled={isSubmitting || isAuthLoading} 
+                                              placeholder={t('admin_settings_password_placeholder')}
+                                              className="pr-10"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => setShowPassword(!showPassword)}
+                                              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                                            >
+                                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label htmlFor="confirm-password">{t('admin_settings_confirm_password')}</Label>
+                                           <div className="relative">
+                                            <Input 
+                                              id="confirm-password" 
+                                              type={showPassword ? 'text' : 'password'} 
+                                              value={confirmPassword}
+                                              onChange={(e) => setConfirmPassword(e.target.value)}
+                                              disabled={isSubmitting || isAuthLoading || !password} 
+                                              className="pr-10"
+                                            />
+                                             <button
+                                              type="button"
+                                              onClick={() => setShowPassword(!showPassword)}
+                                              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                                            >
+                                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
                                     
                                     <div className="flex justify-end">
                                         <Button type="submit" disabled={isSubmitting || isAuthLoading}>
@@ -382,3 +447,5 @@ export default function SettingsPage() {
       </>
     );
 }
+
+    

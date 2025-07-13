@@ -3,7 +3,7 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch } from 'firebase/firestore';
 import UAParser from 'ua-parser-js';
 
@@ -40,6 +40,7 @@ type AuthContextType = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
+  updateUserPassword: (password: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
   approveSession: (session: Session) => Promise<void>;
@@ -255,6 +256,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateUserPassword = async (newPassword: string) => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+        throw new Error("User not authenticated.");
+    }
+    try {
+        await updatePassword(firebaseUser, newPassword);
+    } catch (error: any) {
+        console.error("Password update error:", error);
+        if (error.code === 'auth/requires-recent-login') {
+            throw new Error("This operation is sensitive and requires recent authentication. Please log out and log back in to update your password.");
+        }
+        throw new Error("Failed to update password.");
+    }
+  };
+
   const toggleManagementMode = async () => {
     const settingsDocRef = doc(db, 'settings', 'global');
     try {
@@ -315,6 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     updateUserProfile,
+    updateUserPassword,
     pendingRequests,
     setPendingRequests,
     isManagementModeEnabled,
@@ -340,3 +358,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
