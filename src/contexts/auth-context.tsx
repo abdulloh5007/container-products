@@ -133,16 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
-                        // This can happen if the session was deleted by a senior user.
-                        // Or if it's a new login without a session yet.
                         if (localSessionId) {
                            logout();
                         }
                     }
 
                 } else {
-                   // This case is for a user that exists in Auth but not in Firestore.
-                   // We create the user doc on first login.
                    const newUserDoc: Omit<AppUser, 'currentSession' | 'sessions'> = {
                        uid: firebaseUser.uid,
                        email: firebaseUser.email,
@@ -201,18 +197,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const register = async (name: string, email: string, password: string) => {
+    const usersQuery = query(collection(db, "users"), where("sessions", "!=", []));
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    let isThereAnySenior = false;
+    usersSnapshot.forEach(doc => {
+        const user = doc.data() as AppUser;
+        if (user.sessions.some(s => s.role === 'senior')) {
+            isThereAnySenior = true;
+        }
+    });
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
-    
-    const usersQuery = query(collection(db, 'users'));
-    const usersSnapshot = await getDocs(usersQuery);
-    const isFirstUser = usersSnapshot.empty;
 
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
         deviceName: getDeviceName(),
-        role: isFirstUser ? 'senior' : 'pending',
+        role: isThereAnySenior ? 'pending' : 'senior',
         createdAt: Timestamp.now()
     }
 
@@ -230,16 +233,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    const sessionId = localStorage.getItem('sessionId');
-    if (user && sessionId) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const sessionToEnd = user.sessions.find(s => s.id === sessionId);
-        if (sessionToEnd) {
-            await updateDoc(userDocRef, {
-                sessions: arrayRemove(sessionToEnd)
-            }).catch(err => console.error("Error removing session on logout:", err));
+    if (!user || !user.currentSession) return;
+    
+    const userDocRef = doc(db, 'users', user.uid);
+    const currentSession = user.currentSession;
+    let newSessions = user.sessions.filter(s => s.id !== currentSession.id);
+
+    if (currentSession.role === 'senior') {
+        const juniorSessions = newSessions
+            .filter(s => s.role === 'junior')
+            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+        if (juniorSessions.length > 0) {
+            const nextSeniorId = juniorSessions[0].id;
+            newSessions = newSessions.map(s => 
+                s.id === nextSeniorId ? { ...s, role: 'senior' } : s
+            );
         }
     }
+
+    await updateDoc(userDocRef, { sessions: newSessions });
     
     await signOut(auth);
     localStorage.removeItem('sessionId');
@@ -275,19 +288,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const deleteUserAccount = async () => {
       const firebaseUser = auth.currentUser;
-      if (!firebaseUser) {
-          throw new Error("User not authenticated.");
+      if (!firebaseUser || !user || user.currentSession?.role !== 'senior') {
+          throw new Error("Only senior users can delete accounts.");
       }
 
       try {
-          // 1. Delete Firestore document
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           await deleteDoc(userDocRef);
-          
-          // 2. Delete user from Auth
           await deleteUser(firebaseUser);
           
-          // 3. Clean up local state
           localStorage.removeItem('sessionId');
           setCurrentSessionId(null);
           setUser(null);

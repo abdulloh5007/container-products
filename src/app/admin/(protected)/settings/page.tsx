@@ -437,18 +437,20 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
                         )}
-                        <Card className="mt-8 border-destructive/50">
-                           <CardHeader>
-                               <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
-                               <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
-                           </CardHeader>
-                           <CardContent>
-                               <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteAccount' })}>
-                                   <Trash2 className="mr-2 h-4 w-4" />
-                                   {t('admin_account_delete_button')}
-                                </Button>
-                           </CardContent>
-                        </Card>
+                        {isSenior && (
+                            <Card className="mt-8 border-destructive/50">
+                               <CardHeader>
+                                   <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
+                                   <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
+                               </CardHeader>
+                               <CardContent>
+                                   <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteAccount' })}>
+                                       <Trash2 className="mr-2 h-4 w-4" />
+                                       {t('admin_account_delete_button')}
+                                    </Button>
+                               </CardContent>
+                            </Card>
+                        )}
                     </TabsContent>
                     <TabsContent value="devices">
                         <Card>
