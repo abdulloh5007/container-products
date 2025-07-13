@@ -80,6 +80,7 @@ export function Sidebar() {
       })
   );
 
+  const isSettingsActive = pathname === '/admin/settings';
 
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
@@ -114,7 +115,14 @@ export function Sidebar() {
                    {renderNavGrid(allNavItems)}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
-                   <Button variant="ghost" className="w-full justify-start gap-3 text-base relative" onClick={() => handleSheetLinkClick('/admin/settings')}>
+                   <Button 
+                     variant="ghost" 
+                     className={cn(
+                       "w-full justify-start gap-3 text-base relative",
+                       isSettingsActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                     )}
+                     onClick={() => handleSheetLinkClick('/admin/settings')}
+                   >
                      <Settings className="h-5 w-5" />
                      {t('admin_sidebar_settings')}
                       {pendingRequests > 0 && isSenior && (
