@@ -171,13 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
-                        // If there is a session ID but it's not in the DB, it was denied or deleted.
                         if (localSessionId) {
                            forceLocalLogout(true);
                         }
                     }
                 } else {
-                   // If the user document itself is gone.
                    forceLocalLogout();
                 }
                 setIsAuthLoading(false);
@@ -296,8 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const localUser = user;
     const localSessionId = currentSessionId;
-    
-    // Perform local state clearing immediately for responsiveness
+
     if (auth.currentUser) {
         await signOut(auth);
     }
@@ -307,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoginState('form');
 
     if (!localUser || !localSessionId) return;
-    
+
     const userDocRef = doc(db, 'users', localUser.uid);
     try {
         const docSnap = await getDoc(userDocRef);
@@ -315,13 +312,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const sessionList = docSnap.data().sessions || [];
         const loggingOutSession = sessionList.find((s: Session) => s.id === localSessionId);
-        
+
         if (!loggingOutSession) return;
 
-        // Filter out the session that is logging out
         let updatedSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
 
-        // If a senior logs out and there are no other seniors left, promote the oldest junior
         if (loggingOutSession.role === 'senior' && !updatedSessions.some((s: Session) => s.role === 'senior')) {
             const juniorSessions = updatedSessions
                 .filter((s: Session) => s.role === 'junior')
@@ -329,18 +324,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (juniorSessions.length > 0) {
                 const nextSeniorId = juniorSessions[0].id;
-                updatedSessions = updatedSessions.map((s: Session) => 
+                updatedSessions = updatedSessions.map((s: Session) =>
                     s.id === nextSeniorId ? { ...s, role: 'senior' } : s
                 );
             }
         }
-        
-        await updateDoc(userDocRef, { sessions: updatedSessions });
 
+        await updateDoc(userDocRef, { sessions: updatedSessions });
     } catch (error) {
         console.error("Error updating sessions on logout:", error);
     }
   };
+
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
     if (!user) throw new Error("User not authenticated");
@@ -349,7 +344,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userDocRef = doc(db, 'users', user.uid);
     
-    // Update name and phone in Firestore
     await updateDoc(userDocRef, {
         name: data.name,
         phone: data.phone,
