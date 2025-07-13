@@ -4,56 +4,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
-    
     function isSenior() {
-      return isAuthenticated() && isRole('senior');
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'senior';
     }
 
     function isJunior() {
-      return isAuthenticated() && isRole('junior');
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'junior';
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    function isAuthenticated() {
+        return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || isSenior();
+      allow delete: if isSenior();
     }
     
-    // Global settings
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update: if isSenior() || request.auth.uid == resource.data.userId;
+      allow delete: if isSenior();
+    }
+    
     match /settings/global {
       allow read: if isAuthenticated();
       allow write: if isSenior();
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (isSenior() || isOwner(userId));
-      allow create: if isOwner(userId); // Allow user to create their own doc
-      allow update: if isAuthenticated() && (isSenior() || (isOwner(userId) && !('role' in request.resource.data))); // Junior can update profile, but not their role
-      allow delete: if isSenior();
-    }
-
-    // Products and Containers can be read by any authenticated user, but only managed by seniors
-    match /products/{productId} {
+    match /{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isSenior(); // create, update, delete
-    }
-
-    match /containers/{containerId} {
-      allow read: if isAuthenticated();
-      allow write: if isSenior(); // create, update, delete
-    }
-
-    // History can be read and created by any authenticated user
-    match /history/{historyId} {
-      allow read, create: if isAuthenticated();
-      allow update, delete: if false; // History should be immutable
+      allow write: if isSenior();
     }
   }
 }

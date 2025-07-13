@@ -192,14 +192,14 @@ export const translations = {
     admin_login_pending_title: "Ожидание подтверждения",
     admin_login_pending_desc: "Ваш аккаунт ожидает подтверждения от администратора.",
     admin_confirm_button: "Подтвердить",
-    admin_session_current_text: "текущий пользователь",
+    admin_session_current_text: "текущий сеанс",
     admin_session_confirm_button: "Подтвердить доступ",
     admin_session_promote_button: "Сделать старшим",
     admin_session_active_title: "Активные сеансы",
-    admin_session_active_desc: "Здесь показаны активные сеансы на аккаунте.",
+    admin_session_active_desc: "Здесь показаны все устройства, вошедшие в систему.",
     admin_session_pending_title: "Запросы на доступ",
     admin_session_pending_desc: "Эти пользователи ожидают вашего подтверждения для получения доступа.",
-    admin_session_none_active: "Активных пользователей не найдено.",
+    admin_session_none_active: "Активных сеансов не найдено.",
     admin_session_none_pending: "Нет ожидающих запросов на доступ.",
     admin_session_dialog_confirm_title: "Подтвердить доступ?",
     admin_session_dialog_confirm_desc: "Вы уверены, что хотите предоставить доступ пользователю \"{deviceName}\"?",
@@ -220,7 +220,6 @@ export const translations = {
     admin_settings_tab_users: "Пользователи",
     admin_settings_profile_title: "Данные профиля",
     admin_settings_profile_desc: "Измените ваше имя и контактный телефон.",
-
     admin_history_title: "История операций",
     admin_history_table_container: "Контейнер",
     admin_history_table_number: "Номер",
@@ -232,7 +231,6 @@ export const translations = {
     admin_history_container_number_placeholder: "напр. MSCU1234567 (или оставьте пустым)",
     admin_history_no_history: "Записей пока нет.",
     admin_history_number_required: "Пожалуйста, введите номер контейнера.",
-    
     admin_settings_management_mode_title: "Режим Управления",
     admin_settings_management_mode_desc: "Включает или отключает доступ к разделам Продукты и Контейнеры.",
     admin_settings_management_mode_label: "Режим Управления",
@@ -240,7 +238,6 @@ export const translations = {
     admin_settings_management_mode_status_off: "Выключен. Разделы Продукты и Контейнеры скрыты.",
     admin_settings_management_mode_on_desc: "Режим управления включен.",
     admin_settings_management_mode_off_desc: "Режим управления выключен.",
-
     admin_register_title: "Регистрация администратора",
     admin_register_subtitle: "Создайте аккаунт для доступа к панели.",
     admin_register_button: "Зарегистрироваться",
@@ -252,7 +249,18 @@ export const translations = {
     admin_register_prompt: "Нет аккаунта?",
     admin_register_link: "Зарегистрироваться",
     admin_login_prompt: "Уже есть аккаунт?",
-    admin_login_link: "Войти"
+    admin_login_link: "Войти",
+
+    admin_users_title: "Пользователи",
+    admin_users_desc: "Здесь показаны все зарегистрированные пользователи и их роли.",
+    admin_users_none: "Зарегистрированных пользователей (кроме вас) не найдено.",
+    admin_session_login_time: "Время входа",
+    admin_session_end_button: "Завершить сеанс",
+    admin_session_dialog_end_title: "Завершить сеанс?",
+    admin_session_dialog_end_desc: "Вы уверены, что хотите принудительно завершить сеанс для \"{deviceName}\"?",
+    admin_session_end_success_title: "Сеанс завершен",
+    admin_session_end_success_desc: "Сеанс для {deviceName} был завершен.",
+    admin_session_end_error_desc: "Не удалось завершить сеанс."
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -446,14 +454,14 @@ export const translations = {
     admin_login_pending_title: "Tasdiqlash kutilmoqda",
     admin_login_pending_desc: "Sizning hisobingiz administrator tomonidan tasdiqlanishini kutmoqda.",
     admin_confirm_button: "Tasdiqlash",
-    admin_session_current_text: "joriy foydalanuvchi",
+    admin_session_current_text: "joriy seans",
     admin_session_confirm_button: "Kirishni tasdiqlash",
     admin_session_promote_button: "Katta admin qilish",
     admin_session_active_title: "Faol seanslar",
-    admin_session_active_desc: "Bu yerda hisobdagi faol seanslar ko'rsatilgan.",
+    admin_session_active_desc: "Bu yerda tizimga kirgan barcha qurilmalar ko'rsatilgan.",
     admin_session_pending_title: "Kirish so'rovlari",
     admin_session_pending_desc: "Ushbu foydalanuvchilar kirish huquqini olish uchun sizning tasdiqlashingizni kutmoqda.",
-    admin_session_none_active: "Faol foydalanuvchilar topilmadi.",
+    admin_session_none_active: "Faol seanslar topilmadi.",
     admin_session_none_pending: "Kutilayotgan kirish so'rovlari yo'q.",
     admin_session_dialog_confirm_title: "Kirishni tasdiqlaysizmi?",
     admin_session_dialog_confirm_desc: "\"{deviceName}\" foydalanuvchisiga kirish huquqini berishga ishonchingiz komilmi?",
@@ -474,7 +482,7 @@ export const translations = {
     admin_settings_tab_users: "Foydalanuvchilar",
     admin_settings_profile_title: "Profil ma'lumotlari",
     admin_settings_profile_desc: "Ismingiz va bog'lanish telefoningizni o'zgartiring.",
-
+    
     admin_history_title: "Amaliyotlar tarixi",
     admin_history_table_container: "Konteyner",
     admin_history_table_number: "Raqam",
@@ -506,7 +514,18 @@ export const translations = {
     admin_register_prompt: "Hisobingiz yo'qmi?",
     admin_register_link: "Ro'yxatdan o'tish",
     admin_login_prompt: "Hisobingiz bormi?",
-    admin_login_link: "Kirish"
+    admin_login_link: "Kirish",
+    
+    admin_users_title: "Foydalanuvchilar",
+    admin_users_desc: "Bu yerda barcha ro'yxatdan o'tgan foydalanuvchilar va ularning rollari ko'rsatilgan.",
+    admin_users_none: "Ro'yxatdan o'tgan foydalanuvchilar (sizdan tashqari) topilmadi.",
+    admin_session_login_time: "Kirish vaqti",
+    admin_session_end_button: "Seansni tugatish",
+    admin_session_dialog_end_title: "Seansni tugatasizmi?",
+    admin_session_dialog_end_desc: "\"{deviceName}\" uchun seansni majburan tugatishga ishonchingiz komilmi?",
+    admin_session_end_success_title: "Seans tugatildi",
+    admin_session_end_success_desc: "{deviceName} uchun seans tugatildi.",
+    admin_session_end_error_desc: "Seansni tugatib bo'lmadi."
   },
 };
 

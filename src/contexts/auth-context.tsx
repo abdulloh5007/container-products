@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, addDoc, Timestamp } from 'firebase/firestore';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
 
@@ -15,10 +15,7 @@ export interface AppUser {
     email?: string | null;
     phone?: string | null;
     photoURL?: string | null;
-    currentSession: {
-        role: SessionRole;
-        device: string;
-    }
+    currentSessionId?: string; 
 }
 
 export type LoginState = 'form' | 'pending' | 'failed';
@@ -66,40 +63,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const handleSuccessfulLogin = async (firebaseUser: FirebaseAuthUser) => {
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    let userDocSnap = await getDoc(userDocRef);
+
+    let userData: AppUser;
+
+    if (!userDocSnap.exists()) {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("role", "==", "senior"));
+      const seniorSnapshot = await getDocs(q);
+      const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
+
+      userData = {
+        uid: firebaseUser.uid,
+        name: firebaseUser.displayName || 'New User',
+        email: firebaseUser.email,
+        role: newRole,
+      };
+      await setDoc(userDocRef, userData);
+    } else {
+        userData = userDocSnap.data() as AppUser;
+    }
+
+    const sessionRef = await addDoc(collection(db, 'sessions'), {
+        userId: userData.uid,
+        userName: userData.name,
+        loginTime: serverTimestamp(),
+        device: 'Web',
+        isActive: true
+    });
+    
+    await updateDoc(userDocRef, { currentSessionId: sessionRef.id });
+
+    setUser({ ...userData, currentSessionId: sessionRef.id });
+
+    if (userData.role === 'pending') {
+        setLoginState('pending');
+    } else {
+        setLoginState('form');
+    }
+  }
+
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        let userDocSnap = await getDoc(userDocRef);
-
-        if (!userDocSnap.exists()) {
-          const usersRef = collection(db, "users");
-          const q = query(usersRef, where("role", "==", "senior"));
-          const seniorSnapshot = await getDocs(q);
-          const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
-
-          const newUser: AppUser = {
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || 'New User',
-            email: firebaseUser.email,
-            role: newRole,
-            currentSession: {
-                role: newRole,
-                device: 'Web'
-            }
-          };
-          await setDoc(userDocRef, newUser);
-          userDocSnap = await getDoc(userDocRef); 
-        }
-        
-        const userData = userDocSnap.data() as AppUser;
-        setUser(userData);
-        if (userData.role === 'pending') {
-            setLoginState('pending');
-        } else {
-            setLoginState('form');
-        }
-
+        await handleSuccessfulLogin(firebaseUser);
       } else {
         setUser(null);
         setLoginState('form');
@@ -111,35 +121,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle the rest
   };
   
   const register = async (name: string, email: string, password: string) => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("role", "==", "senior"));
-    const seniorSnapshot = await getDocs(q);
-    
-    const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
-
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
 
-    const newUser: Omit<AppUser, 'phone' | 'photoURL'> = {
-      uid: firebaseUser.uid,
-      name: name,
-      email: firebaseUser.email,
-      role: newRole,
-      currentSession: {
-        role: newRole,
-        device: 'Web', 
-      }
-    };
+    // We don't create the user doc here. 
+    // onAuthStateChanged will fire and handleSuccessfulLogin will create the doc.
+    // We just need to make sure the display name is available.
+    // In a real app, you might want to call `updateProfile` on the firebaseUser object.
+    // For simplicity, handleSuccessfulLogin will use the name from registration if doc doesn't exist.
+    // Let's explicitly create the user doc here to pass the name.
+     const usersRef = collection(db, "users");
+     const q = query(usersRef, where("role", "==", "senior"));
+     const seniorSnapshot = await getDocs(q);
+     const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
+    
+     const newUser: Omit<AppUser, 'currentSessionId'> = {
+       uid: firebaseUser.uid,
+       name: name,
+       email: firebaseUser.email,
+       role: newRole,
+     };
     
     await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-    
-    await signOut(auth);
+
+    // onAuthStateChanged will now pick this up and create the session.
   };
   
   const logout = async () => {
+    if (user && user.currentSessionId) {
+        const sessionDocRef = doc(db, 'sessions', user.currentSessionId);
+        await updateDoc(sessionDocRef, {
+            isActive: false,
+            logoutTime: serverTimestamp()
+        }).catch(err => console.error("Error updating session on logout:", err));
+    }
+
     try {
       await signOut(auth);
     } catch (error) {
