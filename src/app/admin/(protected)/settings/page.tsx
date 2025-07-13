@@ -45,7 +45,7 @@ const getDeviceIcon = (deviceName: string) => {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount, updateUserEmail, translateFirebaseError } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount, translateFirebaseError } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,6 @@ export default function SettingsPage() {
     // Profile tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const isSenior = currentUser?.currentSession?.role === 'senior';
@@ -73,7 +72,6 @@ export default function SettingsPage() {
         if (!isAuthLoading && currentUser) {
             setName(currentUser.name || '');
             setPhone(formatPhoneNumber(currentUser.phone || ''));
-            setEmail(currentUser.email || '');
         }
     }, [currentUser, isAuthLoading]);
     
@@ -85,12 +83,6 @@ export default function SettingsPage() {
       try {
         await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
         
-        let emailUpdated = false;
-        if (isSenior && email && email !== currentUser.email) {
-            await updateUserEmail(email);
-            emailUpdated = true;
-        }
-
         let passwordUpdated = false;
         if (isSenior && password) {
           if (password.length < 6) {
@@ -104,10 +96,8 @@ export default function SettingsPage() {
           toast({ title: t('admin_password_update_success_title'), description: t('admin_password_update_success_desc') });
         }
         
-        if (!emailUpdated && !passwordUpdated) {
+        if (!passwordUpdated) {
           toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
-        } else if (emailUpdated && !passwordUpdated) {
-          toast({ title: t('admin_settings_update_success_title'), description: "Email successfully updated." });
         }
         
       } catch (error) {
@@ -370,17 +360,6 @@ export default function SettingsPage() {
                                      {isSenior && (
                                       <>
                                         <div className="space-y-2">
-                                          <Label htmlFor="email">{t('admin_email')}</Label>
-                                          <Input 
-                                            id="email" 
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            disabled={isSubmitting || isAuthLoading} 
-                                            placeholder="example@gmail.com"
-                                          />
-                                        </div>
-                                        <div className="space-y-2">
                                           <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
                                           <div className="relative">
                                             <Input 
@@ -513,3 +492,5 @@ export default function SettingsPage() {
       </>
     );
 }
+
+    

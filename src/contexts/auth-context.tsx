@@ -33,6 +33,7 @@ type AuthContextType = {
   user: AppUser | null;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
+  isRegistrationAllowed: boolean;
   pendingRequests: number;
   isManagementModeEnabled: boolean;
   isLoadingSettings: boolean;
@@ -42,7 +43,6 @@ type AuthContextType = {
   logout: () => void;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
-  updateUserEmail: (email: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
   approveSession: (session: Session) => Promise<void>;
@@ -87,6 +87,7 @@ const getDeviceName = (): string => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(false);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [isManagementModeEnabled, setIsManagementModeEnabled] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
@@ -111,6 +112,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const fallbackKey = 'firebase_error_unknown' as keyof typeof translations.ru;
         return translations[language][errorKey] || translations[language][fallbackKey];
   }, [language]);
+  
+  // Effect to check if registration should be allowed
+  useEffect(() => {
+    const usersCollectionRef = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersCollectionRef, (snapshot) => {
+        setIsRegistrationAllowed(snapshot.empty);
+        setIsAuthLoading(false); // Can stop loading once we know this
+    }, (error) => {
+        console.error("Error checking for users:", error);
+        setIsRegistrationAllowed(false); // Default to not allowed on error
+        setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [])
 
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'global');
@@ -157,13 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
 
                 } else {
-                   const newUserDoc: Omit<AppUser, 'currentSession' | 'sessions'> = {
-                       uid: firebaseUser.uid,
-                       email: firebaseUser.email,
-                       name: firebaseUser.displayName || 'New User',
-                       phone: firebaseUser.phoneNumber,
-                   };
-                   setDoc(userDocRef, { ...newUserDoc, sessions: [] });
+                   // This case might happen if doc is deleted, log out user.
+                   if (auth.currentUser) {
+                       signOut(auth);
+                   }
                 }
                 setIsAuthLoading(false);
             });
@@ -225,16 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const register = async (name: string, email: string, password: string) => {
-    const usersQuery = query(collection(db, "users"), where("sessions", "!=", []));
-    const usersSnapshot = await getDocs(usersQuery);
-    
-    let isThereAnySenior = false;
-    usersSnapshot.forEach(doc => {
-        const user = doc.data() as AppUser;
-        if (user.sessions.some(s => s.role === 'senior')) {
-            isThereAnySenior = true;
-        }
-    });
+    if (!isRegistrationAllowed) {
+        throw new Error("Registration is not allowed.");
+    }
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -244,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const newSession: Session = {
             id: newSessionId,
             deviceName: getDeviceName(),
-            role: isThereAnySenior ? 'pending' : 'senior',
+            role: 'senior', // First user is always senior
             createdAt: Timestamp.now()
         }
 
@@ -274,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     let newSessions = sessionList.filter(s => s.id !== currentSession.id);
 
+    // If the user logging out is a senior, find the oldest junior to promote
     if (currentSession.role === 'senior' && !newSessions.some(s => s.role === 'senior')) {
         const juniorSessions = newSessions
             .filter(s => s.role === 'junior')
@@ -313,25 +319,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         await updatePassword(firebaseUser, newPassword);
         
+        // After password change, log out all other sessions for security
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         await updateDoc(userDocRef, {
             sessions: [user.currentSession] // Keep only the current senior session
         });
 
-    } catch (error: any) {
-        throw new Error(translateFirebaseError(error.code));
-    }
-  };
-  
-  const updateUserEmail = async (newEmail: string) => {
-    const firebaseUser = auth.currentUser;
-     if (!firebaseUser || !user?.currentSession) {
-        throw new Error(translateFirebaseError('auth/user-not-found'));
-    }
-     try {
-        await updateEmail(firebaseUser, newEmail);
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        await updateDoc(userDocRef, { email: newEmail });
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
     }
@@ -413,12 +406,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user && user.currentSession?.role !== 'pending',
     isAuthLoading,
+    isRegistrationAllowed,
     login,
     register,
     logout,
     updateUserProfile,
     updateUserPassword,
-    updateUserEmail,
     deleteUserAccount,
     pendingRequests,
     setPendingRequests,
@@ -430,7 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteSession,
     makeSenior,
     translateFirebaseError,
-  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, translateFirebaseError]);
+  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -446,3 +439,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

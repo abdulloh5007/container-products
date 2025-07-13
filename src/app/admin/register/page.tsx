@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Container, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, isAuthLoading, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -24,6 +25,12 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthLoading && !isRegistrationAllowed) {
+      router.replace('/admin/login');
+    }
+  }, [isAuthLoading, isRegistrationAllowed, router]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +53,32 @@ export default function RegisterPage() {
       setIsSubmitting(false);
     }
   };
+  
+  if (isAuthLoading || !isRegistrationAllowed) {
+      return (
+         <div className="flex min-h-screen items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader className="text-center">
+              <Skeleton className="h-8 w-8 mx-auto mb-4 rounded-full" />
+              <Skeleton className="h-7 w-48 mx-auto" />
+              <Skeleton className="h-4 w-64 mx-auto mt-2" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full mt-4" />
+              <Skeleton className="h-4 w-40 mx-auto" />
+            </CardContent>
+          </Card>
+        </div>
+      )
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -122,3 +155,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    
