@@ -30,13 +30,10 @@ interface AlertDialogState {
 }
 
 const getDeviceIcon = (deviceName: string) => {
-    if (typeof window === 'undefined') {
-        return <Monitor className="h-6 w-6 text-muted-foreground" />;
-    }
-    const parser = new UAParser(window.navigator.userAgent);
-    const type = parser.getDevice().type;
+    const lowerDeviceName = deviceName.toLowerCase();
+    const isMobile = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy'].some(keyword => lowerDeviceName.includes(keyword));
 
-    if (type === 'mobile' || type === 'tablet') {
+    if (isMobile) {
         return <Smartphone className="h-6 w-6 text-muted-foreground" />;
     }
     return <Monitor className="h-6 w-6 text-muted-foreground" />;
@@ -486,3 +483,4 @@ export default function SettingsPage() {
     
 
     
+
