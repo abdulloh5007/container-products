@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
-                        if (localSessionId) {
+                       if (localSessionId) {
                            forceLocalLogout(true);
                         }
                     }
@@ -292,20 +292,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
+    const firebaseUser = auth.currentUser;
     const localUser = user;
     const localSessionId = currentSessionId;
 
-    if (auth.currentUser) {
-        await signOut(auth);
-    }
-    localStorage.removeItem('sessionId');
-    setCurrentSessionId(null);
-    setUser(null);
-    setLoginState('form');
+    if (!firebaseUser || !localUser || !localSessionId) return;
 
-    if (!localUser || !localSessionId) return;
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
 
-    const userDocRef = doc(db, 'users', localUser.uid);
     try {
         const docSnap = await getDoc(userDocRef);
         if (!docSnap.exists()) return;
@@ -315,8 +309,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!loggingOutSession) return;
 
+        // Filter out the session that is logging out
         let updatedSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
 
+        // If the logging out user was a senior, and no other seniors are left, promote the oldest junior
         if (loggingOutSession.role === 'senior' && !updatedSessions.some((s: Session) => s.role === 'senior')) {
             const juniorSessions = updatedSessions
                 .filter((s: Session) => s.role === 'junior')
@@ -329,10 +325,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 );
             }
         }
-
+        
+        // Update the document with the new sessions array
         await updateDoc(userDocRef, { sessions: updatedSessions });
+
     } catch (error) {
         console.error("Error updating sessions on logout:", error);
+        // We still proceed to logout locally even if the DB update fails
+    } finally {
+        // Now, sign out the user and clear local state
+        await signOut(auth);
+        localStorage.removeItem('sessionId');
+        setCurrentSessionId(null);
+        setUser(null);
+        setLoginState('form');
     }
   };
 

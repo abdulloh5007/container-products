@@ -22,9 +22,9 @@ export function Sidebar() {
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isSenior = user?.currentSession.role === 'senior';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     router.push('/admin/login');
-    logout();
   };
   
   const closeSheet = () => setSheetOpen(false);
