@@ -115,16 +115,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Effect to check if registration should be allowed
   useEffect(() => {
-    const usersCollectionRef = collection(db, 'users');
-    const unsubscribe = onSnapshot(usersCollectionRef, (snapshot) => {
-        setIsRegistrationAllowed(snapshot.empty);
-        setIsAuthLoading(false); // Can stop loading once we know this
-    }, (error) => {
-        console.error("Error checking for users:", error);
-        setIsRegistrationAllowed(false); // Default to not allowed on error
-        setIsAuthLoading(false);
-    });
-    return () => unsubscribe();
+    const checkUsers = async () => {
+        setIsAuthLoading(true);
+        try {
+            const usersCollectionRef = collection(db, 'users');
+            const snapshot = await getDocs(query(usersCollectionRef));
+            setIsRegistrationAllowed(snapshot.empty);
+        } catch (error) {
+            console.error("Error checking for users:", error);
+            setIsRegistrationAllowed(false); // Default to not allowed on error
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+    checkUsers();
   }, [])
 
   useEffect(() => {
@@ -166,16 +170,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
+                        // This case handles when the session is deleted (e.g., rejected or logged out from another device)
                         if (localSessionId) {
-                           logout();
+                           forceLocalLogout();
                         }
                     }
-
                 } else {
                    // This case might happen if doc is deleted, log out user.
-                   if (auth.currentUser) {
-                       signOut(auth);
-                   }
+                   forceLocalLogout();
                 }
                 setIsAuthLoading(false);
             });
@@ -194,14 +196,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentSessionId]);
   
+  const forceLocalLogout = async () => {
+    if (auth.currentUser) {
+        await signOut(auth);
+    }
+    localStorage.removeItem('sessionId');
+    setCurrentSessionId(null);
+    setUser(null);
+    setLoginState('form');
+  };
+
   const login = async (email: string, password: string) => {
     setLoginState('form');
+    let firebaseUser;
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        firebaseUser = userCredential.user;
     } catch(error: any) {
         throw new Error(translateFirebaseError(error.code));
     }
-    const firebaseUser = auth.currentUser;
+
     if (!firebaseUser) throw new Error(translateFirebaseError('auth/user-not-found'));
 
     const userDocRef = doc(db, "users", firebaseUser.uid);
@@ -237,7 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const register = async (name: string, email: string, password: string) => {
-    if (!isRegistrationAllowed) {
+    const usersCollectionRef = collection(db, 'users');
+    const snapshot = await getDocs(query(usersCollectionRef));
+    if (!snapshot.empty) {
         throw new Error("Registration is not allowed.");
     }
 
@@ -261,9 +277,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-        
-        localStorage.setItem('sessionId', newSessionId);
-        setCurrentSessionId(newSessionId);
+        setIsRegistrationAllowed(false); // Registration is no longer allowed
+        await signOut(auth); // Sign out after registration to force login
 
     } catch(error: any) {
         throw new Error(translateFirebaseError(error.code));
@@ -294,12 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await updateDoc(userDocRef, { sessions: newSessions });
-    
-    await signOut(auth);
-    localStorage.removeItem('sessionId');
-    setCurrentSessionId(null);
-    setUser(null);
-    setLoginState('form');
+    await forceLocalLogout();
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -340,11 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           await deleteDoc(userDocRef);
           await deleteUser(firebaseUser);
-          
-          localStorage.removeItem('sessionId');
-          setCurrentSessionId(null);
-          setUser(null);
-          setLoginState('form');
+          await forceLocalLogout();
       } catch (error: any) {
           throw new Error(translateFirebaseError(error.code));
       }

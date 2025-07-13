@@ -422,7 +422,7 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
                         )}
-                        {isSenior && (
+                        {/* {isSenior && (
                             <Card className="mt-8 border-destructive/50">
                                <CardHeader>
                                    <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
@@ -435,7 +435,7 @@ export default function SettingsPage() {
                                     </Button>
                                </CardContent>
                             </Card>
-                        )}
+                        )} */}
                     </TabsContent>
                     <TabsContent value="devices">
                         <Card>

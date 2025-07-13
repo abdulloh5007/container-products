@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isAuthLoading, isRegistrationAllowed } = useAuth();
+  const { register, isAuthLoading, isRegistrationAllowed, translateFirebaseError } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
 
