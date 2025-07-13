@@ -23,8 +23,12 @@ export function Sidebar() {
   const isSenior = user?.currentSession.role === 'senior';
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/admin/login');
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Optionally, show a toast message to the user
+    }
   };
   
   const closeSheet = () => setSheetOpen(false);

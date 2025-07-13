@@ -4,7 +4,7 @@
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser, updateEmail } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch, deleteDoc } from 'firestore/firestore';
 import UAParser from 'ua-parser-js';
 import Cookies from 'js-cookie';
 import { translations } from '@/lib/translations';
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginState, setLoginState] = useState<LoginState>('form');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
     const lsSessionId = localStorage.getItem('sessionId');
@@ -109,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!lsSessionId) localStorage.setItem('sessionId', sessionId);
       if (!cookieSessionId) Cookies.set('sessionId', sessionId, { expires: 365 });
       setCurrentSessionId(sessionId);
+    } else {
+        setIsAuthLoading(false); // No session, stop loading
     }
 
     const storedLang = localStorage.getItem('language');
@@ -189,6 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
+                       // The current session ID is not found in the user's sessions list.
+                       // This means it was deleted from another device. Force a local logout.
                        if (localSessionId) {
                            forceLocalLogout(true);
                         } else {
@@ -196,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         }
                     }
                 } else {
+                   // The user document doesn't exist, which is an inconsistent state.
                    forceLocalLogout();
                 }
                 if(isAuthLoading) setIsAuthLoading(false);
@@ -305,9 +310,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const firebaseUser = auth.currentUser;
     const localSessionId = currentSessionId;
-    
-    try {
-      if (firebaseUser && user && localSessionId) {
+  
+    if (firebaseUser && user && localSessionId) {
+      try {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const docSnap = await getDoc(userDocRef);
   
@@ -318,7 +323,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (loggingOutSession) {
             let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
   
-            if (loggingOutSession.role === 'senior' && !updatedSessions.some(s => s.role === 'senior')) {
+            const wasSenior = loggingOutSession.role === 'senior';
+            const noSeniorsLeft = !updatedSessions.some(s => s.role === 'senior');
+  
+            if (wasSenior && noSeniorsLeft) {
               const juniorSessions = updatedSessions
                 .filter(s => s.role === 'junior')
                 .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
@@ -330,22 +338,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 );
               }
             }
-  
+            // Update Firestore with the new sessions array BEFORE signing out
             await updateDoc(userDocRef, { sessions: updatedSessions });
           }
         }
+      } catch (error) {
+        console.error("Firestore update error during logout:", error);
+        // Do not proceed with logout if firestore fails, to avoid inconsistent state
+        // You might want to show a toast to the user here
+        throw new Error("Could not log out. Please try again.");
       }
-    } catch (error) {
-      console.error("Firestore update error during logout:", error);
-    } finally {
-      await signOut(auth);
-      localStorage.removeItem('sessionId');
-      Cookies.remove('sessionId');
-      setCurrentSessionId(null);
-      setUser(null);
-      router.push('/admin/login'); // ✅ Добавь это обязательно!
     }
-  };  
+  
+    // This block now runs only after Firestore operations are successful
+    await signOut(auth);
+    localStorage.removeItem('sessionId');
+    Cookies.remove('sessionId');
+    setCurrentSessionId(null);
+    setUser(null);
+    router.replace('/admin/login');
+  };
 
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -369,6 +381,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         await updatePassword(firebaseUser, newPassword);
         
+        // This logic seems flawed. Resetting all sessions on password change is very disruptive.
+        // It's better to just update the password and let the user manually log out other sessions if needed.
+        // I will keep the original logic for now, but it's worth rethinking.
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         await updateDoc(userDocRef, {
             sessions: [user.currentSession]
