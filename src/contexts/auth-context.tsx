@@ -3,8 +3,8 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from "firebase/auth";
+import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import UAParser from 'ua-parser-js';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
@@ -46,6 +46,7 @@ type AuthContextType = {
   approveSession: (session: Session) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   makeSenior: (session: Session) => Promise<void>;
+  deleteUserAccount: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -271,6 +272,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to update password.");
     }
   };
+  
+  const deleteUserAccount = async () => {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
+          throw new Error("User not authenticated.");
+      }
+
+      try {
+          // 1. Delete Firestore document
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          await deleteDoc(userDocRef);
+          
+          // 2. Delete user from Auth
+          await deleteUser(firebaseUser);
+          
+          // 3. Clean up local state
+          localStorage.removeItem('sessionId');
+          setCurrentSessionId(null);
+          setUser(null);
+          setLoginState('form');
+      } catch (error: any) {
+          console.error("Account deletion error:", error);
+          if (error.code === 'auth/requires-recent-login') {
+              throw new Error("This operation is sensitive. Please log out and log back in to delete your account.");
+          }
+          throw new Error("Failed to delete account.");
+      }
+  };
 
   const toggleManagementMode = async () => {
     const settingsDocRef = doc(db, 'settings', 'global');
@@ -333,6 +362,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     updateUserPassword,
+    deleteUserAccount,
     pendingRequests,
     setPendingRequests,
     isManagementModeEnabled,
@@ -358,5 +388,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

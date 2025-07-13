@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone, ShieldAlert } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
@@ -25,15 +25,15 @@ import UAParser from 'ua-parser-js';
 import { Separator } from '@/components/ui/separator';
 
 interface AlertDialogState {
-  type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
-  targetSession: Session;
+  type: 'confirmAccess' | 'makeSenior' | 'deleteSession' | 'deleteAccount';
+  targetSession?: Session;
 }
 
 const getDeviceIcon = (deviceName: string) => {
     if (!deviceName) return <Monitor className="h-6 w-6 text-muted-foreground" />;
     
     const lowerDeviceName = deviceName.toLowerCase();
-    const mobileKeywords = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy', 'pixel', 'redmi', 'oneplus'];
+    const mobileKeywords = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy', 'pixel', 'redmi', 'oneplus', 'ios'];
     const isMobile = mobileKeywords.some(keyword => lowerDeviceName.includes(keyword));
 
     if (isMobile) {
@@ -45,7 +45,7 @@ const getDeviceIcon = (deviceName: string) => {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -160,6 +160,21 @@ export default function SettingsPage() {
         }
     };
     
+    const handleDeleteAccount = async () => {
+        setIsSubmitting(true);
+        try {
+            await deleteUserAccount();
+            toast({ title: t('admin_account_delete_success_title'), description: t('admin_account_delete_success_desc') });
+            router.push('/admin/login');
+        } catch (error) {
+            console.error("Error deleting account:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
+        } finally {
+            setIsSubmitting(false);
+            setAlertDialogState(null);
+        }
+    }
+    
     const renderAlertDialog = () => {
         if (!alertDialogState) return null;
         const { type, targetSession } = alertDialogState;
@@ -168,21 +183,25 @@ export default function SettingsPage() {
             confirmAccess: t('admin_session_dialog_confirm_title'),
             makeSenior: t('admin_session_dialog_promote_title'),
             deleteSession: t('admin_session_dialog_delete_title'),
+            deleteAccount: t('admin_account_delete_confirm_title'),
         };
         const descriptions: Record<string, string> = {
-            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetSession.deviceName }),
-            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetSession.deviceName }),
-            deleteSession: t('admin_session_dialog_delete_desc', { deviceName: targetSession.deviceName }),
+            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetSession?.deviceName || '' }),
+            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetSession?.deviceName || '' }),
+            deleteSession: t('admin_session_dialog_delete_desc', { deviceName: targetSession?.deviceName || '' }),
+            deleteAccount: t('admin_account_delete_confirm_desc'),
         };
         const actions: Record<string, () => void> = {
-            confirmAccess: () => handleConfirmAccess(targetSession),
-            makeSenior: () => handleMakeSenior(targetSession),
-            deleteSession: () => handleDeleteSession(targetSession),
+            confirmAccess: () => handleConfirmAccess(targetSession!),
+            makeSenior: () => handleMakeSenior(targetSession!),
+            deleteSession: () => handleDeleteSession(targetSession!),
+            deleteAccount: () => handleDeleteAccount(),
         };
         const actionButtonText: Record<string, string> = {
             confirmAccess: t('admin_confirm_button'),
             makeSenior: t('admin_session_promote_button'),
             deleteSession: t('admin_delete_button'),
+            deleteAccount: t('admin_delete_button'),
         }
 
         return (
@@ -197,7 +216,7 @@ export default function SettingsPage() {
                         <AlertDialogAction 
                           onClick={actions[type]} 
                           disabled={isSubmitting}
-                          className={type === 'deleteSession' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                          className={type === 'deleteSession' || type === 'deleteAccount' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
                         >
                             {isSubmitting ? t('admin_saving_text') : actionButtonText[type]}
                         </AlertDialogAction>
@@ -418,12 +437,16 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
                         )}
-                        <Card className="mt-8">
+                        <Card className="mt-8 border-destructive/50">
                            <CardHeader>
-                               <CardTitle>{t('admin_session_logout_from_all_title')}</CardTitle>
+                               <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
+                               <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
                            </CardHeader>
                            <CardContent>
-                               <Button variant="destructive" onClick={logout}>{t('admin_logout')}</Button>
+                               <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteAccount' })}>
+                                   <Trash2 className="mr-2 h-4 w-4" />
+                                   {t('admin_account_delete_button')}
+                                </Button>
                            </CardContent>
                         </Card>
                     </TabsContent>

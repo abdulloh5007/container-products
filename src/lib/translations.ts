@@ -263,7 +263,16 @@ export const translations = {
     admin_session_end_success_title: "Сеанс завершен",
     admin_session_end_success_desc: "Сеанс для {deviceName} был завершен.",
     admin_session_end_error_desc: "Не удалось завершить сеанс.",
-    admin_session_logout_from_all_title: "Выход"
+    admin_session_logout_from_all_title: "Выход",
+    
+    admin_account_delete_title: "Удаление Аккаунта",
+    admin_account_delete_desc: "Это действие необратимо и приведет к полному удалению вашего аккаунта и всех связанных данных.",
+    admin_account_delete_button: "Удалить аккаунт",
+    admin_account_delete_confirm_title: "Вы уверены, что хотите удалить аккаунт?",
+    admin_account_delete_confirm_desc: "Все ваши данные, включая сессии и настройки, будут удалены навсегда. Это действие нельзя отменить.",
+    admin_account_delete_success_title: "Аккаунт удален",
+    admin_account_delete_success_desc: "Ваш аккаунт был успешно удален."
+
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -533,11 +542,17 @@ export const translations = {
     admin_session_end_success_title: "Seans tugatildi",
     admin_session_end_success_desc: "{deviceName} uchun seans tugatildi.",
     admin_session_end_error_desc: "Seansni tugatib bo'lmadi.",
-    admin_session_logout_from_all_title: "Chiqish"
+    admin_session_logout_from_all_title: "Chiqish",
+
+    admin_account_delete_title: "Hisobni O'chirish",
+    admin_account_delete_desc: "Bu harakat qaytarib bo'lmaydi va sizning hisobingiz va barcha bog'liq ma'lumotlarning to'liq o'chirilishiga olib keladi.",
+    admin_account_delete_button: "Hisobni o'chirish",
+    admin_account_delete_confirm_title: "Hisobni o'chirishni xohlaysizmi?",
+    admin_account_delete_confirm_desc: "Barcha ma'lumotlaringiz, jumladan, sessiyalar va sozlamalar butunlay o'chiriladi. Bu amalni bekor qilib bo'lmaydi.",
+    admin_account_delete_success_title: "Hisob o'chirildi",
+    admin_account_delete_success_desc: "Sizning hisobingiz muvaffaqiyatli o'chirildi."
   },
 };
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
-
-    
