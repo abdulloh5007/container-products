@@ -313,28 +313,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const docSnap = await getDoc(userDocRef);
         if (!docSnap.exists()) return;
 
-        let sessionList = docSnap.data().sessions || [];
-        const currentSession = sessionList.find((s: Session) => s.id === localSessionId);
-        if (!currentSession) return;
+        const sessionList = docSnap.data().sessions || [];
+        const loggingOutSession = sessionList.find((s: Session) => s.id === localSessionId);
+        
+        if (!loggingOutSession) return;
 
-        let newSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
+        // Filter out the session that is logging out
+        let updatedSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
 
-        // If a senior logs out, promote the oldest junior
-        if (currentSession.role === 'senior' && !newSessions.some((s: Session) => s.role === 'senior')) {
-            const juniorSessions = newSessions
+        // If a senior logs out and there are no other seniors left, promote the oldest junior
+        if (loggingOutSession.role === 'senior' && !updatedSessions.some((s: Session) => s.role === 'senior')) {
+            const juniorSessions = updatedSessions
                 .filter((s: Session) => s.role === 'junior')
                 .sort((a: Session, b: Session) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
             if (juniorSessions.length > 0) {
                 const nextSeniorId = juniorSessions[0].id;
-                newSessions = newSessions.map((s: Session) => 
+                updatedSessions = updatedSessions.map((s: Session) => 
                     s.id === nextSeniorId ? { ...s, role: 'senior' } : s
                 );
             }
         }
-        // If a junior logs out, their session is simply removed, requiring re-approval to log in again.
+        
+        await updateDoc(userDocRef, { sessions: updatedSessions });
 
-        await updateDoc(userDocRef, { sessions: newSessions });
     } catch (error) {
         console.error("Error updating sessions on logout:", error);
     }
