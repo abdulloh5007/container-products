@@ -30,8 +30,8 @@ export function Sidebar() {
   const closeSheet = () => setSheetOpen(false);
 
   const baseNavItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "hidden md:flex" },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "hidden md:flex" },
   ];
   
   const managementNavItems = [
@@ -53,11 +53,12 @@ export function Sidebar() {
     closeSheet();
   };
 
-  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => (
-     items.map((item, index) => {
+  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => {
+     const visibleItems = items.filter(item => !item.className || !item.className.includes('hidden'));
+     return visibleItems.map((item, index) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
-        const isLastItemOnOddRow = items.length % 2 !== 0 && index === items.length - 1;
+        const isLastItemOnOddRow = visibleItems.length % 2 !== 0 && index === visibleItems.length - 1;
 
         return (
             <Link
@@ -78,7 +79,7 @@ export function Sidebar() {
             </Link>
         );
       })
-  );
+  };
 
   const isSettingsActive = pathname === '/admin/settings';
 
