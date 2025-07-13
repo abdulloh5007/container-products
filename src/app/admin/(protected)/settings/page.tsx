@@ -30,8 +30,11 @@ interface AlertDialogState {
 }
 
 const getDeviceIcon = (deviceName: string) => {
+    if (!deviceName) return <Monitor className="h-6 w-6 text-muted-foreground" />;
+    
     const lowerDeviceName = deviceName.toLowerCase();
-    const isMobile = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy'].some(keyword => lowerDeviceName.includes(keyword));
+    const mobileKeywords = ['iphone', 'android', 'mobile', 'tablet', 'ipad', 'galaxy', 'pixel', 'redmi', 'oneplus'];
+    const isMobile = mobileKeywords.some(keyword => lowerDeviceName.includes(keyword));
 
     if (isMobile) {
         return <Smartphone className="h-6 w-6 text-muted-foreground" />;
@@ -245,12 +248,12 @@ export default function SettingsPage() {
              <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
                     {getDeviceIcon(session.deviceName)}
-                    <div>
-                        <p className="font-semibold flex items-center gap-2">
+                    <div className="flex flex-col">
+                        <p className="font-semibold text-sm sm:text-base">
                            {session.deviceName}
-                           {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        {isCurrentSession && <span className="text-xs font-normal text-primary mt-1">({t('admin_session_current_text')})</span>}
+                        <p className="text-sm text-muted-foreground mt-1 sm:mt-0">
                             {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'd MMMM, yyyy, HH:mm', { locale: dateLocale })}
                         </p>
                     </div>
