@@ -54,16 +54,19 @@ export function Sidebar() {
   };
 
   const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => (
-     items.map((item) => {
+     items.map((item, index) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
+        const isLastItemOnOddRow = items.length % 2 !== 0 && index === items.length - 1;
+
         return (
             <Link
               key={item.href}
               href={item.href}
               onClick={closeSheet}
               className={cn(
-                'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors aspect-square',
+                'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors',
+                isLastItemOnOddRow ? 'col-span-2' : 'aspect-square',
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80',
