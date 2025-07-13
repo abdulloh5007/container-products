@@ -138,6 +138,9 @@ function LoginForm() {
             return <AccessDeniedAlert onBackClick={() => setLoginState('form')} />
         default:
             return (
+                <>
+                <CardDescription className="!mt-0 text-center">{t('admin_login_subtitle')}</CardDescription>
+                <p className="text-xs text-muted-foreground text-center mt-2 mb-4">{t('admin_login_refresh_prompt')}</p>
                 <form onSubmit={handleLogin} className="space-y-4">
                    <div className="space-y-2">
                      <Label htmlFor="email">{t('admin_email')}</Label>
@@ -187,6 +190,7 @@ function LoginForm() {
                     </p>
                   )}
                 </form>
+                </>
             )
     }
   }
@@ -199,7 +203,6 @@ function LoginForm() {
           <Container className="h-8 w-8 text-primary" />
         </div>
         <CardTitle className="text-2xl font-bold">{t('admin_login_title')}</CardTitle>
-        <CardDescription>{t('admin_login_subtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
           {renderStateContent()}
