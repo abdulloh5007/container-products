@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, AppUser, SessionRole } from '@/contexts/auth-context';
+import { useAuth, AppUser, SessionRole, Session } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc, writeBatch, collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,30 +23,16 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 
 interface AlertDialogState {
-  type: 'confirmAccess' | 'makeSenior' | 'deleteUser' | 'endSession';
-  targetUser?: AppUser;
-  targetSession?: Session;
-}
-
-interface Session {
-    id: string;
-    userId: string;
-    userName?: string;
-    loginTime: Timestamp;
-    logoutTime?: Timestamp;
-    device: string;
-    isActive: boolean;
+  type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
+  targetSession: Session;
 }
 
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior } = useAuth();
     const router = useRouter();
     
-    const [users, setUsers] = useState<AppUser[]>([]);
-    const [sessions, setSessions] = useState<Session[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
@@ -55,48 +41,15 @@ export default function SettingsPage() {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
 
-    const isSenior = currentUser?.role === 'senior';
+    const isSenior = currentUser?.currentSession?.role === 'senior';
     const dateLocale = language === 'uz' ? uz : ru;
 
     useEffect(() => {
-        setIsLoading(true);
-        const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-            const userData = snapshot.docs.map(doc => doc.data() as AppUser);
-            
-            const roleOrder: Record<SessionRole, number> = { 'senior': 1, 'junior': 2, 'pending': 3 };
-            userData.sort((a, b) => {
-                const roleA = a.role || 'pending';
-                const roleB = b.role || 'pending';
-                const roleComparison = (roleOrder[roleA]) - (roleOrder[roleB]);
-                if (roleComparison !== 0) return roleComparison;
-                return (a.name || '').localeCompare(b.name || '');
-            });
-            
-            setUsers(userData);
-            const pending = userData.filter(u => u.role === 'pending');
-            setPendingRequests(pending.length);
-        }, (error) => {
-            console.error("Error listening to users:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-        });
-
-        const q = query(collection(db, "sessions"), where("isActive", "==", true), orderBy("loginTime", "desc"));
-        const unsubscribeSessions = onSnapshot(q, (snapshot) => {
-            const sessionData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
-            setSessions(sessionData);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error listening to sessions:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-            setIsLoading(false);
-        });
-
-
-        return () => {
-            unsubscribeUsers();
-            unsubscribeSessions();
+        if (currentUser) {
+            const pending = currentUser.sessions.filter(s => s.role === 'pending').length;
+            setPendingRequests(pending);
         }
-    }, [t, toast, setPendingRequests]);
+    }, [currentUser, setPendingRequests])
 
     useEffect(() => {
         if (!isAuthLoading && currentUser) {
@@ -135,15 +88,11 @@ export default function SettingsPage() {
         }
     }
 
-
-    const handleConfirmAccess = async (userToConfirm: AppUser) => {
+    const handleConfirmAccess = async (sessionToConfirm: Session) => {
         setIsSubmitting(true);
-        const userDocRef = doc(db, 'users', userToConfirm.uid);
-        
         try {
-            await updateDoc(userDocRef, { role: 'junior' });
-            
-            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: userToConfirm.name || 'user' }) });
+            await approveSession(sessionToConfirm);
+            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: sessionToConfirm.deviceName }) });
         } catch (error) {
             console.error("Error confirming access:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
@@ -153,23 +102,11 @@ export default function SettingsPage() {
         }
     };
 
-    const handleMakeSenior = async (userToPromote: AppUser) => {
-        if (!currentUser) return;
+    const handleMakeSenior = async (sessionToPromote: Session) => {
         setIsSubmitting(true);
-        
         try {
-            const batch = writeBatch(db);
-            const userToPromoteRef = doc(db, 'users', userToPromote.uid);
-            batch.update(userToPromoteRef, { role: 'senior' });
-
-            const currentSeniorRef = doc(db, 'users', currentUser.uid);
-            batch.update(currentSeniorRef, { role: 'junior' });
-            
-            await batch.commit();
-            
-            toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: userToPromote.name || 'user' }) });
-            logout();
-
+            await makeSenior(sessionToPromote);
+            toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: sessionToPromote.deviceName }) });
         } catch (error) {
             console.error("Error making senior:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_promote_error_desc') });
@@ -179,28 +116,14 @@ export default function SettingsPage() {
         }
     };
 
-    const handleDeleteUser = async (userToDelete: AppUser) => {
-        console.warn("User deletion should be handled by a backend function for security.");
-        toast({
-            variant: "destructive",
-            title: "Operation not implemented",
-            description: "User deletion must be done from a secure backend environment."
-        })
-        setAlertDialogState(null);
-    };
-
-    const handleEndSession = async (sessionToEnd: Session) => {
-        setIsSubmitting(true);
-        const sessionDocRef = doc(db, 'sessions', sessionToEnd.id);
+    const handleDeleteSession = async (sessionToDelete: Session) => {
+         setIsSubmitting(true);
         try {
-            await updateDoc(sessionDocRef, { 
-                isActive: false,
-                logoutTime: serverTimestamp()
-            });
-            toast({ title: t('admin_session_end_success_title'), description: t('admin_session_end_success_desc', { deviceName: sessionToEnd.userName || 'user' }) });
+            await deleteSession(sessionToDelete);
+            toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: sessionToDelete.deviceName }) });
         } catch (error) {
-            console.error("Error ending session:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_end_error_desc') });
+            console.error("Error deleting session:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_delete_error_desc') });
         } finally {
             setIsSubmitting(false);
             setAlertDialogState(null);
@@ -209,31 +132,27 @@ export default function SettingsPage() {
     
     const renderAlertDialog = () => {
         if (!alertDialogState) return null;
-        const { type, targetUser, targetSession } = alertDialogState;
+        const { type, targetSession } = alertDialogState;
         
         const titles: Record<string, string> = {
             confirmAccess: t('admin_session_dialog_confirm_title'),
             makeSenior: t('admin_session_dialog_promote_title'),
-            deleteUser: t('admin_session_dialog_delete_title'),
-            endSession: t('admin_session_dialog_end_title')
+            deleteSession: t('admin_session_dialog_delete_title'),
         };
         const descriptions: Record<string, string> = {
-            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetUser?.name || 'user' }),
-            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetUser?.name || 'user' }),
-            deleteUser: t('admin_session_dialog_delete_desc', { deviceName: targetUser?.name || 'user' }),
-            endSession: t('admin_session_dialog_end_desc', { deviceName: targetSession?.userName || 'session' })
+            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetSession.deviceName }),
+            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetSession.deviceName }),
+            deleteSession: t('admin_session_dialog_delete_desc', { deviceName: targetSession.deviceName }),
         };
         const actions: Record<string, () => void> = {
-            confirmAccess: () => targetUser && handleConfirmAccess(targetUser),
-            makeSenior: () => targetUser && handleMakeSenior(targetUser),
-            deleteUser: () => targetUser && handleDeleteUser(targetUser),
-            endSession: () => targetSession && handleEndSession(targetSession)
+            confirmAccess: () => handleConfirmAccess(targetSession),
+            makeSenior: () => handleMakeSenior(targetSession),
+            deleteSession: () => handleDeleteSession(targetSession),
         };
         const actionButtonText: Record<string, string> = {
             confirmAccess: t('admin_confirm_button'),
             makeSenior: t('admin_session_promote_button'),
-            deleteUser: t('admin_delete_button'),
-            endSession: t('admin_session_end_button')
+            deleteSession: t('admin_delete_button'),
         }
 
         return (
@@ -248,7 +167,7 @@ export default function SettingsPage() {
                         <AlertDialogAction 
                           onClick={actions[type]} 
                           disabled={isSubmitting}
-                          className={type === 'deleteUser' || type === 'endSession' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                          className={type === 'deleteSession' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
                         >
                             {isSubmitting ? t('admin_saving_text') : actionButtonText[type]}
                         </AlertDialogAction>
@@ -258,9 +177,9 @@ export default function SettingsPage() {
         );
     }
     
-    const totalLoading = isLoading || isAuthLoading;
+    const totalLoading = isAuthLoading;
 
-    if (totalLoading && !users.length && !sessions.length) {
+    if (totalLoading && !currentUser) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
                  <div className="flex items-center gap-4">
@@ -281,7 +200,7 @@ export default function SettingsPage() {
             </div>
         )
     }
-
+    
     const renderRoleIcon = (role?: SessionRole) => {
         switch (role) {
             case 'senior': return <Crown className="h-5 w-5 text-amber-500" />;
@@ -290,45 +209,43 @@ export default function SettingsPage() {
             default: return null;
         }
     };
-
-    const renderUserCard = (user: AppUser) => {
-        const isCurrentUser = user.uid === currentUser?.uid;
+    
+    const renderSessionCard = (session: Session) => {
+        const isCurrentSession = session.id === currentUser?.currentSession?.id;
+        const role = session.role;
 
         return (
-            <div key={user.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
+             <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
-                     <Avatar>
-                        <AvatarImage src={user.photoURL ?? undefined} alt={user.name ?? ''} />
-                        <AvatarFallback>{getInitials(user.name || '')}</AvatarFallback>
-                    </Avatar>
+                    <Monitor className="h-6 w-6 text-muted-foreground" />
                     <div>
                         <p className="font-semibold flex items-center gap-2">
-                           {user.name}
-                           {isCurrentUser && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
+                           {session.deviceName}
+                           {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {user.email}
+                            {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'Pp', { locale: dateLocale })}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
-                    <div className="flex-shrink-0">{renderRoleIcon(user.role)}</div>
-                     {isSenior && !isCurrentUser && (
+                    <div className="flex-shrink-0">{renderRoleIcon(role)}</div>
+                     {isSenior && !isCurrentSession && (
                         <>
-                             {user.role === 'pending' && (
-                                <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', targetUser: user })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
+                             {role === 'pending' && (
+                                <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', targetSession: session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                     <UserCheck className="mr-2 h-4 w-4" />
                                     <span>{t('admin_session_confirm_button')}</span>
                                 </Button>
                              )}
-                             {user.role === 'junior' && (
-                                <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetUser: user })} disabled={isSubmitting}>
+                             {role === 'junior' && (
+                                <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetSession: session })} disabled={isSubmitting}>
                                     <Crown className="mr-2 h-4 w-4" />
                                     {t('admin_session_promote_button')}
                                 </Button>
                              )}
-                              <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'deleteUser', targetUser: user })} disabled={isSubmitting}>
+                              <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} disabled={isSubmitting}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                         </>
@@ -338,41 +255,9 @@ export default function SettingsPage() {
         )
     }
 
-    const renderSessionCard = (session: Session) => {
-        const isCurrentSession = session.id === currentUser?.currentSessionId;
-        return (
-             <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
-                <div className="flex items-center gap-4">
-                    <Monitor className="h-6 w-6 text-muted-foreground" />
-                    <div>
-                        <p className="font-semibold flex items-center gap-2">
-                           {session.userName}
-                           {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            {t('admin_session_login_time')}: {format(session.loginTime.toDate(), 'Pp', { locale: dateLocale })}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
-                     {isSenior && !isCurrentSession && (
-                        <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'endSession', targetSession: session })} disabled={isSubmitting}>
-                            <LogOut className="h-4 w-4" />
-                        </Button>
-                     )}
-                     {isCurrentSession && (
-                        <Button variant="destructive" onClick={logout} disabled={isSubmitting}>
-                            {t('admin_logout')}
-                        </Button>
-                     )}
-                </div>
-            </div>
-        )
-    }
-    
-    const activeUsers = users.filter(u => u.role !== 'pending');
-    const pendingUsers = users.filter(u => u.role === 'pending');
+    const sessions = currentUser?.sessions || [];
+    const activeSessions = sessions.filter(s => s.role !== 'pending');
+    const pendingSessions = sessions.filter(s => s.role === 'pending');
 
     return (
       <>
@@ -391,7 +276,7 @@ export default function SettingsPage() {
                 <Tabs defaultValue="profile" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="profile">{t('admin_settings_tab_profile')}</TabsTrigger>
-                        {isSenior && <TabsTrigger value="users">{t('admin_settings_tab_users')}</TabsTrigger>}
+                        <TabsTrigger value="devices">{t('admin_settings_tab_users')}</TabsTrigger>
                     </TabsList>
                     <TabsContent value="profile">
                         <Card>
@@ -449,39 +334,32 @@ export default function SettingsPage() {
                             </Card>
                         )}
                         <Card className="mt-8">
+                           <CardHeader>
+                               <CardTitle>{t('admin_session_logout_from_all_title')}</CardTitle>
+                           </CardHeader>
+                           <CardContent>
+                               <Button variant="destructive" onClick={logout}>{t('admin_logout')}</Button>
+                           </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="devices">
+                        <Card>
                             <CardHeader>
                                 <CardTitle>{t('admin_session_active_title')}</CardTitle>
                                 <CardDescription>{t('admin_session_active_desc')}</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {totalLoading ? (
-                                    Array.from({length: 1}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-                                ) : sessions.length > 0 ? (
-                                    sessions.map(renderSessionCard)
-                                ) : (
-                                    <p className="text-muted-foreground text-center py-4">{t('admin_session_none_active')}</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                    <TabsContent value="users">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>{t('admin_users_title')}</CardTitle>
-                                <CardDescription>{t('admin_users_desc')}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
                               {totalLoading ? (
                                  Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-                              ) : activeUsers.length > 0 ? (
-                                   activeUsers.map(renderUserCard)
+                              ) : activeSessions.length > 0 ? (
+                                   activeSessions.map(renderSessionCard)
                                ) : (
                                    <p className="text-muted-foreground text-center py-4">{t('admin_users_none')}</p>
                                )}
                             </CardContent>
                         </Card>
 
-                        {isSenior && pendingUsers.length > 0 && (
+                        {isSenior && pendingSessions.length > 0 && (
                             <Card className="mt-8">
                                 <CardHeader>
                                     <CardTitle>{t('admin_session_pending_title')}</CardTitle>
@@ -491,17 +369,18 @@ export default function SettingsPage() {
                                     {totalLoading ? (
                                         <Skeleton className="h-20 w-full" />
                                      ) : (
-                                        pendingUsers.map(renderUserCard)
+                                        pendingSessions.map(renderSessionCard)
                                      )}
                                 </CardContent>
                             </Card>
                         )}
                     </TabsContent>
                 </Tabs>
-                 <Button variant="destructive" className="w-full mt-8" onClick={logout}>{t('admin_logout')}</Button>
             </div>
         </div>
         {renderAlertDialog()}
       </>
     );
 }
+
+    
