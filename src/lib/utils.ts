@@ -16,26 +16,32 @@ export function getInitials(name: string) {
 }
 
 export function formatPhoneNumber(value: string): string {
-  if (!value) return '';
+  const digitsOnly = value.replace(/\D/g, '');
+  
+  // Start with the country code for Uzbekistan
+  let uzbekistanCode = "998";
+  
+  // Get the part of the number after the country code
+  let numberPart = digitsOnly;
+  if (numberPart.startsWith(uzbekistanCode)) {
+      numberPart = numberPart.substring(uzbekistanCode.length);
+  }
 
-  const phoneNumber = value.replace(/\D/g, '');
-  const phoneNumberLength = phoneNumber.length;
+  const phoneNumberLength = numberPart.length;
 
-  if (phoneNumberLength < 4) return `+${phoneNumber}`;
-
-  let formattedNumber = `+${phoneNumber.substring(0, 3)}`;
-
-  if (phoneNumberLength > 3) {
-    formattedNumber += ` (${phoneNumber.substring(3, 5)}`;
+  let formattedNumber = `+${uzbekistanCode}`;
+  
+  if (phoneNumberLength > 0) {
+    formattedNumber += ` (${numberPart.substring(0, 2)}`;
+  }
+  if (phoneNumberLength >= 3) {
+    formattedNumber += `) ${numberPart.substring(2, 5)}`;
   }
   if (phoneNumberLength >= 6) {
-    formattedNumber += `) ${phoneNumber.substring(5, 8)}`;
+    formattedNumber += `-${numberPart.substring(5, 7)}`;
   }
-  if (phoneNumberLength >= 9) {
-    formattedNumber += `-${phoneNumber.substring(8, 10)}`;
-  }
-  if (phoneNumberLength >= 11) {
-    formattedNumber += `-${phoneNumber.substring(10, 12)}`;
+  if (phoneNumberLength >= 8) {
+    formattedNumber += `-${numberPart.substring(7, 9)}`;
   }
 
   return formattedNumber;
@@ -44,5 +50,3 @@ export function formatPhoneNumber(value: string): string {
 export function deformatPhoneNumber(formattedValue: string): string {
   return formattedValue.replace(/\D/g, '');
 }
-
-    
