@@ -1,276 +1,192 @@
 
 'use client';
 
-import { createContext, useState, ReactNode, useContext, useMemo, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, setDoc, getDocs, collection, onSnapshot } from 'firebase/firestore';
+import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, User as FirebaseAuthUser } from "firebase/auth";
+import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot } from 'firebase/firestore';
+
+export type SessionRole = 'senior' | 'junior' | 'pending';
 
 export interface Session {
-    role: 'senior' | 'junior' | 'pending';
+    role: SessionRole;
     sessionToken: string;
     deviceName: string;
-    date: string; // ISO 8601 format
+    date: string;
 }
 
-interface AppUser {
-    phone: string;
-    Name: string;
-    password?: string;
-    currentSession: Session;
+export interface AppUser {
+    uid: string;
+    role?: SessionRole;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    photoURL?: string | null;
+    currentSession?: Session; // Kept for potential compatibility, but role is now top-level
 }
 
-type LoginResult = {
-  success: boolean;
-  isPending?: boolean;
-  session?: Session;
-}
+export type LoginState = 'form' | 'pending' | 'failed';
 
 type AuthContextType = {
   user: AppUser | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
+  isAuthLoading: boolean;
   pendingRequests: number;
   isManagementModeEnabled: boolean;
   isLoadingSettings: boolean;
+  loginState: LoginState;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
-  login: (phone: string, password:string) => Promise<LoginResult>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => void;
-  updateUser: (data: Partial<AppUser>) => void;
-  updateUserProfile: (data: {Name: string, phone: string, password?: string}) => Promise<void>;
-  manuallySetUser: (user: AppUser) => void;
+  updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
+  listenForApproval: (uid: string, session: Session) => () => void;
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const generateSessionToken = () => {
-    return [...Array(30)].map(() => Math.random().toString(36)[2]).join('');
-}
-
-const getDeviceName = () => {
-    if (typeof window === 'undefined') return 'Unknown Device';
-    const ua = navigator.userAgent;
-    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return "Tablet";
-    if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) return "Mobile Phone";
-    if (ua.includes('Mac')) return "Mac";
-    if (ua.includes('Windows')) return "Windows PC";
-    return "Desktop";
-};
-
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [isManagementModeEnabled, setIsManagementModeEnabled] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [loginState, setLoginState] = useState<LoginState>('form');
 
+  // Listen for global settings like management mode
   useEffect(() => {
     const settingsDocRef = doc(db, 'settings', 'global');
     const unsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
         if (docSnap.exists()) {
             setIsManagementModeEnabled(!!docSnap.data().isManagementModeEnabled);
         } else {
-            // Default to enabled if not set
             setIsManagementModeEnabled(true);
         }
         setIsLoadingSettings(false);
-    }, (error) => {
-        console.error("Error fetching settings:", error);
-        setIsManagementModeEnabled(true); // Default on error
+    }, () => {
+        setIsManagementModeEnabled(true);
         setIsLoadingSettings(false);
     });
 
     return () => unsubscribe();
   }, []);
 
+  // Listen for authentication state changes
   useEffect(() => {
-    const validateSession = async () => {
-        try {
-            const storedUserString = localStorage.getItem('user');
-            if (storedUserString) {
-                const storedUser: AppUser = JSON.parse(storedUserString);
-                
-                if (storedUser.phone && storedUser.currentSession?.sessionToken) {
-                    const userId = storedUser.phone.replace(/\D/g, '');
-                    const userDocRef = doc(db, 'users', userId);
-                    const userDocSnap = await getDoc(userDocRef);
-
-                    if (userDocSnap.exists()) {
-                        const sessions = userDocSnap.data().sessionTokens as Session[] || [];
-                        const currentSession = sessions.find(s => s.sessionToken === storedUser.currentSession.sessionToken);
-                        
-                        if (currentSession && currentSession.role !== 'pending') {
-                           const updatedUser: AppUser = {
-                               ...storedUser,
-                               Name: userDocSnap.data().Name,
-                               phone: userDocSnap.data().phone,
-                               password: userDocSnap.data().password,
-                               currentSession: currentSession
-                           }
-                           setUser(updatedUser);
-                           localStorage.setItem('user', JSON.stringify(updatedUser));
-                        } else {
-                           localStorage.removeItem('user');
-                           setUser(null);
-                        }
-                    } else {
-                        localStorage.removeItem('user');
-                        setUser(null);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Could not validate session", error);
-            localStorage.removeItem('user');
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    
-    validateSession();
-  }, []);
-
-  const login = async (phone: string, password: string): Promise<LoginResult> => {
-    const userId = phone.replace(/\D/g, '');
-    if (!userId || !password) return { success: false };
-    
-    setIsLoading(true);
-    try {
-        const userDocRef = doc(db, 'users', userId);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
 
-        const newSession: Session = {
-            sessionToken: generateSessionToken(),
-            deviceName: getDeviceName(),
-            date: new Date().toISOString(),
-            role: 'pending'
-        };
-
-        if (userDocSnap.exists()) { // Existing user login
-            if (userDocSnap.data().password !== password) return { success: false };
-
-            const userData = userDocSnap.data();
-            const sessions: Session[] = userData.sessionTokens || [];
-            
-            const seniorExists = sessions.some(s => s.role === 'senior');
-            if (!seniorExists) {
-                newSession.role = 'senior';
-            }
-
-            await updateDoc(userDocRef, {
-                sessionTokens: arrayUnion(newSession),
-                lastLogin: serverTimestamp(),
-            });
-            
-             if (newSession.role === 'pending') {
-                return { success: true, isPending: true, session: newSession };
-            }
-            
-            const appUser: AppUser = {
-                phone: userData.phone,
-                Name: userData.Name,
-                password: userData.password,
-                currentSession: newSession,
-            };
-
-            setUser(appUser);
-            localStorage.setItem('user', JSON.stringify(appUser));
-            return { success: true, isPending: false };
-
-        } else { // First-ever login
-            const usersQuery = await getDocs(collection(db, 'users'));
-            if (usersQuery.empty) {
-                newSession.role = 'senior';
-                
-                const newUserAccount = {
-                    phone: `+${userId}`,
-                    password: password,
-                    Name: 'Admin',
-                    sessionTokens: [newSession],
-                    createdAt: serverTimestamp(),
-                    lastLogin: serverTimestamp(),
-                };
-                await setDoc(userDocRef, newUserAccount);
-                
-                const appUser: AppUser = {
-                    phone: `+${userId}`,
-                    Name: 'Admin',
-                    password: password,
-                    currentSession: newSession
-                };
-
-                setUser(appUser);
-                localStorage.setItem('user', JSON.stringify(appUser));
-                return { success: true, isPending: false };
-            }
-            return { success: false };
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data() as AppUser;
+          if (userData.role === 'pending') {
+            setUser(userData);
+            setLoginState('pending');
+          } else {
+            setUser(userData);
+            setLoginState('form');
+          }
+        } else {
+          // This case should ideally be handled by signInWithGoogle,
+          // but as a fallback, we can treat them as pending.
+          const newUser: AppUser = {
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL,
+              role: 'pending',
+          };
+          await setDoc(userDocRef, newUser);
+          setUser(newUser);
+          setLoginState('pending');
         }
+      } else {
+        setUser(null);
+        setLoginState('form');
+      }
+      setIsAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  
+  const listenForApproval = useCallback((uid: string) => {
+    const userDocRef = doc(db, 'users', uid);
+    return onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const userData = docSnap.data() as AppUser;
+            if (userData.role !== 'pending') {
+                setUser(userData);
+                setLoginState('form');
+            }
+        }
+    });
+  }, []);
+
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        // This is a new user (registration)
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("role", "==", "senior"));
+        const seniorSnapshot = await getDocs(q);
+        
+        const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
+
+        const newUser: AppUser = {
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName,
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+          role: newRole,
+          phone: '',
+        };
+        
+        await setDoc(userDocRef, newUser);
+        // Let onAuthStateChanged handle setting the user state
+      } else {
+        // Existing user, just update last login
+        await updateDoc(userDocRef, {
+            lastLogin: serverTimestamp(),
+        });
+        // Let onAuthStateChanged handle setting the user state
+      }
     } catch (error) {
-        console.error("Firestore error during login:", error);
-        return { success: false };
-    } finally {
-        setIsLoading(false);
+      console.error("Error during Google Sign-In:", error);
+      throw error;
     }
   };
   
   const logout = async () => {
-    const currentUser = user;
-    if (!currentUser || !currentUser.currentSession) return;
-    
-    setIsLoading(true);
     try {
-        const userId = currentUser.phone.replace(/\D/g, '');
-        const userDocRef = doc(db, 'users', userId);
-        
-        await updateDoc(userDocRef, {
-            sessionTokens: arrayRemove(currentUser.currentSession)
-        });
-        
+      await signOut(auth);
     } catch (error) {
-        console.error("Error clearing session token from Firestore", error);
+        console.error("Error signing out", error);
     } finally {
         setUser(null);
-        localStorage.removeItem('user');
-        setIsLoading(false);
-        window.location.href = '/admin/login';
+        setLoginState('form');
+        // No need for window.location.href, component will re-render
     }
   };
 
-  const updateUser = (data: Partial<AppUser>) => {
-      setUser(prevUser => {
-          if (!prevUser) return null;
-          const newUser = { ...prevUser, ...data };
-          localStorage.setItem('user', JSON.stringify(newUser));
-          return newUser;
-      });
-  }
-  
-  const manuallySetUser = (userToSet: AppUser) => {
-    setUser(userToSet);
-    localStorage.setItem('user', JSON.stringify(userToSet));
-  };
-
-
-  const updateUserProfile = async (data: { Name: string, phone: string, password?: string }) => {
+  const updateUserProfile = async (data: { name: string, phone: string }) => {
     if (!user) {
         throw new Error("User not authenticated");
     }
-
-    const currentUserId = user.phone.replace(/\D/g, '');
-    const userDocRef = doc(db, 'users', currentUserId);
-
-    const updateData: any = {
-        Name: data.Name,
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, {
+        name: data.name,
         phone: data.phone,
-    };
-    if (data.password) {
-        updateData.password = data.password;
-    }
-
-    await updateDoc(userDocRef, updateData);
-
-    updateUser({ Name: data.Name, phone: data.phone, password: data.password });
+    });
+    setUser(prev => prev ? ({ ...prev, name: data.name, phone: data.phone }) : null);
   };
 
   const toggleManagementMode = async () => {
@@ -280,7 +196,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isManagementModeEnabled: !isManagementModeEnabled
         });
     } catch (error) {
-        // If doc doesn't exist, create it
         if ((error as any).code === 'not-found') {
             await setDoc(settingsDocRef, {
                 isManagementModeEnabled: !isManagementModeEnabled
@@ -295,19 +210,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
+    isAuthenticated: !!user && user.role !== 'pending',
+    isAuthLoading,
+    signInWithGoogle,
     logout,
-    updateUser,
     updateUserProfile,
     pendingRequests,
     setPendingRequests,
-    manuallySetUser,
     isManagementModeEnabled,
     isLoadingSettings,
     toggleManagementMode,
-  }), [user, isLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings]);
+    loginState,
+    listenForApproval,
+  }), [user, isAuthLoading, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, listenForApproval]);
 
   return (
     <AuthContext.Provider value={value}>

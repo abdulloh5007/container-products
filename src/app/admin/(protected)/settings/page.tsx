@@ -1,115 +1,97 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, Session } from '@/contexts/auth-context';
+import { useAuth, Session, AppUser } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, arrayRemove, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Eye, EyeOff, MoreHorizontal, Settings2 } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/utils';
 
 interface AlertDialogState {
-  type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
-  session: Session;
+  type: 'confirmAccess' | 'makeSenior' | 'deleteUser';
+  targetUser: AppUser;
 }
 
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user, logout, isLoading: isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings } = useAuth();
     const router = useRouter();
     
-    const [sessions, setSessions] = useState<Session[]>([]);
+    const [users, setUsers] = useState<AppUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
 
-    // Security tab state
+    // Profile tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
 
-
-    const isSenior = user?.currentSession.role === 'senior';
+    const isSenior = currentUser?.role === 'senior';
     const dateLocale = language === 'uz' ? uz : ru;
 
     useEffect(() => {
-        if (!user?.phone) return;
-
         setIsLoading(true);
-        const userId = user.phone.replace(/\D/g, '');
-        const userDocRef = doc(db, 'users', userId);
-
-        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
             if (docSnap.exists()) {
-                const sessionsData = (docSnap.data().sessionTokens || []) as Session[];
+                const userData = (docSnap.data().users || []) as AppUser[];
                 
                 const roleOrder: Record<Session['role'], number> = { 'senior': 1, 'junior': 2, 'pending': 3 };
-                sessionsData.sort((a, b) => {
-                  const roleComparison = (roleOrder[a.role] || 99) - (roleOrder[b.role] || 99);
+                userData.sort((a, b) => {
+                  const roleA = a.role || 'pending';
+                  const roleB = b.role || 'pending';
+                  const roleComparison = (roleOrder[roleA]) - (roleOrder[roleB]);
                   if (roleComparison !== 0) return roleComparison;
-                  return new Date(b.date).getTime() - new Date(a.date).getTime();
+                  return (a.name || '').localeCompare(b.name || '');
                 });
-
-                setSessions(sessionsData);
-                const pending = sessionsData.filter(s => s.role === 'pending');
+                
+                setUsers(userData);
+                const pending = userData.filter(u => u.role === 'pending');
                 setPendingRequests(pending.length);
             } else {
-                setSessions([]);
+                setUsers([]);
                 setPendingRequests(0);
             }
              setIsLoading(false);
         }, (error) => {
-            console.error("Error listening to sessions:", error);
+            console.error("Error listening to users:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
             setIsLoading(false);
         });
 
         return () => unsubscribe();
-    }, [user?.phone, t, toast, setPendingRequests]);
+    }, [t, toast, setPendingRequests]);
 
     useEffect(() => {
-        if (!isAuthLoading && user) {
-            setName(user.Name);
-            setPhone(user.phone);
-            setPassword(user.password || '');
+        if (!isAuthLoading && currentUser) {
+            setName(currentUser.name || '');
+            setPhone(currentUser.phone || '');
         }
-    }, [user, isAuthLoading]);
+    }, [currentUser, isAuthLoading]);
     
     const handleProfileUpdate = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!user) return;
+      if (!currentUser) return;
       
       setIsSubmitting(true);
       try {
-        const updateData: { Name: string; phone: string; password?: string } = {
-          Name: name,
-          phone: phone,
-        };
-        
-        if (password && password !== user.password) {
-          updateData.password = password;
-        }
-
-        await updateUserProfile(updateData);
-        
+        await updateUserProfile({ name, phone });
         toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
@@ -134,23 +116,18 @@ export default function SettingsPage() {
     }
 
 
-    const handleConfirmAccess = async (sessionToConfirm: Session) => {
-        if (!user) return;
+    const handleConfirmAccess = async (userToConfirm: AppUser) => {
         setIsSubmitting(true);
-        const userDocRef = doc(db, 'users', user.phone.replace(/\D/g, ''));
+        const settingsDocRef = doc(db, 'settings', 'global');
         
         try {
-            const docSnap = await getDoc(userDocRef);
-            if (!docSnap.exists()) throw new Error("User doc not found");
-
-            const currentSessions = (docSnap.data().sessionTokens || []) as Session[];
-
-            const updatedSessions = currentSessions.map(s => 
-                s.sessionToken === sessionToConfirm.sessionToken ? { ...s, role: 'junior' as const } : s
+            const updatedUsers = users.map(u => 
+                u.uid === userToConfirm.uid ? { ...u, role: 'junior' as const } : u
             );
-            await updateDoc(userDocRef, { sessionTokens: updatedSessions });
             
-            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: sessionToConfirm.deviceName }) });
+            await updateDoc(settingsDocRef, { users: updatedUsers });
+            
+            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: userToConfirm.name || 'user' }) });
         } catch (error) {
             console.error("Error confirming access:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
@@ -160,33 +137,27 @@ export default function SettingsPage() {
         }
     };
 
-    const handleMakeSenior = async (sessionToPromote: Session) => {
-        if (!user) return;
+    const handleMakeSenior = async (userToPromote: AppUser) => {
         setIsSubmitting(true);
-        const userDocRef = doc(db, 'users', user.phone.replace(/\D/g, ''));
+        const settingsDocRef = doc(db, 'settings', 'global');
         
         try {
             let selfDemoted = false;
             
-            const docSnap = await getDoc(userDocRef);
-            if (!docSnap.exists()) throw new Error("User doc not found");
-
-            const currentSessions = (docSnap.data().sessionTokens || []) as Session[];
-            
-            const updatedSessions = currentSessions.map(s => {
-                if (s.sessionToken === sessionToPromote.sessionToken) {
-                    return { ...s, role: 'senior' as const };
+            const updatedUsers = users.map(u => {
+                if (u.uid === userToPromote.uid) {
+                    return { ...u, role: 'senior' as const };
                 }
-                if (s.role === 'senior') {
-                    if (s.sessionToken === user.currentSession.sessionToken) selfDemoted = true;
-                    return { ...s, role: 'junior' as const };
+                if (u.role === 'senior') {
+                    if (u.uid === currentUser?.uid) selfDemoted = true;
+                    return { ...u, role: 'junior' as const };
                 }
-                return s;
+                return u;
             });
             
-            await updateDoc(userDocRef, { sessionTokens: updatedSessions });
+            await updateDoc(settingsDocRef, { users: updatedUsers });
             
-            toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: sessionToPromote.deviceName }) });
+            toast({ title: t('admin_session_promote_success_title'), description: t('admin_session_promote_success_desc', { deviceName: userToPromote.name || 'user' }) });
 
             if (selfDemoted) {
                 logout();
@@ -200,21 +171,21 @@ export default function SettingsPage() {
         }
     };
 
-    const handleDeleteSession = async (sessionToDelete: Session) => {
-        if (!user) return;
+    const handleDeleteUser = async (userToDelete: AppUser) => {
         setIsSubmitting(true);
-        const userDocRef = doc(db, 'users', user.phone.replace(/\D/g, ''));
+        const settingsDocRef = doc(db, 'settings', 'global');
         
         try {
-            await updateDoc(userDocRef, { sessionTokens: arrayRemove(sessionToDelete) });
+            const updatedUsers = users.filter(u => u.uid !== userToDelete.uid);
+            await updateDoc(settingsDocRef, { users: updatedUsers });
 
-            if (sessionToDelete.sessionToken === user.currentSession.sessionToken) {
+            toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: userToDelete.name || 'user' }) });
+            
+            if (userToDelete.uid === currentUser?.uid) {
                 logout();
-            } else {
-                toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: sessionToDelete.deviceName }) });
             }
         } catch (error) {
-            console.error("Error deleting session:", error);
+            console.error("Error deleting user:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_delete_error_desc') });
         } finally {
             setIsSubmitting(false);
@@ -224,27 +195,27 @@ export default function SettingsPage() {
     
     const renderAlertDialog = () => {
         if (!alertDialogState) return null;
-        const { type, session } = alertDialogState;
+        const { type, targetUser } = alertDialogState;
         
         const titles = {
             confirmAccess: t('admin_session_dialog_confirm_title'),
             makeSenior: t('admin_session_dialog_promote_title'),
-            deleteSession: t('admin_session_dialog_delete_title')
+            deleteUser: t('admin_session_dialog_delete_title')
         };
         const descriptions = {
-            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: session.deviceName }),
-            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: session.deviceName }),
-            deleteSession: t('admin_session_dialog_delete_desc', { deviceName: session.deviceName })
+            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetUser.name || 'user' }),
+            makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetUser.name || 'user' }),
+            deleteUser: t('admin_session_dialog_delete_desc', { deviceName: targetUser.name || 'user' })
         };
         const actions = {
-            confirmAccess: () => handleConfirmAccess(session),
-            makeSenior: () => handleMakeSenior(session),
-            deleteSession: () => handleDeleteSession(session)
+            confirmAccess: () => handleConfirmAccess(targetUser),
+            makeSenior: () => handleMakeSenior(targetUser),
+            deleteUser: () => handleDeleteUser(targetUser)
         };
         const actionButtonText = {
             confirmAccess: t('admin_confirm_button'),
             makeSenior: t('admin_session_promote_button'),
-            deleteSession: t('admin_delete_button')
+            deleteUser: t('admin_delete_button')
         }
 
         return (
@@ -259,7 +230,7 @@ export default function SettingsPage() {
                         <AlertDialogAction 
                           onClick={actions[type]} 
                           disabled={isSubmitting}
-                          className={type === 'deleteSession' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                          className={type === 'deleteUser' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
                         >
                             {isSubmitting ? t('admin_saving_text') : actionButtonText[type]}
                         </AlertDialogAction>
@@ -271,7 +242,7 @@ export default function SettingsPage() {
     
     const totalLoading = isLoading || isAuthLoading;
 
-    if (totalLoading && !sessions.length) {
+    if (totalLoading && !users.length) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
                  <div className="flex items-center gap-4">
@@ -293,7 +264,7 @@ export default function SettingsPage() {
         )
     }
 
-    const renderRoleIcon = (role: Session['role']) => {
+    const renderRoleIcon = (role?: Session['role']) => {
         switch (role) {
             case 'senior': return <Crown className="h-5 w-5 text-amber-500" />;
             case 'junior': return <User className="h-5 w-5 text-blue-500" />;
@@ -302,74 +273,55 @@ export default function SettingsPage() {
         }
     };
     
-    const renderSessionCard = (session: Session) => {
-        const isCurrentSession = session.sessionToken === user?.currentSession.sessionToken;
-        const isJunior = session.role === 'junior';
+    const renderUserCard = (user: AppUser) => {
+        const isCurrentUser = user.uid === currentUser?.uid;
 
         return (
-            <div key={session.sessionToken} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
+            <div key={user.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0">{renderRoleIcon(session.role)}</div>
+                     <Avatar>
+                        <AvatarImage src={user.photoURL} alt={user.name} />
+                        <AvatarFallback>{getInitials(user.name || '')}</AvatarFallback>
+                    </Avatar>
                     <div>
                         <p className="font-semibold flex items-center gap-2">
-                           {session.deviceName}
-                           {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
+                           {user.name}
+                           {isCurrentUser && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {format(new Date(session.date), "PPP HH:mm", { locale: dateLocale })}
+                            {user.email}
                         </p>
                     </div>
                 </div>
 
-                {isSenior && !isCurrentSession && (
-                    <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
-                         {session.role === 'pending' ? (
-                            <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                <span>{t('admin_session_confirm_button')}</span>
-                            </Button>
-                         ) : isJunior && (
-                           <>
-                                {/* Desktop Buttons */}
-                                <div className="hidden md:flex items-center gap-2">
-                                    <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', session })} disabled={isSubmitting}>
-                                        <Crown className="mr-2 h-4 w-4" />
-                                        {t('admin_session_promote_button')}
-                                    </Button>
-                                    <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'deleteSession', session })} disabled={isSubmitting}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-
-                                {/* Mobile Dropdown */}
-                                <div className="flex md:hidden">
-                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-9 w-9" disabled={isSubmitting}>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">Actions</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'makeSenior', session })}>
-                                                <Crown className="mr-2 h-4 w-4" />
-                                                {t('admin_session_promote_button')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => setAlertDialogState({ type: 'deleteSession', session })} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                {t('admin_delete_button')}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                           </>
-                        )}
-                    </div>
-                )}
+                <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
+                    <div className="flex-shrink-0">{renderRoleIcon(user.role)}</div>
+                     {isSenior && !isCurrentUser && (
+                        <>
+                             {user.role === 'pending' && (
+                                <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', targetUser: user })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
+                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    <span>{t('admin_session_confirm_button')}</span>
+                                </Button>
+                             )}
+                             {user.role === 'junior' && (
+                                <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetUser: user })} disabled={isSubmitting}>
+                                    <Crown className="mr-2 h-4 w-4" />
+                                    {t('admin_session_promote_button')}
+                                </Button>
+                             )}
+                              <Button variant="destructive" size="icon" onClick={() => setAlertDialogState({ type: 'deleteUser', targetUser: user })} disabled={isSubmitting}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                        </>
+                    )}
+                </div>
             </div>
         )
     }
+    
+    const activeUsers = users.filter(u => u.role !== 'pending');
+    const pendingUsers = users.filter(u => u.role === 'pending');
 
     return (
       <>
@@ -385,12 +337,12 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <Tabs defaultValue="security" className="w-full">
+                <Tabs defaultValue="profile" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="security">{t('admin_settings_tab_security')}</TabsTrigger>
-                        <TabsTrigger value="devices">{t('admin_settings_tab_devices')}</TabsTrigger>
+                        <TabsTrigger value="profile">{t('admin_settings_tab_profile')}</TabsTrigger>
+                        <TabsTrigger value="users">{t('admin_settings_tab_users')}</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="security">
+                    <TabsContent value="profile">
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('admin_settings_profile_title')}</CardTitle>
@@ -400,38 +352,15 @@ export default function SettingsPage() {
                                 <form onSubmit={handleProfileUpdate} className="space-y-6">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">{t('admin_settings_name')}</Label>
-                                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || isAuthLoading || !isSenior} />
+                                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || isAuthLoading} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="phone">{t('admin_phone')}</Label>
-                                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading || !isSenior} />
-                                        <p className="text-xs text-muted-foreground">{t('admin_phone_update_warning_desc')}</p>
+                                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading} placeholder="+998 XX XXX XX XX" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="password">{t('admin_password')}</Label>
-                                         <div className="relative">
-                                          <Input
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            disabled={isSubmitting || isAuthLoading || !isSenior}
-                                            className="pr-10"
-                                            placeholder={t('admin_settings_password_placeholder')}
-                                          />
-                                          <Button 
-                                              type="button" 
-                                              variant="ghost" 
-                                              size="icon" 
-                                              className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
-                                              onClick={() => setShowPassword(prev => !prev)}
-                                          >
-                                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                          </Button>
-                                        </div>
-                                    </div>
+                                    
                                     <div className="flex justify-end">
-                                        <Button type="submit" disabled={isSubmitting || isAuthLoading || !isSenior}>
+                                        <Button type="submit" disabled={isSubmitting || isAuthLoading}>
                                             {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
                                         </Button>
                                     </div>
@@ -469,7 +398,7 @@ export default function SettingsPage() {
                             </Card>
                         )}
                     </TabsContent>
-                    <TabsContent value="devices">
+                    <TabsContent value="users">
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('admin_session_active_title')}</CardTitle>
@@ -478,15 +407,15 @@ export default function SettingsPage() {
                             <CardContent className="space-y-4">
                               {totalLoading ? (
                                  Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-                              ) : sessions.filter(s => s.role !== 'pending').length > 0 ? (
-                                   sessions.filter(s => s.role !== 'pending').map(renderSessionCard)
+                              ) : activeUsers.length > 0 ? (
+                                   activeUsers.map(renderUserCard)
                                ) : (
                                    <p className="text-muted-foreground text-center py-4">{t('admin_session_none_active')}</p>
                                )}
                             </CardContent>
                         </Card>
 
-                        {isSenior && sessions.filter(s => s.role === 'pending').length > 0 && (
+                        {isSenior && pendingUsers.length > 0 && (
                             <Card className="mt-8">
                                 <CardHeader>
                                     <CardTitle>{t('admin_session_pending_title')}</CardTitle>
@@ -496,16 +425,18 @@ export default function SettingsPage() {
                                     {totalLoading ? (
                                         <Skeleton className="h-20 w-full" />
                                      ) : (
-                                        sessions.filter(s => s.role === 'pending').map(renderSessionCard)
+                                        pendingUsers.map(renderUserCard)
                                      )}
                                 </CardContent>
                             </Card>
                         )}
                     </TabsContent>
                 </Tabs>
+                 <Button variant="destructive" className="w-full mt-8" onClick={logout}>{t('admin_logout')}</Button>
             </div>
         </div>
         {renderAlertDialog()}
       </>
     );
 }
+

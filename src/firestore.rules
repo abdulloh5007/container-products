@@ -1,0 +1,61 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to check user roles from the user's document
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+
+    function isSenior(userId) {
+      return getUserRole(userId) == 'senior';
+    }
+    
+    function isJunior(userId) {
+      return getUserRole(userId) == 'junior';
+    }
+
+    function isAuthenticated(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Settings can only be read and written by a senior admin
+    match /settings/global {
+       allow read: if request.auth != null && (isSenior(request.auth.uid) || isJunior(request.auth.uid));
+       allow write: if request.auth != null && isSenior(request.auth.uid);
+    }
+    
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Allow a user to create their own document upon first sign-in
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Allow a user to read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow a user to update their own profile data (name, phone)
+      // but not their role.
+      allow update: if request.auth != null && request.auth.uid == userId 
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'lastLogin']);
+    }
+
+    // Products can be read by any authenticated user, but only written by seniors
+    match /products/{productId} {
+      allow read: if request.auth != null && (isSenior(request.auth.uid) || isJunior(request.auth.uid));
+      allow write: if request.auth != null && isSenior(request.auth.uid);
+    }
+
+    // Containers can be read by any authenticated user, but only written by seniors
+    match /containers/{containerId} {
+      allow read: if request.auth != null && (isSenior(request.auth.uid) || isJunior(request.auth.uid));
+      allow write: if request.auth != null && isSenior(request.auth.uid);
+    }
+
+    // History can be read and created by any authenticated user, but not modified
+    match /history/{historyId} {
+      allow read: if request.auth != null && (isSenior(request.auth.uid) || isJunior(request.auth.uid));
+      allow create: if request.auth != null && (isSenior(request.auth.uid) || isJunior(request.auth.uid));
+      allow update, delete: if false;
+    }
+  }
+}
