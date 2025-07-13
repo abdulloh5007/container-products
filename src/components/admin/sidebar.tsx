@@ -25,6 +25,7 @@ export function Sidebar() {
   const handleLogout = async () => {
     try {
       await logout();
+      router.replace('/admin/login');
     } catch (error) {
       console.error("Logout failed:", error);
       // Optionally, show a toast message to the user
