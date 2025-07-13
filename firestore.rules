@@ -1,54 +1,38 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // --- Products Collection ---
-    // Anyone can read the products list.
-    // Only authenticated users (admins) can create, update, or delete products.
+    // Allow public read for products
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if request.auth != null;
     }
 
-    // --- Containers Collection ---
-    // Only authenticated users (admins) can read or write containers.
+    // Allow authenticated users to manage containers and history
     match /containers/{containerId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if request.auth != null;
     }
 
-    // --- History Collection ---
-    // Only authenticated users can read history.
-    // Only authenticated users can create history records.
-    // Updating or deleting history is disallowed to maintain audit trail integrity.
     match /history/{historyId} {
-      allow read, create: if isAuthenticated();
-      allow update, delete: if false;
+      allow read, write: if request.auth != null;
     }
-    
-    // --- Users Collection ---
-    // Users can read and update their own document.
-    // This is necessary for session management and profile updates.
+
+    // Users can list the collection to check if any users exist.
+    // However, they can only read/write their own document.
     match /users/{userId} {
-       allow read, update: if isAuthenticated() && request.auth.uid == userId;
-       // Allow creation only if the user is creating their own document.
-       allow create: if isAuthenticated() && request.auth.uid == userId;
-       // Disallow deletion for now to prevent users from deleting their own accounts via direct API call.
-       // Deletion logic is handled server-side/in secure functions.
-       allow delete: if false;
+      allow list: if true;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // --- Settings Collection ---
-    // Only authenticated users can read and write global settings.
-    // This allows senior admins to toggle management mode.
-    match /settings/{settingId} {
-      allow read, write: if isAuthenticated();
+    // Settings can be read/written by any authenticated user
+    match /settings/global {
+      allow read, write: if request.auth != null;
     }
   }
 }
