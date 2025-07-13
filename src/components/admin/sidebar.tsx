@@ -55,11 +55,51 @@ export function Sidebar() {
 
   const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => {
      const visibleItems = items.filter(item => !item.className || !item.className.includes('hidden'));
-     return visibleItems.map((item, index) => {
+     const visibleItemsOnMobile = items.filter(item => !item.className);
+
+     return items.map((item, index) => {
+        const Icon = item.icon;
+        const isActive = pathname.startsWith(item.href);
+        const isLastItemOnOddRow = visibleItemsOnMobile.length % 2 !== 0 && index === visibleItemsOnMobile.length - 1;
+
+        return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={closeSheet}
+              className={cn(
+                'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors',
+                'aspect-square',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                item.className
+              )}
+            >
+              <Icon className="h-6 w-6" />
+              <span className="text-center">{item.label}</span>
+            </Link>
+        );
+      })
+  };
+  
+  const renderAllNavItemsForGrid = () => {
+      const navItemsForGrid = [
+          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "md:hidden flex" },
+          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "md:hidden flex" },
+      ];
+      if (isManagementModeEnabled && isSenior) {
+        navItemsForGrid.push(...managementNavItems);
+      }
+      navItemsForGrid.push(historyNavItem);
+
+      const visibleItems = navItemsForGrid.filter(item => !item.className || !item.className.includes('md:hidden'));
+
+      return navItemsForGrid.map((item, index) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
         const isLastItemOnOddRow = visibleItems.length % 2 !== 0 && index === visibleItems.length - 1;
-
+        
         return (
             <Link
               key={item.href}
@@ -78,8 +118,9 @@ export function Sidebar() {
               <span className="text-center">{item.label}</span>
             </Link>
         );
-      })
-  };
+      });
+  }
+
 
   const isSettingsActive = pathname === '/admin/settings';
 
@@ -113,7 +154,7 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {renderNavGrid(allNavItems)}
+                   {renderAllNavItemsForGrid()}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    <Button 
