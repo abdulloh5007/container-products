@@ -6,6 +6,7 @@ import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser, updateEmail } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc, getDocs, collection, query, where, onSnapshot, arrayUnion, arrayRemove, Timestamp, writeBatch, deleteDoc } from 'firebase/firestore';
 import UAParser from 'ua-parser-js';
+import Cookies from 'js-cookie';
 import { translations } from '@/lib/translations';
 
 export type SessionRole = 'senior' | 'junior' | 'pending';
@@ -98,10 +99,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    const storedSessionId = localStorage.getItem('sessionId');
-    if (storedSessionId) {
-        setCurrentSessionId(storedSessionId);
+    // Redundant session ID retrieval
+    const lsSessionId = localStorage.getItem('sessionId');
+    const cookieSessionId = Cookies.get('sessionId');
+    let sessionId = lsSessionId || cookieSessionId || null;
+
+    if (sessionId) {
+      // Sync stores if one is missing
+      if (!lsSessionId) localStorage.setItem('sessionId', sessionId);
+      if (!cookieSessionId) Cookies.set('sessionId', sessionId);
+      setCurrentSessionId(sessionId);
     }
+
     const storedLang = localStorage.getItem('language');
     if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
         setLanguage(storedLang);
@@ -119,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signOut(auth);
     }
     localStorage.removeItem('sessionId');
+    Cookies.remove('sessionId');
     setCurrentSessionId(null);
     setUser(null);
     setLoginState(denied ? 'access_denied' : 'form');
@@ -162,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
                 let localSessionId = currentSessionId;
                  if (!localSessionId) {
-                    localSessionId = localStorage.getItem('sessionId');
+                    localSessionId = localStorage.getItem('sessionId') || Cookies.get('sessionId') || null;
                     if (localSessionId) setCurrentSessionId(localSessionId);
                  }
 
@@ -242,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     localStorage.setItem('sessionId', newSessionId);
+    Cookies.set('sessionId', newSessionId);
     setCurrentSessionId(newSessionId);
     
     if (newSession.role === 'pending') {
@@ -305,6 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!docSnap.exists()) {
             await signOut(auth);
             localStorage.removeItem('sessionId');
+            Cookies.remove('sessionId');
             setCurrentSessionId(null);
             setUser(null);
             return;
@@ -316,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!loggingOutSession) {
             await signOut(auth);
             localStorage.removeItem('sessionId');
+            Cookies.remove('sessionId');
             setCurrentSessionId(null);
             setUser(null);
             return;
@@ -346,6 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
         await signOut(auth);
         localStorage.removeItem('sessionId');
+        Cookies.remove('sessionId');
         setCurrentSessionId(null);
         setUser(null);
     }
