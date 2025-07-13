@@ -114,6 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return translations[language][errorKey] || translations[language][fallbackKey];
   }, [language]);
   
+  const forceLocalLogout = useCallback(async (denied: boolean = false) => {
+    if (auth.currentUser) {
+        await signOut(auth);
+    }
+    localStorage.removeItem('sessionId');
+    setCurrentSessionId(null);
+    setUser(null);
+    setLoginState(denied ? 'access_denied' : 'form');
+  }, []);
+  
   // Effect to check if registration should be allowed
   useEffect(() => {
     const checkUsers = async () => {
@@ -193,18 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubscribeAuth();
         unsubscribeSettings();
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, forceLocalLogout]);
   
-  const forceLocalLogout = async (denied: boolean = false) => {
-    if (auth.currentUser) {
-        await signOut(auth);
-    }
-    localStorage.removeItem('sessionId');
-    setCurrentSessionId(null);
-    setUser(null);
-    setLoginState(denied ? 'access_denied' : 'form');
-  };
-
   const login = async (email: string, password: string) => {
     setLoginState('form');
     let firebaseUser;
@@ -302,12 +302,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
         const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) return;
+        if (!docSnap.exists()) {
+            await signOut(auth);
+            localStorage.removeItem('sessionId');
+            setCurrentSessionId(null);
+            setUser(null);
+            return;
+        };
 
         const sessionList = docSnap.data().sessions || [];
         const loggingOutSession = sessionList.find((s: Session) => s.id === localSessionId);
 
-        if (!loggingOutSession) return;
+        if (!loggingOutSession) {
+            await signOut(auth);
+            localStorage.removeItem('sessionId');
+            setCurrentSessionId(null);
+            setUser(null);
+            return;
+        };
 
         // Filter out the session that is logging out
         let updatedSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
@@ -331,14 +343,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
         console.error("Error updating sessions on logout:", error);
-        // We still proceed to logout locally even if the DB update fails
     } finally {
-        // Now, sign out the user and clear local state
         await signOut(auth);
         localStorage.removeItem('sessionId');
         setCurrentSessionId(null);
         setUser(null);
-        setLoginState('form');
     }
   };
 
@@ -464,7 +473,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteSession,
     makeSenior,
     translateFirebaseError,
-  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, translateFirebaseError]);
+  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, setPendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, setLoginState, approveSession, deleteSession, makeSenior, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>
