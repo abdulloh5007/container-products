@@ -224,7 +224,7 @@ export default function SettingsPage() {
                            {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'Pp', { locale: dateLocale })}
+                            {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'PPP, HH:mm', { locale: dateLocale })}
                         </p>
                     </div>
                 </div>
@@ -382,5 +382,3 @@ export default function SettingsPage() {
       </>
     );
 }
-
-    

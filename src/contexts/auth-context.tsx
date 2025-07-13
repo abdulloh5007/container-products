@@ -52,6 +52,28 @@ const generateSessionId = () => {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
+const getDeviceName = (): string => {
+    if (typeof window === 'undefined') return 'Unknown';
+
+    const ua = navigator.userAgent;
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+        return "Tablet";
+    }
+    if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+        return "Mobile";
+    }
+     if (/(Macintosh|MacIntel|MacPPC|Mac_PowerPC)/.test(ua)) {
+        return "Mac Device";
+    }
+    if (/(Windows|Win32|Win64|WOW64)/.test(ua)) {
+        return "Windows Device";
+    }
+    if (/(Linux)/.test(ua)) {
+        return "Linux Device";
+    }
+    return "Web Browser";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -83,33 +105,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser && currentSessionId) {
-            const userDocRef = doc(db, "users", firebaseUser.uid);
-            
-            const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+        if (firebaseUser) {
+             const userDocRef = doc(db, "users", firebaseUser.uid);
+             const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                let localSessionId = currentSessionId;
+                 if (!localSessionId) {
+                    localSessionId = localStorage.getItem('sessionId');
+                    if (localSessionId) setCurrentSessionId(localSessionId);
+                 }
+
                 if (docSnap.exists()) {
                     const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
                     const sessions = userData.sessions || [];
-                    const currentSession = sessions.find(s => s.id === currentSessionId) || null;
-
+                    const currentSession = sessions.find(s => s.id === localSessionId) || null;
+                    
                     if (currentSession) {
-                         if (currentSession.role === 'pending') {
+                        if (currentSession.role === 'pending') {
                             setLoginState('pending');
-                            setUser({ ...userData, currentSession });
                         } else {
                             setLoginState('form');
-                            setUser({ ...userData, currentSession });
                         }
+                        setUser({ ...userData, currentSession });
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
-
                     } else {
-                        // Session ID is invalid or was removed
-                        logout();
+                        // This can happen if the session was deleted by a senior user.
+                        // Or if it's a new login without a session yet.
+                        if (localSessionId) {
+                           logout();
+                        }
                     }
+
                 } else {
-                    // User doc doesn't exist, which shouldn't happen if they are logged in
-                    logout();
+                   // This case is for a user that exists in Auth but not in Firestore.
+                   // We create the user doc on first login.
+                   const newUserDoc: Omit<AppUser, 'currentSession' | 'sessions'> = {
+                       uid: firebaseUser.uid,
+                       email: firebaseUser.email,
+                       name: firebaseUser.displayName || 'New User',
+                       phone: firebaseUser.phoneNumber,
+                   };
+                   setDoc(userDocRef, { ...newUserDoc, sessions: [] });
                 }
                 setIsAuthLoading(false);
             });
@@ -129,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [currentSessionId]);
   
   const login = async (email: string, password: string) => {
+    setLoginState('form');
     await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) throw new Error("Authentication failed.");
@@ -145,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
-        deviceName: 'Web', // In a real app, you'd get a more specific device name
+        deviceName: getDeviceName(),
         role: 'pending',
         createdAt: Timestamp.now()
     }
@@ -156,18 +193,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     localStorage.setItem('sessionId', newSessionId);
     setCurrentSessionId(newSessionId);
-    // onAuthStateChanged will handle setting the user state.
+    setLoginState('pending');
   };
   
   const register = async (name: string, email: string, password: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
+    
+    const usersQuery = query(collection(db, 'users'));
+    const usersSnapshot = await getDocs(usersQuery);
+    const isFirstUser = usersSnapshot.empty;
 
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
-        deviceName: 'Web',
-        role: 'senior',
+        deviceName: getDeviceName(),
+        role: isFirstUser ? 'senior' : 'pending',
         createdAt: Timestamp.now()
     }
 
@@ -190,8 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, 'users', user.uid);
         const sessionToEnd = user.sessions.find(s => s.id === sessionId);
         if (sessionToEnd) {
-            // To remove an active session, you can either delete it or mark it as inactive.
-            // For this logic, we'll just remove it from the array.
             await updateDoc(userDocRef, {
                 sessions: arrayRemove(sessionToEnd)
             }).catch(err => console.error("Error removing session on logout:", err));
@@ -264,8 +303,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     batch.update(userDocRef, { sessions: newSessions });
     
     await batch.commit();
-
-    // The current user has been demoted, their UI will update via the snapshot listener.
   }
 
   const value = useMemo(() => ({
@@ -301,5 +338,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
