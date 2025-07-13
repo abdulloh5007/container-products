@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { Container, Hourglass, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { Container, Hourglass, ShieldAlert, Eye, EyeOff, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 
@@ -24,6 +24,23 @@ function PendingAlert() {
         </Alert>
     );
 }
+
+function AccessDeniedAlert({ onBackClick }: { onBackClick: () => void }) {
+    const { t } = useLanguage();
+    return (
+        <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>{t('admin_login_denied_title')}</AlertTitle>
+            <AlertDescription>
+                 {t('admin_login_denied_desc')}
+                 <button onClick={onBackClick} className="font-bold underline hover:text-destructive-foreground mt-2 block">
+                    {t('admin_back_to_login_button')}
+                </button>
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 
 function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
     const { t } = useLanguage();
@@ -44,7 +61,7 @@ function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isAuthLoading, loginState, user, isRegistrationAllowed } = useAuth();
+  const { login, isAuthenticated, isAuthLoading, loginState, setLoginState, user, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -90,6 +107,8 @@ export default function LoginPage() {
             return <PendingAlert />;
         case 'no_account':
             return <NoAccountAlert onRegisterClick={() => router.push('/admin/register')} />;
+        case 'access_denied':
+            return <AccessDeniedAlert onBackClick={() => setLoginState('form')} />
         default:
             return (
                 <form onSubmit={handleLogin} className="space-y-4">

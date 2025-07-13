@@ -27,7 +27,7 @@ export interface AppUser {
     currentSession: Session | null;
 }
 
-export type LoginState = 'form' | 'pending' | 'failed' | 'no_account';
+export type LoginState = 'form' | 'pending' | 'failed' | 'no_account' | 'access_denied';
 
 type AuthContextType = {
   user: AppUser | null;
@@ -38,10 +38,11 @@ type AuthContextType = {
   isManagementModeEnabled: boolean;
   isLoadingSettings: boolean;
   loginState: LoginState;
+  setLoginState: (state: LoginState) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
+  updateUserProfile: (data: { name: string, phone: string, email?: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
@@ -170,13 +171,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
-                        // This case handles when the session is deleted (e.g., rejected or logged out from another device)
                         if (localSessionId) {
-                           forceLocalLogout();
+                           forceLocalLogout(true);
                         }
                     }
                 } else {
-                   // This case might happen if doc is deleted, log out user.
                    forceLocalLogout();
                 }
                 setIsAuthLoading(false);
@@ -196,14 +195,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentSessionId]);
   
-  const forceLocalLogout = async () => {
+  const forceLocalLogout = async (denied: boolean = false) => {
     if (auth.currentUser) {
         await signOut(auth);
     }
     localStorage.removeItem('sessionId');
     setCurrentSessionId(null);
     setUser(null);
-    setLoginState('form');
+    setLoginState(denied ? 'access_denied' : 'form');
   };
 
   const login = async (email: string, password: string) => {
@@ -252,10 +251,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const register = async (name: string, email: string, password: string) => {
     const usersCollectionRef = collection(db, 'users');
-    const snapshot = await getDocs(query(usersCollectionRef));
+    const q = query(usersCollectionRef);
+    const snapshot = await getDocs(q);
+
     if (!snapshot.empty && !isRegistrationAllowed) {
         throw new Error("Registration is not allowed.");
     }
+
+    let isFirstUser = snapshot.empty;
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -265,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const newSession: Session = {
             id: newSessionId,
             deviceName: getDeviceName(),
-            role: 'senior', // First user is always senior
+            role: isFirstUser ? 'senior' : 'pending',
             createdAt: Timestamp.now()
         }
 
@@ -277,8 +280,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-        setIsRegistrationAllowed(false); // Registration is no longer allowed
-        await signOut(auth); // Sign out after registration to force login
+        
+        if (isFirstUser) {
+            setIsRegistrationAllowed(false);
+        }
+        await signOut(auth);
 
     } catch(error: any) {
         throw new Error(translateFirebaseError(error.code));
@@ -289,13 +295,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const localUser = user;
     const localSessionId = currentSessionId;
     
-    // Immediately clear local state
-    forceLocalLogout();
+    // Clear local state without navigating
+    if (auth.currentUser) {
+        await signOut(auth);
+    }
+    localStorage.removeItem('sessionId');
+    setCurrentSessionId(null);
+    setUser(null);
+    setLoginState('form');
 
     if (!localUser || !localSessionId) return;
     
     const userDocRef = doc(db, 'users', localUser.uid);
-    const docSnap = await getDoc(userDocRef); // Get fresh data
+    const docSnap = await getDoc(userDocRef);
     if (!docSnap.exists()) return;
 
     let sessionList = docSnap.data().sessions || [];
@@ -304,7 +316,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let newSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
 
-    // If the user logging out is a senior, find the oldest junior to promote
     if (currentSession.role === 'senior' && !newSessions.some((s: Session) => s.role === 'senior')) {
         const juniorSessions = newSessions
             .filter((s: Session) => s.role === 'junior')
@@ -325,13 +336,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateUserProfile = async (data: { name: string, phone: string }) => {
+  const updateUserProfile = async (data: { name: string, phone: string, email?: string }) => {
     if (!user) throw new Error("User not authenticated");
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) throw new Error("User not authenticated");
+
     const userDocRef = doc(db, 'users', user.uid);
+    
+    // Update name and phone in Firestore
     await updateDoc(userDocRef, {
         name: data.name,
         phone: data.phone,
     });
+    
+    // Update email if provided and different
+    if (data.email && data.email !== user.email) {
+        try {
+            await updateEmail(firebaseUser, data.email);
+            await updateDoc(userDocRef, { email: data.email });
+        } catch (error: any) {
+            console.error("Error updating email: ", error);
+            throw new Error(translateFirebaseError(error.code || 'unknown'));
+        }
+    }
   };
 
   const updateUserPassword = async (newPassword: string) => {
@@ -342,10 +369,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         await updatePassword(firebaseUser, newPassword);
         
-        // After password change, log out all other sessions for security
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         await updateDoc(userDocRef, {
-            sessions: [user.currentSession] // Keep only the current senior session
+            sessions: [user.currentSession]
         });
 
     } catch (error: any) {
@@ -438,6 +464,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoadingSettings,
     toggleManagementMode,
     loginState,
+    setLoginState,
     approveSession,
     deleteSession,
     makeSenior,
@@ -458,5 +485,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
