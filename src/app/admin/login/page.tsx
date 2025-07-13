@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, LoginState } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,33 @@ import { useLanguage } from '@/hooks/use-language';
 import { Container, Hourglass, ShieldAlert, Eye, EyeOff, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function LoginSkeleton() {
+    return (
+        <Card className="w-full max-w-sm">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex items-center justify-center">
+                <Container className="h-8 w-8 text-primary" />
+              </div>
+              <Skeleton className="h-7 w-40 mx-auto" />
+              <Skeleton className="h-4 w-56 mx-auto mt-2" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-5 w-48 mx-auto" />
+            </CardContent>
+        </Card>
+    )
+}
 
 function PendingAlert() {
     const { t } = useLanguage();
@@ -58,7 +85,7 @@ function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
     );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isAuthLoading, loginState, setLoginState, user, isRegistrationAllowed } = useAuth();
@@ -94,11 +121,11 @@ export default function LoginPage() {
   };
 
   if (isAuthLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background" />;
+    return <LoginSkeleton />;
   }
   
   if (isAuthenticated && user?.currentSession?.role !== 'pending') {
-     return <div className="flex min-h-screen items-center justify-center bg-background" />;
+     return <LoginSkeleton />;
   }
 
   const renderStateContent = () => {
@@ -166,19 +193,27 @@ export default function LoginPage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex items-center justify-center">
-            <Container className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">{t('admin_login_title')}</CardTitle>
-          <CardDescription>{t('admin_login_subtitle')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {renderStateContent()}
-        </CardContent>
-      </Card>
-    </div>
+    <Card className="w-full max-w-sm">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4 flex items-center justify-center">
+          <Container className="h-8 w-8 text-primary" />
+        </div>
+        <CardTitle className="text-2xl font-bold">{t('admin_login_title')}</CardTitle>
+        <CardDescription>{t('admin_login_subtitle')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+          {renderStateContent()}
+      </CardContent>
+    </Card>
   );
+}
+
+export default function LoginPage() {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+            <Suspense fallback={<LoginSkeleton />}>
+                <LoginForm />
+            </Suspense>
+        </div>
+    );
 }
