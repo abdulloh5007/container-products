@@ -11,10 +11,13 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
     id: string;
     name: string;
     quantity: number;
+    type: ProductType;
+    m2PerKit?: number;
 }
 
 const cardVariants = {
@@ -23,6 +26,7 @@ const cardVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
+const EPSILON = 1e-9; // Small tolerance for float comparisons
 
 export default function Home() {
   const { t } = useLanguage();
@@ -36,7 +40,7 @@ export default function Home() {
       try {
         const q = query(collection(db, "products"), orderBy("name"));
         const querySnapshot = await getDocs(q);
-        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: doc.data().type || 'unit' } as Product));
         setProducts(productsData);
       } catch (error) {
         console.error("Error fetching products: ", error);
@@ -50,11 +54,40 @@ export default function Home() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
+    const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
+
+    const filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    
+    return filtered.sort((a, b) => {
+        const typeA = a.type || 'unit';
+        const typeB = b.type || 'unit';
+        const orderA = sortOrder[typeA] || 99;
+        const orderB = sortOrder[typeB] || 99;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return a.name.localeCompare(b.name);
+    });
   }, [products, searchQuery]);
   
+  const renderProductQuantity = (product: Product) => {
+    if (product.type === 'kit') {
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+      const totalM2Value = quantity * (product.m2PerKit || 0);
+      const totalM2 = (Math.abs(totalM2Value) < EPSILON ? 0 : totalM2Value).toFixed(2);
+      
+      return `${t('admin_product_quantity')}: ${quantity} ${t('admin_kit_unit')} (${totalM2} ${t('admin_m2_unit')})`;
+    }
+     if (product.type === 'area') {
+      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+      return `${t('admin_product_quantity')}: ${quantity.toFixed(2)} ${t('admin_m2_unit')}`;
+    }
+    const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
+    return `${t('admin_product_quantity')}: ${quantity}`;
+  }
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -95,7 +128,7 @@ export default function Home() {
               <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
                 <CardHeader>
                   <CardTitle className="font-headline">{product.name}</CardTitle>
-                  <CardDescription>{t('admin_product_quantity')}: {product.quantity}</CardDescription>
+                  <CardDescription>{renderProductQuantity(product)}</CardDescription>
                 </CardHeader>
               </Card>
             </motion.div>
@@ -131,5 +164,3 @@ export default function Home() {
     </>
   );
 }
-
-    
