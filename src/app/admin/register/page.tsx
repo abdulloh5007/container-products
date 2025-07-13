@@ -41,7 +41,7 @@ export default function RegisterPage() {
         title: t('admin_register_success_title'),
         description: t('admin_register_success_desc'),
       });
-      router.push('/admin/login');
+      router.push('/admin/acceptance');
     } catch (error) {
       console.error(error);
       toast({

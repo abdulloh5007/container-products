@@ -306,7 +306,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isFirstUser) {
             setIsRegistrationAllowed(false);
         }
-        await signOut(auth);
+
+        setSessionId(newSessionId);
+        if (newSession.role === 'pending') {
+            setLoginState('pending');
+        }
 
     } catch(error: any) {
         throw new Error(translateFirebaseError(error.code));
