@@ -29,11 +29,6 @@ export function Sidebar() {
   
   const closeSheet = () => setSheetOpen(false);
 
-  const baseNavItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "hidden md:flex" },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "hidden md:flex" },
-  ];
-  
   const managementNavItems = [
       { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
       { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
@@ -41,52 +36,15 @@ export function Sidebar() {
   
   const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
 
-  const allNavItems = [...baseNavItems];
-  if (isManagementModeEnabled && isSenior) {
-      allNavItems.push(...managementNavItems);
-  }
-  allNavItems.push(historyNavItem);
-
-
   const handleSheetLinkClick = (href: string) => {
     router.push(href);
     closeSheet();
   };
-
-  const renderNavGrid = (items: {href: string, label: string, icon: React.ElementType, className?: string}[]) => {
-     const visibleItems = items.filter(item => !item.className || !item.className.includes('hidden'));
-     const visibleItemsOnMobile = items.filter(item => !item.className);
-
-     return items.map((item, index) => {
-        const Icon = item.icon;
-        const isActive = pathname.startsWith(item.href);
-        const isLastItemOnOddRow = visibleItemsOnMobile.length % 2 !== 0 && index === visibleItemsOnMobile.length - 1;
-
-        return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={closeSheet}
-              className={cn(
-                'flex flex-col items-center justify-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors',
-                'aspect-square',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80',
-                item.className
-              )}
-            >
-              <Icon className="h-6 w-6" />
-              <span className="text-center">{item.label}</span>
-            </Link>
-        );
-      })
-  };
   
   const renderAllNavItemsForGrid = () => {
       const navItemsForGrid = [
-          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "md:hidden flex" },
-          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "md:hidden flex" },
+          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "hidden md:flex" },
+          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "hidden md:flex" },
       ];
       if (isManagementModeEnabled && isSenior) {
         navItemsForGrid.push(...managementNavItems);
