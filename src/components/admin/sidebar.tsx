@@ -23,8 +23,8 @@ export function Sidebar() {
   const isSenior = user?.currentSession.role === 'senior';
 
   const handleLogout = () => {
-    logout();
     router.push('/admin/login');
+    logout();
   };
   
   const closeSheet = () => setSheetOpen(false);

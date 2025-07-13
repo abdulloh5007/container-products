@@ -40,7 +40,7 @@ type AuthContextType = {
   loginState: LoginState;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
@@ -253,7 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (name: string, email: string, password: string) => {
     const usersCollectionRef = collection(db, 'users');
     const snapshot = await getDocs(query(usersCollectionRef));
-    if (!snapshot.empty) {
+    if (!snapshot.empty && !isRegistrationAllowed) {
         throw new Error("Registration is not allowed.");
     }
 
@@ -286,30 +286,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    if (!user || !user.currentSession) return;
+    const localUser = user;
+    const localSessionId = currentSessionId;
     
-    const userDocRef = doc(db, 'users', user.uid);
-    let sessionList = user.sessions;
-    const currentSession = user.currentSession;
+    // Immediately clear local state
+    forceLocalLogout();
+
+    if (!localUser || !localSessionId) return;
     
-    let newSessions = sessionList.filter(s => s.id !== currentSession.id);
+    const userDocRef = doc(db, 'users', localUser.uid);
+    const docSnap = await getDoc(userDocRef); // Get fresh data
+    if (!docSnap.exists()) return;
+
+    let sessionList = docSnap.data().sessions || [];
+    const currentSession = sessionList.find((s: Session) => s.id === localSessionId);
+    if (!currentSession) return;
+
+    let newSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
 
     // If the user logging out is a senior, find the oldest junior to promote
-    if (currentSession.role === 'senior' && !newSessions.some(s => s.role === 'senior')) {
+    if (currentSession.role === 'senior' && !newSessions.some((s: Session) => s.role === 'senior')) {
         const juniorSessions = newSessions
-            .filter(s => s.role === 'junior')
-            .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()); // Oldest junior gets promoted
+            .filter((s: Session) => s.role === 'junior')
+            .sort((a: Session, b: Session) => a.createdAt.toMillis() - b.createdAt.toMillis());
 
         if (juniorSessions.length > 0) {
             const nextSeniorId = juniorSessions[0].id;
-            newSessions = newSessions.map(s => 
+            newSessions = newSessions.map((s: Session) => 
                 s.id === nextSeniorId ? { ...s, role: 'senior' } : s
             );
         }
     }
 
-    await updateDoc(userDocRef, { sessions: newSessions });
-    await forceLocalLogout();
+    try {
+        await updateDoc(userDocRef, { sessions: newSessions });
+    } catch (error) {
+        console.error("Error updating sessions on logout:", error);
+    }
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
