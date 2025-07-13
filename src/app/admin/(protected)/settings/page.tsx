@@ -400,11 +400,11 @@ export default function SettingsPage() {
                                 <form onSubmit={handleProfileUpdate} className="space-y-6">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">{t('admin_settings_name')}</Label>
-                                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || isAuthLoading} />
+                                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || isAuthLoading || !isSenior} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="phone">{t('admin_phone')}</Label>
-                                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading} />
+                                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isSubmitting || isAuthLoading || !isSenior} />
                                         <p className="text-xs text-muted-foreground">{t('admin_phone_update_warning_desc')}</p>
                                     </div>
                                     <div className="space-y-2">
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                                             type={showPassword ? "text" : "password"}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            disabled={isSubmitting || isAuthLoading}
+                                            disabled={isSubmitting || isAuthLoading || !isSenior}
                                             className="pr-10"
                                             placeholder={t('admin_settings_password_placeholder')}
                                           />
@@ -431,7 +431,7 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                     <div className="flex justify-end">
-                                        <Button type="submit" disabled={isSubmitting || isAuthLoading}>
+                                        <Button type="submit" disabled={isSubmitting || isAuthLoading || !isSenior}>
                                             {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
                                         </Button>
                                     </div>
