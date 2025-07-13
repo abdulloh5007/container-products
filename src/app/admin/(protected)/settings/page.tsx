@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
@@ -21,10 +21,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials, formatPhoneNumber, deformatPhoneNumber } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
+import UAParser from 'ua-parser-js';
+import { Separator } from '@/components/ui/separator';
 
 interface AlertDialogState {
   type: 'confirmAccess' | 'makeSenior' | 'deleteSession';
   targetSession: Session;
+}
+
+const getDeviceIcon = (deviceName: string) => {
+    if (typeof window === 'undefined') {
+        return <Monitor className="h-6 w-6 text-muted-foreground" />;
+    }
+    const parser = new UAParser(window.navigator.userAgent);
+    const type = parser.getDevice().type;
+
+    if (type === 'mobile' || type === 'tablet') {
+        return <Smartphone className="h-6 w-6 text-muted-foreground" />;
+    }
+    return <Monitor className="h-6 w-6 text-muted-foreground" />;
 }
 
 export default function SettingsPage() {
@@ -72,6 +87,7 @@ export default function SettingsPage() {
         if (isSenior && password) {
           if (password !== confirmPassword) {
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_settings_password_mismatch') });
+            setIsSubmitting(false);
             return;
           }
           await updateUserPassword(password);
@@ -231,14 +247,14 @@ export default function SettingsPage() {
         return (
              <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
                 <div className="flex items-center gap-4">
-                    <Monitor className="h-6 w-6 text-muted-foreground" />
+                    {getDeviceIcon(session.deviceName)}
                     <div>
                         <p className="font-semibold flex items-center gap-2">
                            {session.deviceName}
                            {isCurrentSession && <span className="text-xs font-normal text-primary">({t('admin_session_current_text')})</span>}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'PPP, HH:mm', { locale: dateLocale })}
+                            {t('admin_session_login_time')}: {format(session.createdAt.toDate(), 'd MMMM, yyyy, HH:mm', { locale: dateLocale })}
                         </p>
                     </div>
                 </div>
@@ -270,13 +286,11 @@ export default function SettingsPage() {
     }
 
     const sessions = currentUser?.sessions || [];
-    const activeSessions = sessions
-        .filter(s => s.role !== 'pending')
-        .sort((a, b) => {
-            if (a.id === currentUser?.currentSession?.id) return -1;
-            if (b.id === currentUser?.currentSession?.id) return 1;
-            return b.createdAt.toMillis() - a.createdAt.toMillis();
-        });
+    const currentActiveSession = sessions.find(s => s.id === currentUser?.currentSession?.id);
+    const otherActiveSessions = sessions
+        .filter(s => s.role !== 'pending' && s.id !== currentUser?.currentSession?.id)
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        
     const pendingSessions = sessions.filter(s => s.role === 'pending');
 
     return (
@@ -415,17 +429,32 @@ export default function SettingsPage() {
                     </TabsContent>
                     <TabsContent value="devices">
                         <Card>
-                            <CardHeader>
+                             <CardHeader>
                                 <CardTitle>{t('admin_session_active_title')}</CardTitle>
                                 <CardDescription>{t('admin_session_active_desc')}</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                               {totalLoading ? (
                                  Array.from({length: 2}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-                              ) : activeSessions.length > 0 ? (
-                                   activeSessions.map(renderSessionCard)
-                               ) : (
-                                   <p className="text-muted-foreground text-center py-4">{t('admin_users_none')}</p>
+                              ) : (
+                                <>
+                                    {currentActiveSession && renderSessionCard(currentActiveSession)}
+                                    
+                                    {otherActiveSessions.length > 0 && (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 pt-4">
+                                                <Separator className="flex-1" />
+                                                <span className="text-sm text-muted-foreground">{t('admin_session_other_active_sessions')}</span>
+                                                <Separator className="flex-1" />
+                                            </div>
+                                            {otherActiveSessions.map(renderSessionCard)}
+                                        </div>
+                                    )}
+
+                                    {!currentActiveSession && otherActiveSessions.length === 0 && (
+                                        <p className="text-muted-foreground text-center py-4">{t('admin_users_none')}</p>
+                                    )}
+                                </>
                                )}
                             </CardContent>
                         </Card>
