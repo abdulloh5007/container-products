@@ -190,7 +190,7 @@ export const translations = {
     admin_m2_per_kit: "м² в комплекте",
     admin_m2_unit: "м²",
     admin_login_pending_title: "Ожидание подтверждения",
-    admin_login_pending_desc: "Ваш запрос на вход отправлен администратору на рассмотрение.",
+    admin_login_pending_desc: "Ваш запрос на вход отправлен администратору на рассмотрение. Если страница не отображает этот статус, закройте приложение и зайдите снова или обновите сайт.",
     admin_login_no_account_title: "Аккаунт не найден",
     admin_login_no_account_desc: "Аккаунта с таким email не существует. Пожалуйста,",
     admin_login_denied_title: "В доступе отказано",
@@ -479,7 +479,7 @@ export const translations = {
     admin_m2_unit: "m²",
     
     admin_login_pending_title: "Tasdiqlash kutilmoqda",
-    admin_login_pending_desc: "Sizning kirish so'rovingiz administratorga ko'rib chiqish uchun yuborildi.",
+    admin_login_pending_desc: "Sizning kirish so'rovingiz administratorga ko'rib chiqish uchun yuborildi. Agar sahifa ushbu statusni ko'rsatmasa, ilovani yopib, qayta kiring yoki saytni yangilang.",
     admin_login_no_account_title: "Hisob topilmadi",
     admin_login_no_account_desc: "Bunday email bilan hisob mavjud emas. Iltimos,",
     admin_login_denied_title: "Kirish rad etildi",

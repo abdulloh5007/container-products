@@ -202,15 +202,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         setPendingRequests(pendingCount);
                     } else {
                        if (localSessionId) {
-                           // Session was removed remotely (e.g., kicked by senior).
-                           // Sign out will trigger the else block of onAuthStateChanged, cleaning up state.
                            signOut(auth); 
                         } else {
                            setIsAuthLoading(false);
                         }
                     }
                 } else {
-                   // User doc deleted, sign out.
                    signOut(auth);
                 }
                 if(isAuthLoading) setIsAuthLoading(false);
@@ -321,45 +318,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const localSessionId = currentSessionId;
   
     if (firebaseUser && user && localSessionId) {
-      try {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(userDocRef);
-  
-        if (docSnap.exists()) {
-          const sessionList = (docSnap.data().sessions || []) as Session[];
-          const loggingOutSession = sessionList.find(s => s.id === localSessionId);
-  
-          if (loggingOutSession) {
-            let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
-  
-            const wasSenior = loggingOutSession.role === 'senior';
-            const noSeniorsLeft = !updatedSessions.some(s => s.role === 'senior');
-  
-            if (wasSenior && noSeniorsLeft && updatedSessions.length > 0) {
-              const juniorSessions = updatedSessions
-                .filter(s => s.role === 'junior')
-                .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-  
-              if (juniorSessions.length > 0) {
-                const nextSeniorId = juniorSessions[0].id;
-                updatedSessions = updatedSessions.map(s =>
-                  s.id === nextSeniorId ? { ...s, role: 'senior' } : s
-                );
-              }
+        try {
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const docSnap = await getDoc(userDocRef);
+
+            if (docSnap.exists()) {
+                const sessionList = (docSnap.data().sessions || []) as Session[];
+                const loggingOutSession = sessionList.find(s => s.id === localSessionId);
+
+                if (loggingOutSession) {
+                    let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
+                    
+                    const wasSenior = loggingOutSession.role === 'senior';
+                    // Only attempt to promote if there are remaining sessions.
+                    if (wasSenior && updatedSessions.length > 0) {
+                        const noSeniorsLeft = !updatedSessions.some(s => s.role === 'senior');
+                        if (noSeniorsLeft) {
+                             const juniorSessions = updatedSessions
+                                .filter(s => s.role === 'junior')
+                                .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+              
+                             if (juniorSessions.length > 0) {
+                                const nextSeniorId = juniorSessions[0].id;
+                                updatedSessions = updatedSessions.map(s =>
+                                  s.id === nextSeniorId ? { ...s, role: 'senior' } : s
+                                );
+                             }
+                        }
+                    }
+                    await updateDoc(userDocRef, { sessions: updatedSessions });
+                }
             }
-            await updateDoc(userDocRef, { sessions: updatedSessions });
-          }
+        } catch (error) {
+            console.error("Firestore update error during logout:", error);
+            // Don't rethrow, allow logout to proceed.
         }
-      } catch (error) {
-        console.error("Firestore update error during logout:", error);
-        throw new Error("Could not log out. Please try again.");
-      }
     }
     
-    // Now that DB operations are done, sign out and clear local state
     await signOut(auth);
     clearSessionId();
-    setUser(null);
   };
 
 
