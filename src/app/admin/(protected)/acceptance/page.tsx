@@ -285,7 +285,7 @@ export default function AdminAcceptancePage() {
                     <Button 
                         onClick={() => setContainerToDispatch(container)}
                         disabled={isActionDisabled(container)}
-                        variant="secondary"
+                        variant="outline"
                     >
                         <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
                         {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
@@ -325,7 +325,7 @@ export default function AdminAcceptancePage() {
                             onClick={() => setContainerToDispatch(container)}
                             disabled={isActionDisabled(container)}
                             className="w-full"
-                            variant="secondary"
+                            variant="outline"
                         >
                             <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
                             {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
@@ -418,7 +418,7 @@ export default function AdminAcceptancePage() {
             </div>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={closeDispatchDialog}>{t('admin_cancel_button')}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDispatchContainer} className={buttonVariants({ variant: "secondary" })} disabled={!!dispatchingContainerId}>
+                <AlertDialogAction onClick={handleDispatchContainer} className={buttonVariants({ variant: "outline" })} disabled={!!dispatchingContainerId}>
                     <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
                     {dispatchingContainerId ? t('admin_dispatching_text') : t('admin_dispatch_button')}
                 </AlertDialogAction>
