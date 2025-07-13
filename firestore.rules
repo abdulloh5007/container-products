@@ -1,10 +1,79 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all documents to anyone
-    // for testing purposes.
+  
+    // Helper function to get the user's role from their session token
+    function getUserRole(userId, sessionToken) {
+      let sessions = get(/databases/$(database)/documents/users/$(userId)).data.sessionTokens;
+      let matchingSession = sessions.filter(session => session.sessionToken == sessionToken);
+      if (matchingSession.size() > 0) {
+        return matchingSession[0].role;
+      }
+      return 'none';
+    }
+    
+    // Helper function to check if the user is authenticated via a valid session
+    function isAuthenticated(userId, sessionToken) {
+       let sessions = get(/databases/$(database)/documents/users/$(userId)).data.sessionTokens;
+       let matchingSession = sessions.filter(session => session.sessionToken == sessionToken);
+       return matchingSession.size() > 0;
+    }
+    
+    // Default deny all access
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+    
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Allow a user to read their own document to check session status
+      allow get: if request.auth != null; // Broad read for client-side session checks
+      
+      // Allow a senior admin to manage all user documents
+      allow read, write: if request.auth != null && getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior';
+      
+      // Allow a user to update their own session list (login/logout)
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Rules for the 'products' collection
+    match /products/{productId} {
+      // All authenticated users can read products
+      allow get, list: if request.auth != null;
+      
+      // Senior admins can create, update, delete products
+      allow create, delete: if request.auth != null && getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior';
+      
+      // Junior and Senior admins can update product quantities
+      allow update: if request.auth != null && (getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior' || getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'junior');
+    }
+    
+    // Rules for the 'containers' collection
+    match /containers/{containerId} {
+       // All authenticated users can read containers
+      allow get, list: if request.auth != null;
+      
+      // Only senior admins can create, update, and delete containers
+      allow create, update, delete: if request.auth != null && getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior';
+    }
+    
+    // Rules for the 'history' collection
+    match /history/{historyId} {
+       // All authenticated users can read history
+      allow get, list: if request.auth != null;
+      
+      // Junior and Senior admins can create history records
+      allow create: if request.auth != null && (getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior' || getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'junior');
+    }
+    
+    // Rules for the 'settings' collection
+    match /settings/{settingId} {
+       // All authenticated users can read settings
+       allow get: if request.auth != null;
+       
+       // Only senior admins can write to settings
+       allow write: if request.auth != null && getUserRole(request.auth.uid, request.auth.token.sessionToken) == 'senior';
     }
   }
 }
