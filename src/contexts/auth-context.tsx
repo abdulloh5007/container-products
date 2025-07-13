@@ -42,7 +42,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserProfile: (data: { name: string, phone: string, email?: string }) => Promise<void>;
+  updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
@@ -171,11 +171,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
+                        // If there is a session ID but it's not in the DB, it was denied or deleted.
                         if (localSessionId) {
                            forceLocalLogout(true);
                         }
                     }
                 } else {
+                   // If the user document itself is gone.
                    forceLocalLogout();
                 }
                 setIsAuthLoading(false);
@@ -295,7 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const localUser = user;
     const localSessionId = currentSessionId;
     
-    // Clear local state without navigating
+    // Perform local state clearing immediately for responsiveness
     if (auth.currentUser) {
         await signOut(auth);
     }
@@ -307,36 +309,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!localUser || !localSessionId) return;
     
     const userDocRef = doc(db, 'users', localUser.uid);
-    const docSnap = await getDoc(userDocRef);
-    if (!docSnap.exists()) return;
-
-    let sessionList = docSnap.data().sessions || [];
-    const currentSession = sessionList.find((s: Session) => s.id === localSessionId);
-    if (!currentSession) return;
-
-    let newSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
-
-    if (currentSession.role === 'senior' && !newSessions.some((s: Session) => s.role === 'senior')) {
-        const juniorSessions = newSessions
-            .filter((s: Session) => s.role === 'junior')
-            .sort((a: Session, b: Session) => a.createdAt.toMillis() - b.createdAt.toMillis());
-
-        if (juniorSessions.length > 0) {
-            const nextSeniorId = juniorSessions[0].id;
-            newSessions = newSessions.map((s: Session) => 
-                s.id === nextSeniorId ? { ...s, role: 'senior' } : s
-            );
-        }
-    }
-
     try {
+        const docSnap = await getDoc(userDocRef);
+        if (!docSnap.exists()) return;
+
+        let sessionList = docSnap.data().sessions || [];
+        const currentSession = sessionList.find((s: Session) => s.id === localSessionId);
+        if (!currentSession) return;
+
+        let newSessions = sessionList.filter((s: Session) => s.id !== localSessionId);
+
+        // If a senior logs out, promote the oldest junior
+        if (currentSession.role === 'senior' && !newSessions.some((s: Session) => s.role === 'senior')) {
+            const juniorSessions = newSessions
+                .filter((s: Session) => s.role === 'junior')
+                .sort((a: Session, b: Session) => a.createdAt.toMillis() - b.createdAt.toMillis());
+
+            if (juniorSessions.length > 0) {
+                const nextSeniorId = juniorSessions[0].id;
+                newSessions = newSessions.map((s: Session) => 
+                    s.id === nextSeniorId ? { ...s, role: 'senior' } : s
+                );
+            }
+        }
+        // If a junior logs out, their session is simply removed, requiring re-approval to log in again.
+
         await updateDoc(userDocRef, { sessions: newSessions });
     } catch (error) {
         console.error("Error updating sessions on logout:", error);
     }
   };
 
-  const updateUserProfile = async (data: { name: string, phone: string, email?: string }) => {
+  const updateUserProfile = async (data: { name: string, phone: string }) => {
     if (!user) throw new Error("User not authenticated");
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) throw new Error("User not authenticated");
@@ -348,17 +352,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: data.name,
         phone: data.phone,
     });
-    
-    // Update email if provided and different
-    if (data.email && data.email !== user.email) {
-        try {
-            await updateEmail(firebaseUser, data.email);
-            await updateDoc(userDocRef, { email: data.email });
-        } catch (error: any) {
-            console.error("Error updating email: ", error);
-            throw new Error(translateFirebaseError(error.code || 'unknown'));
-        }
-    }
   };
 
   const updateUserPassword = async (newPassword: string) => {
