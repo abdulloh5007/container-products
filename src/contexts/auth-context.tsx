@@ -328,22 +328,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 if (loggingOutSession) {
                     let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
-                    
                     const wasSenior = loggingOutSession.role === 'senior';
-                    // Only attempt to promote if there are remaining sessions.
-                    if (wasSenior && updatedSessions.length > 0) {
-                        const noSeniorsLeft = !updatedSessions.some(s => s.role === 'senior');
-                        if (noSeniorsLeft) {
-                             const juniorSessions = updatedSessions
-                                .filter(s => s.role === 'junior')
-                                .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-              
-                             if (juniorSessions.length > 0) {
-                                const nextSeniorId = juniorSessions[0].id;
-                                updatedSessions = updatedSessions.map(s =>
-                                  s.id === nextSeniorId ? { ...s, role: 'senior' } : s
-                                );
-                             }
+
+                    if (wasSenior) {
+                        const juniorSessions = updatedSessions.filter(s => s.role === 'junior');
+                        if (juniorSessions.length > 0) {
+                            juniorSessions.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+                            const nextSeniorId = juniorSessions[0].id;
+                            updatedSessions = updatedSessions.map(s => s.id === nextSeniorId ? { ...s, role: 'senior' } : s);
+                        } else {
+                            // No juniors to promote, clear all sessions as requested
+                            updatedSessions = [];
                         }
                     }
                     await updateDoc(userDocRef, { sessions: updatedSessions });
@@ -351,7 +346,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error("Firestore update error during logout:", error);
-            // Don't rethrow, allow logout to proceed.
         }
     }
     
