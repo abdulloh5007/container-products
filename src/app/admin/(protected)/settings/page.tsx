@@ -45,7 +45,7 @@ const getDeviceIcon = (deviceName: string) => {
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount, updateUserEmail } = useAuth();
+    const { user: currentUser, logout, isAuthLoading, updateUserProfile, setPendingRequests, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, approveSession, deleteSession, makeSenior, updateUserPassword, deleteUserAccount, updateUserEmail, translateFirebaseError } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,10 +85,13 @@ export default function SettingsPage() {
       try {
         await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
         
+        let emailUpdated = false;
         if (isSenior && email && email !== currentUser.email) {
             await updateUserEmail(email);
+            emailUpdated = true;
         }
 
+        let passwordUpdated = false;
         if (isSenior && password) {
           if (password.length < 6) {
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('firebase_error_auth_weak-password') });
@@ -96,11 +99,17 @@ export default function SettingsPage() {
             return;
           }
           await updateUserPassword(password);
+          passwordUpdated = true;
           setPassword('');
           toast({ title: t('admin_password_update_success_title'), description: t('admin_password_update_success_desc') });
         }
-
-        toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
+        
+        if (!emailUpdated && !passwordUpdated) {
+          toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
+        } else if (emailUpdated && !passwordUpdated) {
+          toast({ title: t('admin_settings_update_success_title'), description: "Email successfully updated." });
+        }
+        
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
       } finally {

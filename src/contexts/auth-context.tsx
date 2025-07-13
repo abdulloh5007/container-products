@@ -269,8 +269,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user || !user.currentSession) return;
     
     const userDocRef = doc(db, 'users', user.uid);
+    let sessionList = user.sessions;
     const currentSession = user.currentSession;
-    let newSessions = user.sessions.filter(s => s.id !== currentSession.id);
+    
+    let newSessions = sessionList.filter(s => s.id !== currentSession.id);
 
     if (currentSession.role === 'senior' && !newSessions.some(s => s.role === 'senior')) {
         const juniorSessions = newSessions
