@@ -427,8 +427,8 @@ export default function SettingsPage() {
                                <CardHeader>
                                    <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
                                    <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
-                               </CardHeader>
-                               <CardContent>
+                                </CardHeader>
+                                <CardContent>
                                    <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteAccount' })}>
                                        <Trash2 className="mr-2 h-4 w-4" />
                                        {t('admin_account_delete_button')}
