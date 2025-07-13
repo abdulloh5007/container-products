@@ -256,8 +256,8 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
-                    <div className="flex-shrink-0">{renderRoleIcon(role)}</div>
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
+                    <div className="flex-shrink-0 self-start sm:self-center">{renderRoleIcon(role)}</div>
                      {isSenior && !isCurrentSession && (
                         <>
                              {role === 'pending' && (
@@ -267,7 +267,7 @@ export default function SettingsPage() {
                                 </Button>
                              )}
                              {role === 'junior' && (
-                                <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetSession: session })} disabled={isSubmitting}>
+                                <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetSession: session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                     <Crown className="mr-2 h-4 w-4" />
                                     {t('admin_session_promote_button')}
                                 </Button>
@@ -479,8 +479,3 @@ export default function SettingsPage() {
       </>
     );
 }
-
-    
-
-    
-
