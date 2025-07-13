@@ -425,7 +425,7 @@ export default function SettingsPage() {
                         {/* {isSenior && (
                             <Card className="mt-8 border-destructive/50">
                                <CardHeader>
-                                   <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
+                                    <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
                                    <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
