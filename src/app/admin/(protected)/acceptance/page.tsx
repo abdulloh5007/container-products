@@ -50,7 +50,8 @@ export default function AdminAcceptancePage() {
   const [acceptingContainerId, setAcceptingContainerId] = useState<string | null>(null);
   const [dispatchingContainerId, setDispatchingContainerId] = useState<string | null>(null);
   const [containerToAccept, setContainerToAccept] = useState<Container | null>(null);
-  const [containerNumber, setContainerNumber] = useState('');
+  const [acceptanceContainerNumber, setAcceptanceContainerNumber] = useState('');
+  const [dispatchContainerNumber, setDispatchContainerNumber] = useState('');
   const [containerToDispatch, setContainerToDispatch] = useState<Container | null>(null);
   const { view, setView } = useViewSwitcher('acceptance');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
@@ -77,7 +78,7 @@ export default function AdminAcceptancePage() {
   const handleAcceptContainer = async () => {
     if (!containerToAccept) return;
     
-    const finalContainerNumber = containerNumber.trim() || '#';
+    const finalContainerNumber = acceptanceContainerNumber.trim() || '#';
 
     if (!containerToAccept.products || containerToAccept.products.length === 0) {
         closeAcceptDialog();
@@ -89,13 +90,11 @@ export default function AdminAcceptancePage() {
     try {
         const batch = writeBatch(db);
         
-        // Update product quantities
         for (const product of containerToAccept.products) {
             const productRef = doc(db, 'products', product.id);
             batch.update(productRef, { quantity: increment(product.quantity) });
         }
         
-        // Create history record
         const historyRef = doc(collection(db, 'history'));
         batch.set(historyRef, {
             containerId: containerToAccept.id,
@@ -123,14 +122,16 @@ export default function AdminAcceptancePage() {
   
   const closeAcceptDialog = () => {
       setContainerToAccept(null);
-      setContainerNumber('');
+      setAcceptanceContainerNumber('');
   }
 
   const handleDispatchContainer = async () => {
     if (!containerToDispatch) return;
 
+    const finalContainerNumber = dispatchContainerNumber.trim() || '#';
+
     if (!containerToDispatch.products || containerToDispatch.products.length === 0) {
-        setContainerToDispatch(null);
+        closeDispatchDialog();
         return;
     }
     
@@ -139,7 +140,6 @@ export default function AdminAcceptancePage() {
     try {
         const batch = writeBatch(db);
         
-        // First, check if there is enough stock for all products
         for (const product of containerToDispatch.products) {
             const productRef = doc(db, 'products', product.id);
             const productSnap = await getDoc(productRef);
@@ -150,23 +150,21 @@ export default function AdminAcceptancePage() {
                     description: t('admin_dispatch_error_insufficient_stock', { productName: productSnap.data()?.name || product.id })
                 });
                 setDispatchingContainerId(null);
-                setContainerToDispatch(null);
+                closeDispatchDialog();
                 return;
             }
         }
         
-        // If all checks pass, proceed with dispatch
         for (const product of containerToDispatch.products) {
             const productRef = doc(db, 'products', product.id);
             batch.update(productRef, { quantity: increment(-product.quantity) });
         }
         
-        // Create history record for dispatch
         const historyRef = doc(collection(db, 'history'));
         batch.set(historyRef, {
             containerId: containerToDispatch.id,
             containerName: containerToDispatch.name,
-            containerNumber: '#',
+            containerNumber: finalContainerNumber,
             date: serverTimestamp(),
             type: 'dispatch'
         });
@@ -183,9 +181,15 @@ export default function AdminAcceptancePage() {
         toast({ variant: 'destructive', title: t('admin_dispatch_error_title'), description: t('admin_dispatch_error_desc') });
     } finally {
         setDispatchingContainerId(null);
-        setContainerToDispatch(null);
+        closeDispatchDialog();
     }
   }
+  
+  const closeDispatchDialog = () => {
+      setContainerToDispatch(null);
+      setDispatchContainerNumber('');
+  }
+
 
   const getTotalProducts = (container: Container) => {
     if (!container.products) return 0;
@@ -271,20 +275,20 @@ export default function AdminAcceptancePage() {
                 <TableCell className="font-medium">{container.name}</TableCell>
                 <TableCell className="text-center">{getTotalProducts(container)}</TableCell>
                 <TableCell className="text-right space-x-2 whitespace-nowrap">
-                     <Button 
-                        onClick={() => setContainerToDispatch(container)}
-                        disabled={isActionDisabled(container)}
-                        variant="secondary"
-                    >
-                        <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
-                        {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
-                    </Button>
                     <Button 
                         onClick={() => setContainerToAccept(container)}
                         disabled={isActionDisabled(container)}
                     >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         {acceptingContainerId === container.id ? t('admin_saving_text') : t('admin_acceptance_button')}
+                    </Button>
+                    <Button 
+                        onClick={() => setContainerToDispatch(container)}
+                        disabled={isActionDisabled(container)}
+                        variant="secondary"
+                    >
+                        <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
+                        {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
                     </Button>
                 </TableCell>
             </TableRow>
@@ -310,6 +314,14 @@ export default function AdminAcceptancePage() {
                     </CardContent>
                     <CardFooter className="flex flex-col gap-2">
                         <Button 
+                            onClick={() => setContainerToAccept(container)}
+                            disabled={isActionDisabled(container)}
+                            className="w-full"
+                        >
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            {acceptingContainerId === container.id ? t('admin_saving_text') : t('admin_acceptance_button')}
+                        </Button>
+                        <Button 
                             onClick={() => setContainerToDispatch(container)}
                             disabled={isActionDisabled(container)}
                             className="w-full"
@@ -317,14 +329,6 @@ export default function AdminAcceptancePage() {
                         >
                             <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
                             {dispatchingContainerId === container.id ? t('admin_dispatching_text') : t('admin_dispatch_button')}
-                        </Button>
-                        <Button 
-                            onClick={() => setContainerToAccept(container)}
-                            disabled={isActionDisabled(container)}
-                            className="w-full"
-                        >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            {acceptingContainerId === container.id ? t('admin_saving_text') : t('admin_acceptance_button')}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -375,11 +379,11 @@ export default function AdminAcceptancePage() {
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="py-4 space-y-2">
-                <Label htmlFor="container-number">{t('admin_history_container_number')}</Label>
+                <Label htmlFor="container-number-acceptance">{t('admin_history_container_number')}</Label>
                 <Input
-                    id="container-number"
-                    value={containerNumber}
-                    onChange={(e) => setContainerNumber(e.target.value)}
+                    id="container-number-acceptance"
+                    value={acceptanceContainerNumber}
+                    onChange={(e) => setAcceptanceContainerNumber(e.target.value)}
                     placeholder={t('admin_history_container_number_placeholder')}
                     disabled={!!acceptingContainerId}
                 />
@@ -394,7 +398,7 @@ export default function AdminAcceptancePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!containerToDispatch} onOpenChange={(open) => !open && setContainerToDispatch(null)}>
+      <AlertDialog open={!!containerToDispatch} onOpenChange={(open) => !open && closeDispatchDialog()}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>{t('admin_dispatch_confirm_title')}</AlertDialogTitle>
@@ -402,11 +406,21 @@ export default function AdminAcceptancePage() {
                     {t('admin_dispatch_confirm_desc', { containerName: containerToDispatch?.name || '' })}
                 </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="py-4 space-y-2">
+                <Label htmlFor="container-number-dispatch">{t('admin_history_container_number')}</Label>
+                <Input
+                    id="container-number-dispatch"
+                    value={dispatchContainerNumber}
+                    onChange={(e) => setDispatchContainerNumber(e.target.value)}
+                    placeholder={t('admin_history_container_number_placeholder')}
+                    disabled={!!dispatchingContainerId}
+                />
+            </div>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setContainerToDispatch(null)}>{t('admin_cancel_button')}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDispatchContainer} className={buttonVariants({ variant: "secondary" })}>
+                <AlertDialogCancel onClick={closeDispatchDialog}>{t('admin_cancel_button')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDispatchContainer} className={buttonVariants({ variant: "secondary" })} disabled={!!dispatchingContainerId}>
                     <ArrowUpRightFromSquare className="mr-2 h-4 w-4" />
-                    {t('admin_dispatch_button')}
+                    {dispatchingContainerId ? t('admin_dispatching_text') : t('admin_dispatch_button')}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
