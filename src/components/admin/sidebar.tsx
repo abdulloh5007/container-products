@@ -115,20 +115,22 @@ export function Sidebar() {
                    {renderAllNavItemsForGrid()}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
-                   <Button 
-                     variant="ghost" 
-                     className={cn(
-                       "w-full justify-start gap-3 text-base relative",
-                       isSettingsActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                     )}
-                     onClick={() => handleSheetLinkClick('/admin/settings')}
-                   >
-                     <Settings className="h-5 w-5" />
-                     {t('admin_sidebar_settings')}
-                      {pendingRequests > 0 && isSenior && (
-                        <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
-                      )}
-                   </Button>
+                   {isSenior && (
+                     <Button 
+                       variant="ghost" 
+                       className={cn(
+                         "w-full justify-start gap-3 text-base relative",
+                         isSettingsActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                       )}
+                       onClick={() => handleSheetLinkClick('/admin/settings')}
+                     >
+                       <Settings className="h-5 w-5" />
+                       {t('admin_sidebar_settings')}
+                        {pendingRequests > 0 && (
+                          <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
+                        )}
+                     </Button>
+                   )}
                    <Button variant="ghost" className="w-full justify-start gap-3 text-base text-destructive hover:text-destructive" onClick={handleLogout}>
                      <LogOut className="h-5 w-5" />
                       {t('admin_logout')}
