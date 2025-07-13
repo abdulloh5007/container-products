@@ -270,7 +270,13 @@ export default function SettingsPage() {
     }
 
     const sessions = currentUser?.sessions || [];
-    const activeSessions = sessions.filter(s => s.role !== 'pending');
+    const activeSessions = sessions
+        .filter(s => s.role !== 'pending')
+        .sort((a, b) => {
+            if (a.id === currentUser?.currentSession?.id) return -1;
+            if (b.id === currentUser?.currentSession?.id) return 1;
+            return b.createdAt.toMillis() - a.createdAt.toMillis();
+        });
     const pendingSessions = sessions.filter(s => s.role === 'pending');
 
     return (
@@ -447,5 +453,7 @@ export default function SettingsPage() {
       </>
     );
 }
+
+    
 
     
