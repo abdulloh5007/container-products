@@ -15,6 +15,10 @@ export interface AppUser {
     email?: string | null;
     phone?: string | null;
     photoURL?: string | null;
+    currentSession: {
+        role: SessionRole;
+        device: string;
+    }
 }
 
 export type LoginState = 'form' | 'pending' | 'failed';
@@ -50,18 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
         if (docSnap.exists()) {
             setIsManagementModeEnabled(!!docSnap.data().isManagementModeEnabled);
-            const users = (docSnap.data().users || []) as AppUser[];
-            const pending = users.filter(u => u.role === 'pending');
-            setPendingRequests(pending.length);
         } else {
             setIsManagementModeEnabled(true);
-            setPendingRequests(0);
         }
         setIsLoadingSettings(false);
     }, () => {
         setIsManagementModeEnabled(true);
         setIsLoadingSettings(false);
-        setPendingRequests(0);
     });
 
     return () => unsubscribe();
@@ -74,17 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let userDocSnap = await getDoc(userDocRef);
 
         if (!userDocSnap.exists()) {
-          // This case handles users that exist in Auth but not in Firestore.
-          // This can happen if registration was interrupted.
-          // We create a document for them. We assume 'pending' role as a safe default.
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("role", "==", "senior"));
+          const seniorSnapshot = await getDocs(q);
+          const newRole: SessionRole = seniorSnapshot.empty ? 'senior' : 'pending';
+
           const newUser: AppUser = {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || 'New User',
             email: firebaseUser.email,
-            role: 'pending',
+            role: newRole,
+            currentSession: {
+                role: newRole,
+                device: 'Web'
+            }
           };
           await setDoc(userDocRef, newUser);
-          userDocSnap = await getDoc(userDocRef); // Re-fetch the document
+          userDocSnap = await getDoc(userDocRef); 
         }
         
         const userData = userDocSnap.data() as AppUser;
@@ -106,7 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged will handle the rest
   };
   
   const register = async (name: string, email: string, password: string) => {
@@ -119,17 +123,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
 
-    const newUser: AppUser = {
+    const newUser: Omit<AppUser, 'phone' | 'photoURL'> = {
       uid: firebaseUser.uid,
       name: name,
       email: firebaseUser.email,
       role: newRole,
-      phone: '',
+      currentSession: {
+        role: newRole,
+        device: 'Web', 
+      }
     };
     
     await setDoc(doc(db, "users", firebaseUser.uid), newUser);
     
-    // After registration, sign the user out so they have to log in.
     await signOut(auth);
   };
   

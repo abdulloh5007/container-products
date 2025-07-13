@@ -5,53 +5,54 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper functions
-    function isAuth() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
     function isRole(role) {
-      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
     
     function isSenior() {
-      return isRole('senior');
+      return isAuthenticated() && isRole('senior');
     }
 
     function isJunior() {
-      return isRole('junior');
+      return isAuthenticated() && isRole('junior');
     }
-    
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    // Global settings
+    match /settings/global {
+      allow read: if isAuthenticated();
+      allow write: if isSenior();
+    }
 
-    // Collection rules
+    // Users collection
     match /users/{userId} {
-      allow read: if isAuth();
-      allow create: if isAuth() && isOwner(userId); // Allow users to create their own doc
-      allow update: if (isSenior() || (isJunior() && isOwner(userId) && !('role' in request.resource.data)));
-      // Note: Deleting users should be handled by a Cloud Function for atomicity (deleting from Auth and Firestore)
+      allow read: if isAuthenticated() && (isSenior() || isOwner(userId));
+      allow create: if isOwner(userId); // Allow user to create their own doc
+      allow update: if isAuthenticated() && (isSenior() || (isOwner(userId) && !('role' in request.resource.data))); // Junior can update profile, but not their role
       allow delete: if isSenior();
     }
 
-    match /settings/{docId} {
-       allow read: if isAuth();
-       allow write: if isSenior();
-    }
-    
+    // Products and Containers can be read by any authenticated user, but only managed by seniors
     match /products/{productId} {
-      allow read: if isAuth();
-      allow write: if isSenior();
+      allow read: if isAuthenticated();
+      allow write: if isSenior(); // create, update, delete
     }
-    
+
     match /containers/{containerId} {
-      allow read: if isAuth();
-      allow write: if isSenior();
+      allow read: if isAuthenticated();
+      allow write: if isSenior(); // create, update, delete
     }
-    
+
+    // History can be read and created by any authenticated user
     match /history/{historyId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
+      allow read, create: if isAuthenticated();
       allow update, delete: if false; // History should be immutable
     }
   }
