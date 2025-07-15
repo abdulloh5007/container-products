@@ -28,7 +28,7 @@ export function BottomNavBar() {
       <div className={`grid grid-cols-${navItems.length} gap-2`}>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}

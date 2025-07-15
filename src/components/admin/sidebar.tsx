@@ -34,34 +34,37 @@ export function Sidebar() {
   const closeSheet = () => setSheetOpen(false);
 
   const managementNavItems = [
-      { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box, roles: ['senior'] },
-      { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package, roles: ['senior'] },
+      { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
+      { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
   ]
   
-  const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History, roles: ['senior', 'junior'] };
-  const stockHistoryNavItem = { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: ListCollapse, roles: ['senior'] };
+  const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
+  const stockHistoryNavItem = { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: ListCollapse };
+  
+  const mainNavItems = [
+      { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },
+      { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: 'hidden md:flex' },
+  ];
 
   const handleSheetLinkClick = (href: string) => {
     router.push(href);
     closeSheet();
   };
   
-  const renderAllNavItemsForGrid = () => {
-      let navItemsForGrid = [
-          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },
-          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: 'hidden md:flex' },
-      ];
+  const renderNavGrid = () => {
+      let navItems = [...mainNavItems];
 
       if (isManagementModeEnabled && isSenior) {
-        navItemsForGrid.push(...managementNavItems);
+        navItems.push(...managementNavItems.map(item => ({ ...item, roles: ['senior'] })));
       }
-      navItemsForGrid.push(historyNavItem);
+      
+      navItems.push({ ...historyNavItem, roles: ['senior', 'junior'] });
       
       if (isSenior) {
-        navItemsForGrid.push(stockHistoryNavItem);
+        navItems.push({ ...stockHistoryNavItem, roles: ['senior'] });
       }
 
-      const visibleItems = navItemsForGrid.filter(item => role && item.roles.includes(role));
+      const visibleItems = navItems.filter(item => role && item.roles.includes(role));
 
       return visibleItems.map((item, index) => {
         const Icon = item.icon;
@@ -122,7 +125,7 @@ export function Sidebar() {
                    </SheetTitle>
                  </SheetHeader>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                   {renderAllNavItemsForGrid()}
+                   {renderNavGrid()}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
                    {(isSenior || role === 'junior') && (

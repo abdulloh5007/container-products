@@ -56,7 +56,7 @@ export default function AdminStockPage() {
       setProducts(productsData);
     } catch (error) {
       console.error("Error fetching products: ", error);
-      toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+      toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
     } finally {
       setIsLoading(false);
     }

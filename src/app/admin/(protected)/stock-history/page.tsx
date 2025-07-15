@@ -77,12 +77,21 @@ const RoleIcon = ({ role }: { role: SessionRole }) => {
     }
 }
 
-const formatQuantity = (quantity: number, type: ProductType) => {
+const formatQuantity = (quantity: number, type: ProductType, t: (key: any) => string) => {
+    const unitText = type === 'kit' ? ` ${t('admin_kit_unit')}` : type === 'area' ? ` ${t('admin_m2_unit')}` : '';
+
     if (type === 'unit' || type === 'kit') {
+        return Math.round(quantity) + unitText;
+    }
+    return quantity.toFixed(2) + unitText;
+};
+
+const formatQuantitySimple = (quantity: number, type: ProductType) => {
+     if (type === 'unit' || type === 'kit') {
         return Math.round(quantity);
     }
     return quantity.toFixed(2);
-};
+}
 
 export default function AdminStockHistoryPage() {
   const { t, language } = useLanguage();
@@ -187,10 +196,11 @@ export default function AdminStockHistoryPage() {
                         <CardHeader>
                             <Skeleton className="h-6 w-3/4" />
                         </CardHeader>
-                        <CardContent>
-                             <Skeleton className="h-8 w-full" />
+                        <CardContent className="space-y-4">
+                             <Skeleton className="h-9 w-full" />
+                             <Skeleton className="h-5 w-1/2 mx-auto" />
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="flex justify-between">
                             <Skeleton className="h-5 w-1/2" />
                             <Skeleton className="h-4 w-1/3" />
                         </CardFooter>
@@ -217,14 +227,14 @@ export default function AdminStockHistoryPage() {
         const productType = item.productType || 'unit';
         return (
             <div className="flex flex-col items-center gap-2 text-center w-full">
-                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex w-full justify-center gap-1 text-lg py-1.5 px-4 font-bold">
+                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex w-full justify-center gap-1.5 text-lg py-1.5 px-4 font-bold">
                     {isIncrease ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                    <span>{isIncrease ? '+' : ''}{formatQuantity(item.changeAmount, productType)}</span>
+                    <span>{isIncrease ? '+' : ''}{formatQuantity(item.changeAmount, productType, t)}</span>
                 </Badge>
-                <div className="flex items-center justify-center gap-3 text-center">
-                    <span className="font-mono text-base text-muted-foreground">{formatQuantity(item.previousQuantity, productType)}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono text-base text-muted-foreground">{formatQuantity(item.newQuantity, productType)}</span>
+                <div className="flex items-center justify-center gap-3 text-center text-muted-foreground">
+                    <span className="font-mono text-base">{formatQuantitySimple(item.previousQuantity, productType)}</span>
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="font-mono text-base">{formatQuantitySimple(item.newQuantity, productType)}</span>
                 </div>
             </div>
         )
@@ -238,11 +248,11 @@ export default function AdminStockHistoryPage() {
                     <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell>
                        <div className="flex items-center justify-start gap-3">
-                           <span className="font-mono text-sm text-muted-foreground">{formatQuantity(item.previousQuantity, productType)}</span>
+                           <span className="font-mono text-sm text-muted-foreground">{formatQuantitySimple(item.previousQuantity, productType)}</span>
                             <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                           <span className="font-mono text-sm text-muted-foreground">{formatQuantity(item.newQuantity, productType)}</span>
+                           <span className="font-mono text-sm text-muted-foreground">{formatQuantitySimple(item.newQuantity, productType)}</span>
                             <Badge variant={item.changeAmount > 0 ? 'default' : 'secondary'} className="flex-shrink-0 gap-1 font-bold">
-                                {item.changeAmount > 0 ? '+' : ''}{formatQuantity(item.changeAmount, productType)}
+                                {item.changeAmount > 0 ? '+' : ''}{formatQuantity(item.changeAmount, productType, t)}
                             </Badge>
                        </div>
                     </TableCell>
