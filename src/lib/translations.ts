@@ -294,7 +294,15 @@ export const translations = {
     admin_stock_history_table_change: "Изменение",
     admin_stock_history_table_user: "Пользователь",
     admin_stock_history_table_date: "Дата",
-
+    admin_stock_history_search_placeholder: "Поиск по названию продукта...",
+    admin_filters_button: "Фильтры",
+    admin_filters_title: "Настроить фильтры",
+    admin_filter_by_date: "Фильтр по дате",
+    admin_filter_by_user: "Фильтр по пользователю",
+    admin_filter_by_role: "Фильтр по роли",
+    admin_pick_date: "Выберите дату",
+    admin_filters_reset_button: "Сбросить",
+    admin_filters_apply_button: "Применить",
 
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
@@ -603,6 +611,15 @@ export const translations = {
     admin_stock_history_table_change: "O'zgarish",
     admin_stock_history_table_user: "Foydalanuvchi",
     admin_stock_history_table_date: "Sana",
+    admin_stock_history_search_placeholder: "Mahsulot nomi bo'yicha qidirish...",
+    admin_filters_button: "Filtrlar",
+    admin_filters_title: "Filtrlarni sozlash",
+    admin_filter_by_date: "Sana bo'yicha filtr",
+    admin_filter_by_user: "Foydalanuvchi bo'yicha filtr",
+    admin_filter_by_role: "Rol bo'yicha filtr",
+    admin_pick_date: "Sanani tanlang",
+    admin_filters_reset_button: "Tozalash",
+    admin_filters_apply_button: "Qo'llash",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",
@@ -616,3 +633,5 @@ export const translations = {
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
+
+    
