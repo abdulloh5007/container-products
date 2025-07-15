@@ -97,11 +97,15 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated) {
-      const redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
-      router.replace(redirectTo);
+    if (!isAuthLoading && isAuthenticated && user) {
+      const role = user.currentSession?.role;
+      let redirectTo = '/admin/acceptance'; // Default for senior/junior
+      if (role === 'worker') {
+        redirectTo = '/admin/stock';
+      }
+      router.replace(searchParams.get('redirectTo') || redirectTo);
     }
-  }, [isAuthenticated, isAuthLoading, router, searchParams]);
+  }, [isAuthenticated, isAuthLoading, router, searchParams, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -2,7 +2,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Sidebar } from '@/components/admin/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,15 +36,31 @@ function AdminSkeleton() {
 }
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Wait until loading is finished before checking auth
     if (!isLoading && !isAuthenticated) {
       router.replace('/admin/login');
+      return;
     }
-  }, [isAuthenticated, isLoading, router]);
+    
+    if (!isLoading && isAuthenticated) {
+        const role = user?.currentSession?.role;
+        
+        if (role === 'pending') {
+            router.replace('/admin/login');
+            return;
+        }
+
+        if (role === 'worker' && pathname !== '/admin/stock') {
+            router.replace('/admin/stock');
+            return;
+        }
+    }
+  }, [isAuthenticated, isLoading, router, user, pathname]);
 
   // While loading auth state, show a full-page loader or skeleton
   if (isLoading) {

@@ -47,13 +47,16 @@ export default function AdminContainersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
-  const isSenior = user?.currentSession.role === 'senior';
+  const role = user?.currentSession?.role;
+  const isSenior = role === 'senior';
+  const isWorker = role === 'worker';
+
 
   useEffect(() => {
-      if (!isAuthLoading && (!isManagementModeEnabled || !isSenior)) {
+      if (!isAuthLoading && (isWorker || !isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, isSenior, router]);
+  }, [isAuthLoading, isManagementModeEnabled, isSenior, isWorker, router]);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -217,7 +220,7 @@ export default function AdminContainersPage() {
     )
   }
 
-  if (!isManagementModeEnabled && !isAuthLoading && !isSenior) {
+  if ((!isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
     return null; // Render nothing while redirecting
   }
 

@@ -16,6 +16,8 @@ import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 type HistoryType = 'acceptance' | 'dispatch';
 
@@ -46,12 +48,24 @@ const TypeBadge = ({ type, t, className }: { type: HistoryType, t: (key: any) =>
 export default function AdminHistoryPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const { user, isAuthLoading } = useAuth();
+  const router = useRouter();
+
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('history');
   const dateLocale = language === 'uz' ? uz : ru;
 
+  const isWorker = user?.currentSession?.role === 'worker';
+
+  useEffect(() => {
+    if (!isAuthLoading && isWorker) {
+      router.replace('/admin/stock');
+    }
+  }, [isAuthLoading, isWorker, router]);
+
   const fetchHistory = useCallback(async () => {
+    if (isWorker) return;
     setIsLoading(true);
     try {
       const q = query(collection(db, "history"), orderBy("date", "desc"));
@@ -64,7 +78,7 @@ export default function AdminHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast]);
+  }, [t, toast, isWorker]);
 
   useEffect(() => {
     fetchHistory();
@@ -144,6 +158,10 @@ export default function AdminHistoryPage() {
             ))}
         </div>
     );
+  }
+
+  if (isWorker && !isAuthLoading) {
+    return null;
   }
 
   return (

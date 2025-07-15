@@ -57,13 +57,17 @@ export default function AdminProductsPage() {
   const [productType, setProductType] = useState<ProductType>('unit');
   const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
-  const isSenior = user?.currentSession.role === 'senior';
+
+  const role = user?.currentSession?.role;
+  const isSenior = role === 'senior';
+  const isWorker = role === 'worker';
+
 
   useEffect(() => {
-      if (!isAuthLoading && (!isManagementModeEnabled || !isSenior)) {
+      if (!isAuthLoading && (isWorker || !isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, isSenior, router]);
+  }, [isAuthLoading, isManagementModeEnabled, isSenior, isWorker, router]);
 
 
   const fetchProducts = useCallback(async () => {
@@ -333,7 +337,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  if (!isManagementModeEnabled && !isAuthLoading && !isSenior) {
+  if ((!isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
     return null; // Render nothing while redirecting
   }
 

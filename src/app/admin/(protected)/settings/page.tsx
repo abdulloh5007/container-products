@@ -68,8 +68,16 @@ export default function SettingsPage() {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
 
-    const isSenior = currentUser?.currentSession?.role === 'senior';
+    const role = currentUser?.currentSession?.role;
+    const isSenior = role === 'senior';
+    const isWorker = role === 'worker';
     const dateLocale = language === 'uz' ? uz : ru;
+
+     useEffect(() => {
+        if (!isAuthLoading && isWorker) {
+            router.replace('/admin/stock');
+        }
+    }, [isAuthLoading, isWorker, router]);
 
     useEffect(() => {
         if (currentUser) {
@@ -277,6 +285,10 @@ export default function SettingsPage() {
                 </Card>
             </div>
         )
+    }
+
+     if (isWorker && !isAuthLoading) {
+        return null;
     }
     
     const renderRoleIcon = (role?: SessionRole) => {
@@ -550,5 +562,3 @@ export default function SettingsPage() {
       </>
     );
 }
-
-    
