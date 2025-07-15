@@ -81,7 +81,7 @@ export default function AdminHistoryPage() {
       const querySnapshot = await getDocs(q);
       const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryItem));
       setHistory(historyData);
-    } catch (error) => {
+    } catch (error) {
       console.error("Error fetching history: ", error);
       toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
     } finally {
