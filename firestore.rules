@@ -1,40 +1,46 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function to check if the requesting user has a 'senior' role in any of their sessions.
+    function isSenior() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sessions.exists(s, s.role == 'senior');
     }
-    
-    // Allow public read for products as they are displayed on the main page
+
+    // Allow public read for products
     match /products/{productId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
-    
+
     // Allow authenticated users to manage containers and history
     match /containers/{containerId} {
-        allow read, write: if request.auth != null;
-    }
-    
-    match /history/{historyId} {
-        allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
-    // Allow authenticated users to manage their own user document
-    // Allow list for anyone to check if users exist (for registration purposes)
-    match /users/{userId} {
-      allow list: if true; // Allows checking if any user exists for registration logic
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+    match /history/{historyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
-    // Allow any authenticated user to read/write global settings
+    // Rules for stock modification history
+    match /stock_history/{historyId} {
+      allow create: if request.auth != null;
+      allow read, list, update, delete: if request.auth != null && isSenior();
+    }
+
+    // Users can list the collection to check if any users exist.
+    // However, they can only read/write their own document.
+    match /users/{userId} {
+      allow list: if true;
+      allow read, write: if true;
+    }
+    
+    // Settings can be read/written by any authenticated user
     match /settings/global {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
