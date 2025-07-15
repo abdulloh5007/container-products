@@ -164,9 +164,10 @@ export default function AdminHistoryPage() {
                   exit="exit"
                   transition={{ duration: 0.3 }}
                   layout
+                  className="h-full"
                 >
-                  <Card className="flex flex-col justify-between overflow-hidden">
-                      <div className="p-6">
+                  <Card className="flex flex-col justify-between overflow-hidden h-full">
+                      <div className="p-6 flex-grow">
                           <CardTitle className="text-lg">{item.containerName}</CardTitle>
                           <CardDescription className="mt-1">
                               {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
@@ -202,7 +203,7 @@ export default function AdminHistoryPage() {
         </div>
       </div>
       
-       <div className="relative w-full max-w-sm">
+       <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t('admin_history_search_placeholder')}
