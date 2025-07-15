@@ -2,11 +2,6 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the requesting user has a 'senior' role in any of their sessions.
-    function isSenior() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sessions.exists(s, s.role == 'senior');
-    }
 
     // Allow public read for products
     match /products/{productId} {
@@ -28,7 +23,7 @@ service cloud.firestore {
     // Rules for stock modification history
     match /stock_history/{historyId} {
       allow create: if request.auth != null;
-      allow read, list, update, delete: if request.auth != null && isSenior();
+      allow read, list, update, delete: if request.auth != null;
     }
 
     // Users can list the collection to check if any users exist.
@@ -41,6 +36,11 @@ service cloud.firestore {
     // Settings can be read/written by any authenticated user
     match /settings/global {
       allow read, write: if true;
+    }
+
+    // Allow authenticated users to manage rentals
+    match /rentals/{rentalId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
