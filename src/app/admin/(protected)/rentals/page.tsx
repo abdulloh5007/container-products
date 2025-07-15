@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 type RentalStatus = 'rented' | 'departed';
 
@@ -40,6 +42,9 @@ const cardVariants = {
 export default function RentalsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
+    const { user, isAuthLoading } = useAuth();
+    const router = useRouter();
+
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [isRemoveModalOpen, setRemoveModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,7 +64,16 @@ export default function RentalsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const dateLocale = language === 'uz' ? uz : ru;
 
+    const isSenior = user?.currentSession?.role === 'senior';
+
+    useEffect(() => {
+        if (!isAuthLoading && !isSenior) {
+            router.replace('/admin/acceptance');
+        }
+    }, [isAuthLoading, isSenior, router]);
+
     const fetchRentedContainers = useCallback(async () => {
+        if (!isSenior) return;
         setIsLoadingRented(true);
         try {
             const q = query(collection(db, "rentals"), where("status", "==", "rented"), orderBy("arrivalDate", "desc"));
@@ -72,9 +86,10 @@ export default function RentalsPage() {
         } finally {
             setIsLoadingRented(false);
         }
-    }, [t, toast]);
+    }, [isSenior, t, toast]);
     
     const fetchHistory = useCallback(async () => {
+        if (!isSenior) return;
         setIsLoadingHistory(true);
         try {
             const q = query(collection(db, "rentals"), orderBy("arrivalDate", "desc"));
@@ -87,11 +102,13 @@ export default function RentalsPage() {
         } finally {
             setIsLoadingHistory(false);
         }
-    }, [t, toast]);
+    }, [isSenior, t, toast]);
     
     useEffect(() => {
-        fetchHistory();
-    }, [fetchHistory]);
+        if (isSenior) {
+            fetchHistory();
+        }
+    }, [fetchHistory, isSenior]);
 
     const handleOpenRemoveModal = () => {
         fetchRentedContainers();
@@ -156,7 +173,7 @@ export default function RentalsPage() {
     }, [history, searchQuery]);
 
     const renderHistory = () => {
-        if (isLoadingHistory) {
+        if (isLoadingHistory || isAuthLoading) {
             return Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />);
         }
         if (filteredHistory.length === 0) {
@@ -204,6 +221,18 @@ export default function RentalsPage() {
         );
     }
     
+    if (isAuthLoading || !isSenior) {
+        return (
+            <div className="space-y-8">
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-12 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </div>
+            </div>
+        )
+    }
 
   return (
     <>
@@ -331,4 +360,3 @@ export default function RentalsPage() {
     </>
   );
 }
-
