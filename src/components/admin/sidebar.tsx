@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History } from 'lucide-react';
+import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History, ListCollapse } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -35,11 +35,12 @@ export function Sidebar() {
   const closeSheet = () => setSheetOpen(false);
 
   const managementNavItems = [
-      { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box },
-      { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package },
+      { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box, roles: ['senior'] },
+      { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package, roles: ['senior'] },
   ]
   
-  const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
+  const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History, roles: ['senior', 'junior'] };
+  const stockHistoryNavItem = { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: ListCollapse, roles: ['senior'] };
 
   const handleSheetLinkClick = (href: string) => {
     router.push(href);
@@ -48,13 +49,17 @@ export function Sidebar() {
   
   const renderAllNavItemsForGrid = () => {
       let navItemsForGrid = [
-          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: "hidden md:flex" },
-          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: "hidden md:flex" },
+          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
+          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
       ];
       if (isManagementModeEnabled && isSenior) {
-        navItemsForGrid.push(...managementNavItems.map(item => ({ ...item, roles: ['senior'] })));
+        navItemsForGrid.push(...managementNavItems);
       }
-      navItemsForGrid.push({ ...historyNavItem, roles: ['senior', 'junior'] });
+      navItemsForGrid.push(historyNavItem);
+      
+      if (isSenior) {
+        navItemsForGrid.push(stockHistoryNavItem);
+      }
 
       const visibleItems = navItemsForGrid.filter(item => role && item.roles.includes(role));
 

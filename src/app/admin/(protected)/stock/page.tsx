@@ -8,13 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, increment, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, serverTimestamp, addDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Minus, Search } from 'lucide-react';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/contexts/auth-context';
 
 type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
@@ -36,6 +37,7 @@ const EPSILON = 1e-9; // Small tolerance for float comparisons
 export default function AdminStockPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,23 +100,40 @@ export default function AdminStockPage() {
   const handleQuantityChange = async (product: Product, direction: 'increment' | 'decrement') => {
     const amountStr = changeAmounts[product.id] || '1';
     const amount = parseFloat(amountStr) || 1;
-    const finalAmount = direction === 'increment' ? amount : -amount;
+    const changeAmount = direction === 'increment' ? amount : -amount;
+    
+    if (!user || !user.currentSession) return;
 
-    if (product.quantity + finalAmount < -EPSILON) return;
+    if (product.quantity + changeAmount < -EPSILON) return;
 
     setUpdatingProductId(product.id);
     try {
-        const productDoc = doc(db, 'products', product.id);
-        let newQuantity = product.quantity + finalAmount;
-
-        // Correct for floating point inaccuracies near zero
+        const productDocRef = doc(db, 'products', product.id);
+        const stockHistoryCollectionRef = collection(db, 'stock_history');
+        
+        const previousQuantity = product.quantity;
+        let newQuantity = previousQuantity + changeAmount;
         if (Math.abs(newQuantity) < EPSILON) {
             newQuantity = 0;
         }
 
-        await updateDoc(productDoc, {
-            quantity: newQuantity
+        const batch = writeBatch(db);
+
+        batch.update(productDocRef, { quantity: newQuantity });
+        
+        batch.set(doc(stockHistoryCollectionRef), {
+            productId: product.id,
+            productName: product.name,
+            previousQuantity: previousQuantity,
+            newQuantity: newQuantity,
+            changeAmount: changeAmount,
+            changedByUserId: user.uid,
+            changedByUserName: user.currentSession.name || user.currentSession.deviceName,
+            changedByUserRole: user.currentSession.role,
+            timestamp: serverTimestamp(),
         });
+
+        await batch.commit();
         
         setProducts(prevProducts => 
             prevProducts.map(p => 
@@ -122,7 +141,6 @@ export default function AdminStockPage() {
             )
         );
         
-        // Clear the input field for this product after successful update
         setChangeAmounts(prev => {
             const newAmounts = {...prev};
             delete newAmounts[product.id];
