@@ -52,7 +52,7 @@ type AuthContextType = {
   toggleManagementMode: () => Promise<void>;
   approveSession: (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
-  makeSenior: (session: Session) => Promise<void>;
+  updateUserRole: (session: Session, name: string, role: 'junior' | 'worker') => Promise<void>;
   deleteUserAccount: () => Promise<void>;
   translateFirebaseError: (errorCode: string) => string;
 };
@@ -442,22 +442,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
   
-  const makeSenior = async (sessionToPromote: Session) => {
-    if (!user || !user.currentSession) throw new Error("User not authenticated");
+  const updateUserRole = async (session: Session, name: string, role: 'junior' | 'worker') => {
+    if (!user) throw new Error("User not authenticated");
     const userDocRef = doc(db, 'users', user.uid);
-    
-    const batch = writeBatch(db);
-    
-    const newSessions = user.sessions.map(s => {
-        if (s.id === sessionToPromote.id) return { ...s, role: 'senior' };
-        if (s.id === user.currentSession?.id) return { ...s, role: 'junior' };
-        return s;
-    });
 
-    batch.update(userDocRef, { sessions: newSessions });
+    const newSessions = user.sessions.map(s => 
+        s.id === session.id ? { ...s, name, role } : s
+    );
     
-    await batch.commit();
-  }
+    await updateDoc(userDocRef, { sessions: newSessions });
+  };
 
   const value = useMemo(() => ({
     user,
@@ -479,9 +473,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoginState,
     approveSession,
     deleteSession,
-    makeSenior,
+    updateUserRole,
     translateFirebaseError,
-  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, approveSession, deleteSession, makeSenior, translateFirebaseError]);
+  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, approveSession, deleteSession, updateUserRole, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>

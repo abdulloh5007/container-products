@@ -331,6 +331,12 @@ export const translations = {
     admin_rental_status_rented: "В аренде",
     admin_rental_status_departed: "Уехал",
 
+    admin_edit_button: "Изменить",
+    admin_edit_user_title: "Редактировать пользователя",
+    admin_edit_user_desc: "Изменить имя и роль для \"{deviceName}\".",
+    admin_session_update_success_title: "Пользователь обновлен",
+    admin_session_update_success_desc: "Данные для {deviceName} были успешно обновлены.",
+
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
     'firebase_error_auth_email-already-in-use': "Этот email уже используется другим аккаунтом.",
@@ -674,6 +680,12 @@ export const translations = {
     admin_rental_history_empty: "Ijara tarixi bo'sh.",
     admin_rental_status_rented: "Ijarada",
     admin_rental_status_departed: "Ketgan",
+    
+    admin_edit_button: "O'zgartirish",
+    admin_edit_user_title: "Foydalanuvchini tahrirlash",
+    admin_edit_user_desc: "\"{deviceName}\" uchun ism va rolni o'zgartirish.",
+    admin_session_update_success_title: "Foydalanuvchi yangilandi",
+    admin_session_update_success_desc: "{deviceName} uchun ma'lumotlar muvaffaqiyatli yangilandi.",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",
