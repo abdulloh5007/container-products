@@ -214,7 +214,7 @@ export const translations = {
     admin_session_dialog_name_label: "Имя пользователя/устройства",
     admin_session_dialog_role_label: "Роль",
     admin_session_dialog_name_required: "Пожалуйста, введите имя.",
-    admin_role_senior: "глава (босс)",
+    admin_role_senior: "глава",
     admin_role_junior: "помощник",
     admin_role_worker: "работник",
     admin_session_dialog_promote_title: "Передать права главы?",
@@ -527,7 +527,7 @@ export const translations = {
     admin_session_dialog_name_label: "Foydalanuvchi/qurilma ismi",
     admin_session_dialog_role_label: "Rol",
     admin_session_dialog_name_required: "Iltimos, ism kiriting.",
-    admin_role_senior: "rahbar (boshliq)",
+    admin_role_senior: "rahbar",
     admin_role_junior: "yordamchi",
     admin_role_worker: "ishchi",
     admin_session_dialog_promote_title: "Rahbarlik huquqini berasizmi?",
@@ -633,5 +633,3 @@ export const translations = {
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
-
-    

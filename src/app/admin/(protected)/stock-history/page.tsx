@@ -26,6 +26,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
 
 type ProductType = 'kit' | 'unit' | 'area';
 
@@ -90,7 +92,7 @@ export default function AdminStockHistoryPage() {
 
   const [history, setHistory] = useState<StockHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const view = 'card';
+  const { view, setView } = useViewSwitcher('stock-history');
   const dateLocale = language === 'uz' ? uz : ru;
   const isSenior = user?.currentSession?.role === 'senior';
   const isLaptop = useMediaQuery("(min-width: 1024px)");
@@ -301,6 +303,7 @@ export default function AdminStockHistoryPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h1 className="text-3xl font-bold tracking-tight whitespace-wrap text-center sm:text-left sm:whitespace-nowrap">{t('admin_stock_history_title')}</h1>
+          <ViewSwitcher view={view} setView={setView} />
       </div>
       
       <div className="flex flex-col sm:flex-row items-center gap-4">

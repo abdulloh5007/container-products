@@ -12,7 +12,6 @@ import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeSwitcher } from '@/components/theme-switcher';
-import { Separator } from '@/components/ui/separator';
 
 export function Sidebar() {
   const router = useRouter();
