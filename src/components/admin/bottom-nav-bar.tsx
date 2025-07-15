@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { Truck, Archive, Warehouse } from 'lucide-react';
+import { Truck, Archive } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 export function BottomNavBar() {
@@ -17,7 +17,6 @@ export function BottomNavBar() {
   const allNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
-    { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior', 'junior'] },
   ];
   
   const navItems = allNavItems.filter(item => role && item.roles.includes(role));
