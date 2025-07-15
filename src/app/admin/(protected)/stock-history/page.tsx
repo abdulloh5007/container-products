@@ -2,21 +2,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useViewSwitcher } from '@/hooks/use-view-switcher';
-import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Crown, User, Archive, TrendingUp, TrendingDown, Search, Filter, X } from 'lucide-react';
+import { ArrowRight, Crown, User, Archive, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import type { SessionRole } from '@/contexts/auth-context';
 import { Input } from '@/components/ui/input';
@@ -27,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
-
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface StockHistoryItem {
   id: string;
@@ -40,6 +38,28 @@ interface StockHistoryItem {
   changedByUserName: string;
   changedByUserRole: SessionRole;
   timestamp: Timestamp;
+}
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+const useMediaQuery = (query: string) => {
+    const [matches, setMatches] = useState(false);
+
+    useEffect(() => {
+        const media = window.matchMedia(query);
+        if (media.matches !== matches) {
+            setMatches(media.matches);
+        }
+        const listener = () => setMatches(media.matches);
+        window.addEventListener("resize", listener);
+        return () => window.removeEventListener("resize", listener);
+    }, [matches, query]);
+
+    return matches;
 }
 
 const RoleIcon = ({ role }: { role: SessionRole }) => {
@@ -62,8 +82,8 @@ export default function AdminStockHistoryPage() {
   const { view, setView } = useViewSwitcher('stock-history');
   const dateLocale = language === 'uz' ? uz : ru;
   const isSenior = user?.currentSession?.role === 'senior';
+  const isLaptop = useMediaQuery("(min-width: 1024px)");
   
-  // Filter and Search states
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -79,25 +99,24 @@ export default function AdminStockHistoryPage() {
     }
   }, [isAuthLoading, isSenior, router]);
 
-  const fetchHistory = useCallback(async () => {
-    if (!isSenior) return;
-    setIsLoading(true);
-    try {
-      const q = query(collection(db, "stock_history"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(q);
-      const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockHistoryItem));
-      setHistory(historyData);
-    } catch (error) {
-      console.error("Error fetching stock history: ", error);
-      toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t, toast, isSenior]);
-
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    if (!isSenior) return;
+    
+    setIsLoading(true);
+    const q = query(collection(db, "stock_history"), orderBy("timestamp", "desc"));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockHistoryItem));
+        setHistory(historyData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching stock history: ", error);
+        toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isSenior, t, toast]);
 
   const uniqueUsers = useMemo(() => {
     const users = new Map<string, { name: string; role: SessionRole }>();
@@ -154,11 +173,15 @@ export default function AdminStockHistoryPage() {
                      <Card key={index}>
                         <CardHeader>
                             <Skeleton className="h-6 w-3/4" />
-                            <Skeleton className="h-5 w-1/2 mt-2" />
-                            <Skeleton className="h-4 w-1/3 mt-4" />
-                            <Skeleton className="h-4 w-1/2 mt-1" />
                         </CardHeader>
-                     </Card>
+                        <CardContent>
+                             <Skeleton className="h-8 w-full" />
+                        </CardContent>
+                        <CardFooter>
+                            <Skeleton className="h-5 w-1/2" />
+                            <Skeleton className="h-4 w-1/3" />
+                        </CardFooter>
+                    </Card>
                 ))}
             </div>
         )
@@ -176,15 +199,15 @@ export default function AdminStockHistoryPage() {
         )
     }
     
-    const ChangeIndicator = ({ item }: { item: StockHistoryItem }) => {
+    const ChangeIndicator = ({ item, className }: { item: StockHistoryItem, className?: string }) => {
         const isIncrease = item.changeAmount > 0;
         return (
-            <div className="flex items-center gap-4 flex-wrap">
-                <span className="font-mono text-sm sm:text-base">{item.previousQuantity.toFixed(2)}</span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <span className="font-mono font-bold text-sm sm:text-base">{item.newQuantity.toFixed(2)}</span>
-                <Badge variant={isIncrease ? 'default' : 'secondary'} className="gap-1">
-                    {isIncrease ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+            <div className={cn("flex items-center justify-center gap-4 flex-wrap", className)}>
+                <span className="font-mono text-lg sm:text-xl">{item.previousQuantity.toFixed(2)}</span>
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                <span className="font-mono font-bold text-lg sm:text-xl">{item.newQuantity.toFixed(2)}</span>
+                <Badge variant={isIncrease ? 'default' : 'secondary'} className="gap-1 text-sm py-1 px-3">
+                    {isIncrease ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     {isIncrease ? '+' : ''}{item.changeAmount.toFixed(2)}
                 </Badge>
             </div>
@@ -196,42 +219,52 @@ export default function AdminStockHistoryPage() {
             <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.productName}</TableCell>
                 <TableCell>
-                   <ChangeIndicator item={item} />
+                   <ChangeIndicator item={item} className="justify-start"/>
                 </TableCell>
                 <TableCell>
                     <div className="flex items-center gap-2">
                         <RoleIcon role={item.changedByUserRole} />
-                        <span>{item.changedByUserName}</span>
+                        <span>{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
                     </div>
                 </TableCell>
-                <TableCell className="text-right">{item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">{item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
             </TableRow>
         ));
     }
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <AnimatePresence>
             {filteredHistory.map((item) => (
-                <Card key={item.id}>
-                    <CardHeader>
-                        <CardTitle className="text-lg">{item.productName}</CardTitle>
-                        <div className="pt-2">
+                <motion.div
+                    key={item.id}
+                    variants={cardVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={{ duration: 0.3 }}
+                    layout
+                >
+                    <Card className="flex flex-col h-full">
+                        <CardHeader>
+                            <CardTitle className="text-lg text-center">{item.productName}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex items-center justify-center bg-muted/50 p-4">
                            <ChangeIndicator item={item} />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="border-t pt-4">
-                        <div className="flex items-center justify-between text-sm">
+                        </CardContent>
+                        <CardFooter className="flex justify-between items-center text-sm pt-4">
                              <div className="flex items-center gap-2 text-muted-foreground">
                                 <RoleIcon role={item.changedByUserRole} />
-                                <span>{item.changedByUserName}</span>
+                                <span className="font-medium">{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 {item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
                             </p>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardFooter>
+                    </Card>
+                </motion.div>
             ))}
+            </AnimatePresence>
         </div>
     );
   }
@@ -266,11 +299,11 @@ export default function AdminStockHistoryPage() {
                     {t('admin_filters_button')}
                 </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent side={isLaptop ? 'right' : 'bottom'} className={cn(!isLaptop && "h-[80vh] flex flex-col")}>
                 <SheetHeader>
                     <SheetTitle>{t('admin_filters_title')}</SheetTitle>
                 </SheetHeader>
-                <div className="py-6 space-y-6">
+                <div className="py-6 space-y-6 overflow-y-auto flex-grow pr-2">
                     <div className="space-y-3">
                         <Label>{t('admin_filter_by_date')}</Label>
                         <Popover>
@@ -322,7 +355,7 @@ export default function AdminStockHistoryPage() {
                                 />
                                 <Label htmlFor={`user-${userItem.id}`} className="flex items-center gap-2 font-normal cursor-pointer">
                                     <RoleIcon role={userItem.role} />
-                                    {userItem.name}
+                                    {userItem.role === 'senior' ? t('admin_role_senior') : userItem.name}
                                 </Label>
                             </div>
                           ))}
@@ -357,19 +390,21 @@ export default function AdminStockHistoryPage() {
       {view === 'table' ? (
         <Card>
             <CardContent className="pt-6">
-                <Table className="min-w-[720px]">
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>{t('admin_stock_history_table_product')}</TableHead>
-                        <TableHead>{t('admin_stock_history_table_change')}</TableHead>
-                        <TableHead>{t('admin_stock_history_table_user')}</TableHead>
-                        <TableHead className="text-right">{t('admin_stock_history_table_date')}</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {renderContent()}
-                    </TableBody>
-                </Table>
+                <div className="relative w-full overflow-x-auto">
+                    <Table className="min-w-[1024px]">
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>{t('admin_stock_history_table_product')}</TableHead>
+                            <TableHead className="w-[350px]">{t('admin_stock_history_table_change')}</TableHead>
+                            <TableHead className="w-[250px]">{t('admin_stock_history_table_user')}</TableHead>
+                            <TableHead className="text-right w-[200px]">{t('admin_stock_history_table_date')}</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {renderContent()}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
       ) : (
