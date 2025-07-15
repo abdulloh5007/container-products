@@ -124,6 +124,7 @@ export default function AdminStockPage() {
         batch.set(doc(stockHistoryCollectionRef), {
             productId: product.id,
             productName: product.name,
+            productType: product.type || 'unit',
             previousQuantity: previousQuantity,
             newQuantity: newQuantity,
             changeAmount: changeAmount,

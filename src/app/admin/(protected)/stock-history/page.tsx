@@ -27,10 +27,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { DateRange } from 'react-day-picker';
 import { motion, AnimatePresence } from 'framer-motion';
 
+type ProductType = 'kit' | 'unit' | 'area';
+
 interface StockHistoryItem {
   id: string;
   productId: string;
   productName: string;
+  productType: ProductType;
   previousQuantity: number;
   newQuantity: number;
   changeAmount: number;
@@ -71,6 +74,13 @@ const RoleIcon = ({ role }: { role: SessionRole }) => {
         default: return null;
     }
 }
+
+const formatQuantity = (quantity: number, type: ProductType) => {
+    if (type === 'unit' || type === 'kit') {
+        return Math.round(quantity);
+    }
+    return quantity.toFixed(2);
+};
 
 export default function AdminStockHistoryPage() {
   const { t, language } = useLanguage();
@@ -200,36 +210,50 @@ export default function AdminStockHistoryPage() {
         )
     }
     
-    const ChangeIndicator = ({ item, className }: { item: StockHistoryItem, className?: string }) => {
+    const ChangeIndicator = ({ item }: { item: StockHistoryItem }) => {
         const isIncrease = item.changeAmount > 0;
+        const productType = item.productType || 'unit';
         return (
-            <div className={cn("flex items-center justify-center gap-4 text-center", className)}>
-                <span className="font-mono text-base text-muted-foreground">{item.previousQuantity.toFixed(2)}</span>
-                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex-shrink-0 gap-1 text-lg py-1.5 px-4 font-bold">
+            <div className="flex flex-col items-center gap-2 text-center w-full">
+                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex w-full justify-center gap-1 text-lg py-1.5 px-4 font-bold">
                     {isIncrease ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                    <span>{isIncrease ? '+' : ''}{item.changeAmount.toFixed(2)}</span>
+                    <span>{isIncrease ? '+' : ''}{formatQuantity(item.changeAmount, productType)}</span>
                 </Badge>
-                <span className="font-mono text-base text-muted-foreground">{item.newQuantity.toFixed(2)}</span>
+                <div className="flex items-center justify-center gap-3 text-center">
+                    <span className="font-mono text-base text-muted-foreground">{formatQuantity(item.previousQuantity, productType)}</span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-base text-muted-foreground">{formatQuantity(item.newQuantity, productType)}</span>
+                </div>
             </div>
         )
     };
 
     if (view === 'table') {
-        return filteredHistory.map((item) => (
-            <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.productName}</TableCell>
-                <TableCell>
-                   <ChangeIndicator item={item} className="justify-start"/>
-                </TableCell>
-                <TableCell>
-                    <div className="flex items-center gap-2">
-                        <RoleIcon role={item.changedByUserRole} />
-                        <span>{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
-                    </div>
-                </TableCell>
-                <TableCell className="text-right whitespace-nowrap">{item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
-            </TableRow>
-        ));
+        return filteredHistory.map((item) => {
+            const productType = item.productType || 'unit';
+            return (
+                <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell>
+                       <div className="flex items-center justify-start gap-3">
+                           <span className="font-mono text-sm text-muted-foreground">{formatQuantity(item.previousQuantity, productType)}</span>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                           <span className="font-mono text-sm text-muted-foreground">{formatQuantity(item.newQuantity, productType)}</span>
+                            <Badge variant={item.changeAmount > 0 ? 'default' : 'secondary'} className="flex-shrink-0 gap-1 font-bold">
+                                {item.changeAmount > 0 ? '+' : ''}{formatQuantity(item.changeAmount, productType)}
+                            </Badge>
+                       </div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex items-center gap-2">
+                            <RoleIcon role={item.changedByUserRole} />
+                            <span>{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
+                </TableRow>
+            )
+        });
     }
 
     return (
