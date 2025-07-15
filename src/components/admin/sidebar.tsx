@@ -21,6 +21,7 @@ export function Sidebar() {
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isSenior = user?.currentSession.role === 'senior';
+  const role = user?.currentSession.role;
 
   const handleLogout = async () => {
     try {
@@ -28,7 +29,6 @@ export function Sidebar() {
       window.location.reload();
     } catch (error) {
       console.error("Logout failed:", error);
-      // Optionally, show a toast message to the user
     }
   };
   
@@ -47,18 +47,18 @@ export function Sidebar() {
   };
   
   const renderAllNavItemsForGrid = () => {
-      const navItemsForGrid = [
-          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, className: "hidden md:flex" },
-          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, className: "hidden md:flex" },
+      let navItemsForGrid = [
+          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: "hidden md:flex" },
+          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: "hidden md:flex" },
       ];
       if (isManagementModeEnabled && isSenior) {
-        navItemsForGrid.push(...managementNavItems);
+        navItemsForGrid.push(...managementNavItems.map(item => ({ ...item, roles: ['senior'] })));
       }
-      navItemsForGrid.push(historyNavItem);
+      navItemsForGrid.push({ ...historyNavItem, roles: ['senior', 'junior'] });
 
-      const visibleItems = navItemsForGrid.filter(item => !item.className || !item.className.includes('md:hidden'));
+      const visibleItems = navItemsForGrid.filter(item => role && item.roles.includes(role));
 
-      return navItemsForGrid.map((item, index) => {
+      return visibleItems.map((item, index) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href);
         const isLastItemOnOddRow = visibleItems.length % 2 !== 0 && index === visibleItems.length - 1;
@@ -120,7 +120,7 @@ export function Sidebar() {
                    {renderAllNavItemsForGrid()}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
-                   {isSenior && (
+                   {(isSenior || role === 'junior') && (
                      <Button 
                        variant="ghost" 
                        className={cn(
@@ -131,7 +131,7 @@ export function Sidebar() {
                      >
                        <Settings className="h-5 w-5" />
                        {t('admin_sidebar_settings')}
-                        {pendingRequests > 0 && (
+                        {pendingRequests > 0 && isSenior && (
                           <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
                         )}
                      </Button>

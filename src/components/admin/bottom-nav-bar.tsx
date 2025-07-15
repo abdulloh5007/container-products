@@ -6,19 +6,26 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { Truck, Archive } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export function BottomNavBar() {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const { user } = useAuth();
+  const role = user?.currentSession?.role;
 
-  const navItems = [
-    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck },
-    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive },
+  const allNavItems = [
+    { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
+    { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
   ];
   
+  const navItems = allNavItems.filter(item => role && item.roles.includes(role));
+
+  if (navItems.length === 0) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card p-2 md:hidden">
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid grid-cols-${navItems.length} gap-2`}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);

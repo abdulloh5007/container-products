@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone, ShieldAlert, Archive } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -23,10 +24,18 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import UAParser from 'ua-parser-js';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface AlertDialogState {
-  type: 'confirmAccess' | 'makeSenior' | 'deleteSession' | 'deleteAccount';
+  type: 'makeSenior' | 'deleteSession' | 'deleteAccount';
   targetSession?: Session;
+}
+
+interface ConfirmAccessDialogState {
+    isOpen: boolean;
+    session: Session | null;
+    name: string;
+    role: 'junior' | 'worker';
 }
 
 const getDeviceIcon = (deviceName: string) => {
@@ -51,6 +60,7 @@ export default function SettingsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
+    const [confirmAccessDialogState, setConfirmAccessDialogState] = useState<ConfirmAccessDialogState>({ isOpen: false, session: null, name: '', role: 'junior' });
     const [showPassword, setShowPassword] = useState(false);
 
     // Profile tab state
@@ -122,17 +132,36 @@ export default function SettingsPage() {
         }
     }
 
-    const handleConfirmAccess = async (sessionToConfirm: Session) => {
+    const openConfirmAccessDialog = (session: Session) => {
+        setConfirmAccessDialogState({
+            isOpen: true,
+            session: session,
+            name: session.deviceName, // Pre-fill with device name
+            role: 'junior'
+        });
+    };
+    
+    const closeConfirmAccessDialog = () => {
+        setConfirmAccessDialogState({ isOpen: false, session: null, name: '', role: 'junior' });
+    };
+
+    const handleConfirmAccess = async () => {
+        const { session, name, role } = confirmAccessDialogState;
+        if (!session || !name) {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_dialog_name_required') });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await approveSession(sessionToConfirm);
-            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: sessionToConfirm.deviceName }) });
+            await approveSession(session, name, role);
+            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: name }) });
         } catch (error) {
             console.error("Error confirming access:", error);
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
         } finally {
             setIsSubmitting(false);
-            setAlertDialogState(null);
+            closeConfirmAccessDialog();
         }
     };
 
@@ -184,25 +213,21 @@ export default function SettingsPage() {
         const { type, targetSession } = alertDialogState;
         
         const titles: Record<string, string> = {
-            confirmAccess: t('admin_session_dialog_confirm_title'),
             makeSenior: t('admin_session_dialog_promote_title'),
             deleteSession: t('admin_session_dialog_delete_title'),
             deleteAccount: t('admin_account_delete_confirm_title'),
         };
         const descriptions: Record<string, string> = {
-            confirmAccess: t('admin_session_dialog_confirm_desc', { deviceName: targetSession?.deviceName || '' }),
             makeSenior: t('admin_session_dialog_promote_desc', { deviceName: targetSession?.deviceName || '' }),
             deleteSession: t('admin_session_dialog_delete_desc', { deviceName: targetSession?.deviceName || '' }),
             deleteAccount: t('admin_account_delete_confirm_desc'),
         };
         const actions: Record<string, () => void> = {
-            confirmAccess: () => handleConfirmAccess(targetSession!),
             makeSenior: () => handleMakeSenior(targetSession!),
             deleteSession: () => handleDeleteSession(targetSession!),
             deleteAccount: () => handleDeleteAccount(),
         };
         const actionButtonText: Record<string, string> = {
-            confirmAccess: t('admin_confirm_button'),
             makeSenior: t('admin_session_promote_button'),
             deleteSession: t('admin_delete_button'),
             deleteAccount: t('admin_delete_button'),
@@ -258,6 +283,7 @@ export default function SettingsPage() {
         switch (role) {
             case 'senior': return <Crown className="h-5 w-5 text-amber-500" />;
             case 'junior': return <User className="h-5 w-5 text-blue-500" />;
+            case 'worker': return <Archive className="h-5 w-5 text-green-500" />;
             case 'pending': return <Hourglass className="h-5 w-5 text-muted-foreground" />;
             default: return null;
         }
@@ -266,6 +292,7 @@ export default function SettingsPage() {
     const renderSessionCard = (session: Session) => {
         const isCurrentSession = session.id === currentUser?.currentSession?.id;
         const role = session.role;
+        const displayName = session.name || session.deviceName;
 
         return (
              <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border p-4">
@@ -273,7 +300,7 @@ export default function SettingsPage() {
                     {getDeviceIcon(session.deviceName)}
                     <div className="flex flex-col">
                         <p className="font-semibold text-sm sm:text-base">
-                           {session.deviceName}
+                           {displayName}
                         </p>
                         {isCurrentSession && <span className="text-xs font-normal text-primary mt-1">({t('admin_session_current_text')})</span>}
                         <p className="text-sm text-muted-foreground mt-1 sm:mt-0">
@@ -287,12 +314,12 @@ export default function SettingsPage() {
                      {isSenior && !isCurrentSession && (
                         <>
                              {role === 'pending' && (
-                                <Button onClick={() => setAlertDialogState({ type: 'confirmAccess', targetSession: session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
+                                <Button onClick={() => openConfirmAccessDialog(session)} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                     <UserCheck className="mr-2 h-4 w-4" />
                                     <span>{t('admin_session_confirm_button')}</span>
                                 </Button>
                              )}
-                             {role === 'junior' && (
+                             {(role === 'junior' || role === 'worker') && (
                                 <Button variant="outline" onClick={() => setAlertDialogState({ type: 'makeSenior', targetSession: session })} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
                                     <Crown className="mr-2 h-4 w-4" />
                                     {t('admin_session_promote_button')}
@@ -422,20 +449,6 @@ export default function SettingsPage() {
                                 </CardContent>
                             </Card>
                         )}
-                        {/* {isSenior && (
-                            <Card className="mt-8 border-destructive/50">
-                               <CardHeader>
-                                    <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
-                                    <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                   <Button variant="destructive" onClick={() => setAlertDialogState({ type: 'deleteAccount' })}>
-                                       <Trash2 className="mr-2 h-4 w-4" />
-                                       {t('admin_account_delete_button')}
-                                    </Button>
-                               </CardContent>
-                            </Card>
-                        )} */}
                     </TabsContent>
                     <TabsContent value="devices">
                         <Card>
@@ -488,7 +501,52 @@ export default function SettingsPage() {
                 </Tabs>
             </div>
         </div>
+        
         {renderAlertDialog()}
+
+        <Dialog open={confirmAccessDialogState.isOpen} onOpenChange={(isOpen) => !isOpen && closeConfirmAccessDialog()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{t('admin_session_dialog_confirm_title')}</DialogTitle>
+                    <DialogDescription>{t('admin_session_dialog_confirm_setup_desc', { deviceName: confirmAccessDialogState.session?.deviceName || '' })}</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="session-name">{t('admin_session_dialog_name_label')}</Label>
+                        <Input
+                            id="session-name"
+                            value={confirmAccessDialogState.name}
+                            onChange={(e) => setConfirmAccessDialogState(s => ({ ...s, name: e.target.value }))}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>{t('admin_session_dialog_role_label')}</Label>
+                        <RadioGroup 
+                            value={confirmAccessDialogState.role} 
+                            onValueChange={(value) => setConfirmAccessDialogState(s => ({ ...s, role: value as 'junior' | 'worker' }))} 
+                            className="flex gap-4"
+                            disabled={isSubmitting}
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="junior" id="role-junior" />
+                                <Label htmlFor="role-junior">{t('admin_role_junior')}</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="worker" id="role-worker" />
+                                <Label htmlFor="role-worker">{t('admin_role_worker')}</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={closeConfirmAccessDialog} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
+                    <Button onClick={handleConfirmAccess} disabled={isSubmitting}>
+                         {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </>
     );
 }

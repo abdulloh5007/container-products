@@ -11,10 +11,11 @@ import { translations } from '@/lib/translations';
 import { useRouter } from 'next/navigation';
 
 
-export type SessionRole = 'senior' | 'junior' | 'pending';
+export type SessionRole = 'senior' | 'junior' | 'worker' | 'pending';
 
 export interface Session {
     id: string; // Unique ID for the session, e.g., a random string or hash
+    name?: string;
     role: SessionRole;
     deviceName: string;
     createdAt: Timestamp;
@@ -49,7 +50,7 @@ type AuthContextType = {
   updateUserPassword: (password: string) => Promise<void>;
   setPendingRequests: (count: number) => void;
   toggleManagementMode: () => Promise<void>;
-  approveSession: (session: Session) => Promise<void>;
+  approveSession: (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   makeSenior: (session: Session) => Promise<void>;
   deleteUserAccount: () => Promise<void>;
@@ -420,12 +421,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const approveSession = async (session: Session) => {
+  const approveSession = async (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => {
     if (!user) throw new Error("User not authenticated");
     const userDocRef = doc(db, 'users', user.uid);
     
     const newSessions = user.sessions.map(s => 
-        s.id === session.id ? { ...s, role: 'junior' } : s
+        s.id === session.id ? { ...s, role, name } : s
     );
     
     await updateDoc(userDocRef, { sessions: newSessions });
