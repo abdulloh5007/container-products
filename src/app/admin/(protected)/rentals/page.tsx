@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { Plus, Minus, Search, Warehouse, ArrowRight } from 'lucide-react';
+import { Plus, Minus, Search, Warehouse, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -73,6 +73,8 @@ export default function RentalsPage() {
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const dateLocale = language === 'uz' ? uz : ru;
+    
+    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
 
     const isSenior = user?.currentSession?.role === 'senior';
 
@@ -177,7 +179,12 @@ export default function RentalsPage() {
         }
     }
     
-    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
+    const onRemoveModalOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            setSelectedContainer(null);
+        }
+        setRemoveModalOpen(isOpen);
+    }
 
     const filteredHistory = useMemo(() => {
         return history.filter(item =>
@@ -333,13 +340,19 @@ export default function RentalsPage() {
       </Dialog>
       
       {/* Remove Rental Dialog */}
-      <Dialog open={isRemoveModalOpen} onOpenChange={setRemoveModalOpen}>
+      <Dialog open={isRemoveModalOpen} onOpenChange={onRemoveModalOpenChange}>
           <DialogContent className="max-h-[80vh] flex flex-col">
-              <DialogHeader>
+              <DialogHeader className="flex-row items-center">
+                   {selectedContainer && (
+                    <Button variant="ghost" size="icon" className="mr-2" onClick={() => setSelectedContainer(null)}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                  )}
                   <DialogTitle>{t('admin_rental_remove_title')}</DialogTitle>
-                  <DialogDescription>{t('admin_rental_remove_dialog_desc')}</DialogDescription>
               </DialogHeader>
               {!selectedContainer ? (
+                <>
+                  <DialogDescription>{t('admin_rental_remove_dialog_desc')}</DialogDescription>
                   <ScrollArea className="flex-grow my-4">
                       <div className="space-y-2 pr-4">
                           {isLoadingRented ? (
@@ -355,7 +368,12 @@ export default function RentalsPage() {
                           )}
                       </div>
                   </ScrollArea>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => onRemoveModalOpenChange(false)}>{t('admin_cancel_button')}</Button>
+                  </DialogFooter>
+                </>
               ) : (
+                <>
                   <div className="py-4 space-y-4">
                        <Card>
                            <CardHeader>
@@ -368,15 +386,17 @@ export default function RentalsPage() {
                        </Card>
                        <p className="text-sm text-destructive">{t('admin_rental_remove_confirm_text')}</p>
                   </div>
+                   <DialogFooter>
+                      <Button variant="outline" onClick={() => onRemoveModalOpenChange(false)}>{t('admin_cancel_button')}</Button>
+                      <Button onClick={handleRemoveRental} disabled={!selectedContainer || isSubmitting} variant="destructive">
+                          {isSubmitting ? t('admin_removing_text') : t('admin_remove_button')}
+                      </Button>
+                  </DialogFooter>
+                </>
               )}
-              <DialogFooter>
-                  <Button variant="outline" onClick={() => setRemoveModalOpen(false)}>{t('admin_cancel_button')}</Button>
-                  <Button onClick={handleRemoveRental} disabled={!selectedContainer || isSubmitting} variant="destructive">
-                      {isSubmitting ? t('admin_removing_text') : t('admin_remove_button')}
-                  </Button>
-              </DialogFooter>
           </DialogContent>
       </Dialog>
     </>
   );
 }
+
