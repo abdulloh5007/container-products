@@ -39,6 +39,17 @@ const cardVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
+const formatNumberWithSpaces = (value: string | number): string => {
+  const stringValue = String(value).replace(/\s/g, '');
+  if (isNaN(Number(stringValue))) return '';
+  return stringValue.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+};
+
+const parseFormattedNumber = (value: string): number => {
+  return Number(String(value).replace(/\s/g, ''));
+};
+
+
 export default function RentalsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
@@ -55,7 +66,6 @@ export default function RentalsPage() {
 
     // Remove form state
     const [rentedContainers, setRentedContainers] = useState<Rental[]>([]);
-    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
     const [isLoadingRented, setIsLoadingRented] = useState(false);
     
     // History state
@@ -121,7 +131,8 @@ export default function RentalsPage() {
     }
 
     const handleAddRental = async () => {
-        if (!containerNumber || !rentAmount) {
+        const parsedRentAmount = parseFormattedNumber(rentAmount);
+        if (!containerNumber || !rentAmount || parsedRentAmount <= 0) {
             toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_rental_form_error_desc') });
             return;
         }
@@ -129,7 +140,7 @@ export default function RentalsPage() {
         try {
             await addDoc(collection(db, 'rentals'), {
                 containerNumber,
-                rentAmount: Number(rentAmount),
+                rentAmount: parsedRentAmount,
                 status: 'rented',
                 arrivalDate: serverTimestamp(),
             });
@@ -165,6 +176,8 @@ export default function RentalsPage() {
             setIsSubmitting(false);
         }
     }
+    
+    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
 
     const filteredHistory = useMemo(() => {
         return history.filter(item =>
@@ -196,7 +209,7 @@ export default function RentalsPage() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <CardTitle>{item.containerNumber}</CardTitle>
-                                        <CardDescription>{t('admin_rental_amount_label')}: <span className="font-bold text-foreground">{item.rentAmount.toLocaleString()}</span></CardDescription>
+                                        <CardDescription>{t('admin_rental_amount_label')}: <span className="font-bold text-foreground">{formatNumberWithSpaces(item.rentAmount)}</span></CardDescription>
                                     </div>
                                     <Badge variant={item.status === 'rented' ? 'destructive' : 'default'}>
                                         {t(`admin_rental_status_${item.status}`)}
@@ -300,7 +313,14 @@ export default function RentalsPage() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="rent-amount">{t('admin_rental_amount_label')}</Label>
-                    <Input id="rent-amount" type="number" value={rentAmount} onChange={e => setRentAmount(e.target.value)} disabled={isSubmitting} />
+                    <Input 
+                        id="rent-amount" 
+                        type="text" 
+                        value={rentAmount} 
+                        onChange={e => setRentAmount(formatNumberWithSpaces(e.target.value))} 
+                        disabled={isSubmitting} 
+                        placeholder="100 000"
+                    />
                 </div>
             </div>
             <DialogFooter>
@@ -342,7 +362,7 @@ export default function RentalsPage() {
                                <CardTitle>{selectedContainer.containerNumber}</CardTitle>
                            </CardHeader>
                            <CardContent>
-                               <p>{t('admin_rental_amount_label')}: <span className="font-bold">{selectedContainer.rentAmount.toLocaleString()}</span></p>
+                               <p>{t('admin_rental_amount_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.rentAmount)}</span></p>
                                <p className="text-sm text-muted-foreground">{t('admin_rental_arrival_date')}: {format(selectedContainer.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
                            </CardContent>
                        </Card>
