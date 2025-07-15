@@ -50,6 +50,7 @@ const useMediaQuery = (query: string) => {
     const [matches, setMatches] = useState(false);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
         const media = window.matchMedia(query);
         if (media.matches !== matches) {
             setMatches(media.matches);
@@ -202,14 +203,13 @@ export default function AdminStockHistoryPage() {
     const ChangeIndicator = ({ item, className }: { item: StockHistoryItem, className?: string }) => {
         const isIncrease = item.changeAmount > 0;
         return (
-            <div className={cn("flex items-center justify-center gap-4 flex-wrap", className)}>
-                <span className="font-mono text-lg sm:text-xl">{item.previousQuantity.toFixed(2)}</span>
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                <span className="font-mono font-bold text-lg sm:text-xl">{item.newQuantity.toFixed(2)}</span>
-                <Badge variant={isIncrease ? 'default' : 'secondary'} className="gap-1 text-sm py-1 px-3">
-                    {isIncrease ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                    {isIncrease ? '+' : ''}{item.changeAmount.toFixed(2)}
+            <div className={cn("flex items-center justify-center gap-4 text-center", className)}>
+                <span className="font-mono text-base text-muted-foreground">{item.previousQuantity.toFixed(2)}</span>
+                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex-shrink-0 gap-1 text-lg py-1.5 px-4 font-bold">
+                    {isIncrease ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                    <span>{isIncrease ? '+' : ''}{item.changeAmount.toFixed(2)}</span>
                 </Badge>
+                <span className="font-mono text-base text-muted-foreground">{item.newQuantity.toFixed(2)}</span>
             </div>
         )
     };
@@ -246,8 +246,8 @@ export default function AdminStockHistoryPage() {
                     layout
                 >
                     <Card className="flex flex-col h-full">
-                        <CardHeader>
-                            <CardTitle className="text-lg text-center">{item.productName}</CardTitle>
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-lg">{item.productName}</CardTitle>
                         </CardHeader>
                         <CardContent className="flex-grow flex items-center justify-center bg-muted/50 p-4">
                            <ChangeIndicator item={item} />
@@ -258,7 +258,7 @@ export default function AdminStockHistoryPage() {
                                 <span className="font-medium">{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
+                                {item.timestamp ? format(item.timestamp.toDate(), "PPP, HH:mm", { locale: dateLocale }) : 'N/A'}
                             </p>
                         </CardFooter>
                     </Card>
