@@ -14,7 +14,7 @@ import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Crown, User, Archive, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import type { SessionRole } from '@/contexts/auth-context';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,7 @@ export default function AdminStockHistoryPage() {
 
   const [history, setHistory] = useState<StockHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { view, setView } = useViewSwitcher('stock-history');
+  const view = 'card';
   const dateLocale = language === 'uz' ? uz : ru;
   const isSenior = user?.currentSession?.role === 'senior';
   const isLaptop = useMediaQuery("(min-width: 1024px)");
@@ -277,9 +277,6 @@ export default function AdminStockHistoryPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h1 className="text-3xl font-bold tracking-tight whitespace-wrap text-center sm:text-left sm:whitespace-nowrap">{t('admin_stock_history_title')}</h1>
-        <div className="flex w-full justify-end">
-            <ViewSwitcher view={view} setView={setView} />
-        </div>
       </div>
       
       <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -413,5 +410,3 @@ export default function AdminStockHistoryPage() {
     </div>
   );
 }
-
-    
