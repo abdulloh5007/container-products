@@ -226,12 +226,12 @@ export default function AdminStockHistoryPage() {
         const isIncrease = item.changeAmount > 0;
         const productType = item.productType || 'unit';
         return (
-            <div className="flex flex-col items-center gap-2 text-center w-full">
-                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex w-full justify-center gap-1.5 text-lg py-1.5 px-4 font-bold">
+            <div className="flex flex-col items-center w-full">
+                <Badge variant={isIncrease ? 'default' : 'secondary'} className="flex w-full justify-center gap-1.5 text-lg py-1.5 px-4 font-bold rounded-none">
                     {isIncrease ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                     <span>{isIncrease ? '+' : ''}{formatQuantity(item.changeAmount, productType, t)}</span>
                 </Badge>
-                <div className="flex items-center justify-center gap-3 text-center text-muted-foreground">
+                <div className="flex items-center justify-center gap-3 text-center text-muted-foreground mt-4">
                     <span className="font-mono text-base">{formatQuantitySimple(item.previousQuantity, productType)}</span>
                     <ArrowRight className="h-4 w-4" />
                     <span className="font-mono text-base">{formatQuantitySimple(item.newQuantity, productType)}</span>
@@ -281,11 +281,11 @@ export default function AdminStockHistoryPage() {
                     transition={{ duration: 0.3 }}
                     layout
                 >
-                    <Card className="flex flex-col h-full">
+                    <Card className="flex flex-col h-full overflow-hidden">
                         <CardHeader className="text-center">
                             <CardTitle className="text-lg">{item.productName}</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-grow flex items-center justify-center bg-muted/50 p-4">
+                        <CardContent className="flex-grow flex items-center justify-center bg-muted/50 p-0">
                            <ChangeIndicator item={item} />
                         </CardContent>
                         <CardFooter className="flex justify-between items-center text-sm pt-4">

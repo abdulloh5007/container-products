@@ -244,6 +244,7 @@ export const translations = {
     admin_history_container_number: "Номер контейнера",
     admin_history_container_number_placeholder: "напр. MSCU1234567 (или оставьте пустым)",
     admin_history_no_history: "Записей пока нет.",
+    admin_history_search_placeholder: "Поиск по названию/номеру...",
     admin_history_number_required: "Пожалуйста, введите номер контейнера.",
     admin_settings_management_mode_title: "Режим Управления",
     admin_settings_management_mode_desc: "Включает или отключает доступ к разделам Продукты и Контейнеры.",
@@ -559,6 +560,7 @@ export const translations = {
     admin_history_container_number: "Konteyner raqami",
     admin_history_container_number_placeholder: "masalan, MSCU1234567 (yoki bo'sh qoldiring)",
     admin_history_no_history: "Hozircha yozuvlar yo'q.",
+    admin_history_search_placeholder: "Nomi/raqami bo'yicha qidirish...",
     admin_history_number_required: "Iltimos, konteyner raqamini kiriting.",
     
     admin_settings_management_mode_title: "Boshqaruv Rejimi",

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useLanguage } from '@/hooks/use-language';
@@ -14,10 +14,12 @@ import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type HistoryType = 'acceptance' | 'dispatch';
 
@@ -29,6 +31,12 @@ interface HistoryItem {
   date: Timestamp;
   type: HistoryType;
 }
+
+const cardVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
 
 const TypeBadge = ({ type, t, className }: { type: HistoryType, t: (key: any) => string, className?: string }) => {
     const isAcceptance = type === 'acceptance';
@@ -54,6 +62,7 @@ export default function AdminHistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('history');
+  const [searchQuery, setSearchQuery] = useState('');
   const dateLocale = language === 'uz' ? uz : ru;
 
   const isWorker = user?.currentSession?.role === 'worker';
@@ -72,7 +81,7 @@ export default function AdminHistoryPage() {
       const querySnapshot = await getDocs(q);
       const historyData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryItem));
       setHistory(historyData);
-    } catch (error) {
+    } catch (error) => {
       console.error("Error fetching history: ", error);
       toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_data_load_error') });
     } finally {
@@ -83,6 +92,13 @@ export default function AdminHistoryPage() {
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
+  
+  const filteredHistory = useMemo(() => {
+    return history.filter(item => 
+      item.containerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.containerNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [history, searchQuery]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -113,7 +129,7 @@ export default function AdminHistoryPage() {
         )
     }
 
-    if (history.length === 0) {
+    if (filteredHistory.length === 0) {
         return view === 'table' ? (
             <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">{t('admin_history_no_history')}</TableCell>
@@ -126,7 +142,7 @@ export default function AdminHistoryPage() {
     }
 
     if (view === 'table') {
-        return history.map((item) => (
+        return filteredHistory.map((item) => (
             <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.containerName}</TableCell>
                 <TableCell>{item.containerNumber}</TableCell>
@@ -138,24 +154,36 @@ export default function AdminHistoryPage() {
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {history.map((item) => (
-                <Card key={item.id} className="flex flex-col justify-between overflow-hidden">
-                    <div className="p-6">
-                        <CardTitle className="text-lg">{item.containerName}</CardTitle>
-                        <CardDescription className="mt-1">
-                            {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
-                        </CardDescription>
-                         <p className="text-xs text-muted-foreground mt-2">
-                            {item.date ? format(item.date.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
-                         </p>
-                    </div>
-                     <TypeBadge 
-                        type={item.type || 'acceptance'} 
-                        t={t} 
-                        className="w-full justify-center rounded-none rounded-b-lg h-9 text-sm" 
-                    />
-                </Card>
+          <AnimatePresence>
+            {filteredHistory.map((item) => (
+                <motion.div
+                  key={item.id}
+                  variants={cardVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={{ duration: 0.3 }}
+                  layout
+                >
+                  <Card className="flex flex-col justify-between overflow-hidden">
+                      <div className="p-6">
+                          <CardTitle className="text-lg">{item.containerName}</CardTitle>
+                          <CardDescription className="mt-1">
+                              {t('admin_history_table_number')}: <span className="font-medium text-foreground">{item.containerNumber}</span>
+                          </CardDescription>
+                           <p className="text-xs text-muted-foreground mt-2">
+                              {item.date ? format(item.date.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}
+                           </p>
+                      </div>
+                       <TypeBadge 
+                          type={item.type || 'acceptance'} 
+                          t={t} 
+                          className="w-full justify-center rounded-none rounded-b-lg h-9 text-sm" 
+                      />
+                  </Card>
+                </motion.div>
             ))}
+          </AnimatePresence>
         </div>
     );
   }
@@ -173,6 +201,16 @@ export default function AdminHistoryPage() {
             <ViewSwitcher view={view} setView={setView} />
         </div>
       </div>
+      
+       <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('admin_history_search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
       
       {view === 'table' ? (
         <Card>
