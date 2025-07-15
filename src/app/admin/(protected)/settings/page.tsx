@@ -351,17 +351,38 @@ export default function SettingsPage() {
                     <div className="flex-shrink-0 self-start sm:self-center">{renderRoleIcon(role)}</div>
                      {isSenior && !isCurrentSession && (
                         <>
-                             {role === 'pending' && (
-                                <Button onClick={() => openConfirmAccessDialog(session)} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    <span>{t('admin_session_confirm_button')}</span>
-                                </Button>
-                             )}
-                             {(role === 'junior' || role === 'worker') && (
-                                <Button variant="outline" onClick={() => openEditSessionDialog(session)} disabled={isSubmitting} className="h-9 w-full sm:w-auto">
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    {t('admin_edit_button')}
-                                </Button>
+                             {role === 'pending' ? (
+                                <>
+                                    <Button onClick={() => openConfirmAccessDialog(session)} disabled={isSubmitting} className="h-9">
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        <span>{t('admin_session_confirm_button')}</span>
+                                    </Button>
+                                    <Button 
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-9 w-9 text-destructive"
+                                        onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} 
+                                        disabled={isSubmitting}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </>
+                             ) : (
+                                <>
+                                    <Button variant="outline" onClick={() => openEditSessionDialog(session)} disabled={isSubmitting} className="h-9">
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        {t('admin_edit_button')}
+                                    </Button>
+                                    <Button 
+                                        variant="destructive"
+                                        size="icon"
+                                        className="h-9 w-9"
+                                        onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} 
+                                        disabled={isSubmitting}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </>
                              )}
                         </>
                     )}
@@ -618,29 +639,15 @@ export default function SettingsPage() {
                         </RadioGroup>
                     </div>
                 </div>
-                <DialogFooter className="sm:justify-between">
-                     <Button 
-                        variant="ghost" 
-                        className="text-destructive hover:text-destructive w-full sm:w-auto justify-start sm:justify-center"
-                        onClick={() => {
-                            if (editSessionDialogState.session) {
-                                setAlertDialogState({ type: 'deleteSession', targetSession: editSessionDialogState.session })
-                            }
-                        }} 
-                        disabled={isSubmitting}
-                     >
-                         <Trash2 className="mr-2 h-4 w-4" />
-                         {t('admin_delete_button')}
-                     </Button>
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={closeEditSessionDialog} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
-                        <Button onClick={handleUpdateSession} disabled={isSubmitting}>
-                            {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
-                        </Button>
-                    </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={closeEditSessionDialog} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
+                    <Button onClick={handleUpdateSession} disabled={isSubmitting}>
+                        {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
       </>
     );
-}
+
+    
