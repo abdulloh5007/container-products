@@ -49,9 +49,10 @@ export function Sidebar() {
   
   const renderAllNavItemsForGrid = () => {
       let navItemsForGrid = [
-          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
-          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
+          { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },
+          { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: 'hidden md:flex' },
       ];
+
       if (isManagementModeEnabled && isSenior) {
         navItemsForGrid.push(...managementNavItems);
       }
@@ -65,7 +66,7 @@ export function Sidebar() {
 
       return visibleItems.map((item, index) => {
         const Icon = item.icon;
-        const isActive = pathname.startsWith(item.href);
+        const isActive = pathname === item.href;
         const isLastItemOnOddRow = visibleItems.length % 2 !== 0 && index === visibleItems.length - 1;
         
         return (
