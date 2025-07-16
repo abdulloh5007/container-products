@@ -58,6 +58,7 @@ const getDeviceIcon = (deviceName: string) => {
     return <Monitor className="h-6 w-6 text-muted-foreground" />;
 }
 
+
 export default function SettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
@@ -650,4 +651,4 @@ export default function SettingsPage() {
       </>
     );
 
-    
+}
