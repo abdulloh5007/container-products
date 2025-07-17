@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 
 type RentalStatus = 'rented' | 'departed';
@@ -28,9 +28,13 @@ interface Rental {
     id: string;
     containerNumber: string;
     rentAmount: number;
+    downPayment: number;
+    finalPayment?: number;
     status: RentalStatus;
     arrivalDate: Timestamp;
     departureDate?: Timestamp;
+    arrivalVehicleNumber: string;
+    departureVehicleNumber?: string;
 }
 
 const cardVariants = {
@@ -63,18 +67,21 @@ export default function RentalsPage() {
     // Add form state
     const [containerNumber, setContainerNumber] = useState('');
     const [rentAmount, setRentAmount] = useState('');
+    const [downPayment, setDownPayment] = useState('');
+    const [arrivalVehicleNumber, setArrivalVehicleNumber] = useState('');
 
     // Remove form state
     const [rentedContainers, setRentedContainers] = useState<Rental[]>([]);
     const [isLoadingRented, setIsLoadingRented] = useState(false);
+    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
+    const [finalPayment, setFinalPayment] = useState('');
+    const [departureVehicleNumber, setDepartureVehicleNumber] = useState('');
     
     // History state
     const [history, setHistory] = useState<Rental[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const dateLocale = language === 'uz' ? uz : ru;
-    
-    const [selectedContainer, setSelectedContainer] = useState<Rental | null>(null);
 
     const isSenior = user?.currentSession?.role === 'senior';
 
@@ -122,6 +129,13 @@ export default function RentalsPage() {
         }
     }, [fetchHistory, isSenior]);
 
+    useEffect(() => {
+        if (selectedContainer) {
+            const remaining = selectedContainer.rentAmount - selectedContainer.downPayment;
+            setFinalPayment(formatNumberWithSpaces(remaining > 0 ? remaining : 0));
+        }
+    }, [selectedContainer]);
+
     const handleOpenRemoveModal = () => {
         fetchRentedContainers();
         setRemoveModalOpen(true);
@@ -130,10 +144,13 @@ export default function RentalsPage() {
     const resetAddForm = () => {
         setContainerNumber('');
         setRentAmount('');
+        setDownPayment('');
+        setArrivalVehicleNumber('');
     }
 
     const handleAddRental = async () => {
         const parsedRentAmount = parseFormattedNumber(rentAmount);
+        const parsedDownPayment = parseFormattedNumber(downPayment);
         if (!containerNumber || !rentAmount || parsedRentAmount <= 0) {
             toast({ variant: "destructive", title: t('admin_form_error_title'), description: t('admin_rental_form_error_desc') });
             return;
@@ -143,6 +160,8 @@ export default function RentalsPage() {
             await addDoc(collection(db, 'rentals'), {
                 containerNumber,
                 rentAmount: parsedRentAmount,
+                downPayment: parsedDownPayment,
+                arrivalVehicleNumber,
                 status: 'rented',
                 arrivalDate: serverTimestamp(),
             });
@@ -166,6 +185,8 @@ export default function RentalsPage() {
             await updateDoc(rentalDoc, {
                 status: 'departed',
                 departureDate: serverTimestamp(),
+                finalPayment: parseFormattedNumber(finalPayment),
+                departureVehicleNumber,
             });
             toast({ title: t('admin_rental_remove_success_title'), description: t('admin_rental_remove_success_desc', { containerNumber: selectedContainer.containerNumber }) });
             setSelectedContainer(null);
@@ -182,19 +203,23 @@ export default function RentalsPage() {
     const onRemoveModalOpenChange = (isOpen: boolean) => {
         if (!isOpen) {
             setSelectedContainer(null);
+            setDepartureVehicleNumber('');
+            setFinalPayment('');
         }
         setRemoveModalOpen(isOpen);
     }
 
     const filteredHistory = useMemo(() => {
         return history.filter(item =>
-            item.containerNumber.toLowerCase().includes(searchQuery.toLowerCase())
+            item.containerNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.arrivalVehicleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.departureVehicleNumber && item.departureVehicleNumber.toLowerCase().includes(searchQuery.toLowerCase()))
         );
     }, [history, searchQuery]);
 
     const renderHistory = () => {
         if (isLoadingHistory || isAuthLoading) {
-            return Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full" />);
+            return Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />);
         }
         if (filteredHistory.length === 0) {
             return <p className="text-muted-foreground text-center col-span-full py-10">{t('admin_rental_history_empty')}</p>;
@@ -216,23 +241,26 @@ export default function RentalsPage() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <CardTitle>{item.containerNumber}</CardTitle>
-                                        <CardDescription>{t('admin_rental_amount_label')}: <span className="font-bold text-foreground">{formatNumberWithSpaces(item.rentAmount)}</span></CardDescription>
+                                        <CardDescription>{t('admin_rental_total_amount_label')}: <span className="font-bold text-foreground">{formatNumberWithSpaces(item.rentAmount)}</span></CardDescription>
                                     </div>
                                     <Badge variant={item.status === 'rented' ? 'destructive' : 'default'}>
                                         {t(`admin_rental_status_${item.status}`)}
                                     </Badge>
                                 </div>
                             </CardHeader>
-                            <CardContent className="text-sm text-muted-foreground">
-                                <div className="flex items-center gap-2">
-                                    <span>{format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</span>
-                                    {item.departureDate && (
-                                        <>
-                                            <ArrowRight className="h-4 w-4" />
-                                            <span>{format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</span>
-                                        </>
-                                    )}
+                            <CardContent className="text-sm space-y-2">
+                                <div className="text-muted-foreground">
+                                    <p>{t('admin_rental_arrival_info')}: {format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                                    <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.arrivalVehicleNumber || 'N/A'}</span></p>
+                                    <p>{t('admin_rental_down_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.downPayment)}</span></p>
                                 </div>
+                                {item.departureDate && (
+                                     <div className="text-muted-foreground border-t pt-2">
+                                         <p>{t('admin_rental_departure_info')}: {format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                                         <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.departureVehicleNumber || 'N/A'}</span></p>
+                                         <p>{t('admin_rental_final_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.finalPayment || 0)}</span></p>
+                                     </div>
+                                )}
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -319,15 +347,32 @@ export default function RentalsPage() {
                     <Input id="container-number" value={containerNumber} onChange={e => setContainerNumber(e.target.value)} disabled={isSubmitting} />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="rent-amount">{t('admin_rental_amount_label')}</Label>
-                    <Input 
-                        id="rent-amount" 
-                        type="text" 
-                        value={rentAmount} 
-                        onChange={e => setRentAmount(formatNumberWithSpaces(e.target.value))} 
-                        disabled={isSubmitting} 
-                        placeholder="100 000"
-                    />
+                    <Label htmlFor="arrival-vehicle-number">{t('admin_rental_vehicle_number_arrival_label')}</Label>
+                    <Input id="arrival-vehicle-number" value={arrivalVehicleNumber} onChange={e => setArrivalVehicleNumber(e.target.value)} disabled={isSubmitting} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="rent-amount">{t('admin_rental_amount_label')}</Label>
+                        <Input 
+                            id="rent-amount" 
+                            type="text" 
+                            value={rentAmount} 
+                            onChange={e => setRentAmount(formatNumberWithSpaces(e.target.value))} 
+                            disabled={isSubmitting} 
+                            placeholder="100 000"
+                        />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="down-payment">{t('admin_rental_down_payment_label')}</Label>
+                        <Input 
+                            id="down-payment" 
+                            type="text" 
+                            value={downPayment} 
+                            onChange={e => setDownPayment(formatNumberWithSpaces(e.target.value))} 
+                            disabled={isSubmitting} 
+                            placeholder="0"
+                        />
+                    </div>
                 </div>
             </div>
             <DialogFooter>
@@ -379,11 +424,29 @@ export default function RentalsPage() {
                            <CardHeader>
                                <CardTitle>{selectedContainer.containerNumber}</CardTitle>
                            </CardHeader>
-                           <CardContent>
-                               <p>{t('admin_rental_amount_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.rentAmount)}</span></p>
-                               <p className="text-sm text-muted-foreground">{t('admin_rental_arrival_date')}: {format(selectedContainer.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                           <CardContent className="text-sm space-y-2">
+                               <p>{t('admin_rental_total_amount_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.rentAmount)}</span></p>
+                               <p>{t('admin_rental_down_payment_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.downPayment)}</span></p>
+                               <p className="text-muted-foreground">{t('admin_rental_arrival_date')}: {format(selectedContainer.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
                            </CardContent>
                        </Card>
+
+                       <div className="space-y-2">
+                           <Label htmlFor="departure-vehicle-number">{t('admin_rental_vehicle_number_departure_label')}</Label>
+                           <Input id="departure-vehicle-number" value={departureVehicleNumber} onChange={(e) => setDepartureVehicleNumber(e.target.value)} disabled={isSubmitting} />
+                       </div>
+
+                       <div className="space-y-2">
+                           <Label htmlFor="final-payment">{t('admin_rental_final_payment_label')}</Label>
+                           <Input 
+                               id="final-payment"
+                               type="text"
+                               value={finalPayment}
+                               onChange={(e) => setFinalPayment(formatNumberWithSpaces(e.target.value))}
+                               disabled={isSubmitting}
+                           />
+                       </div>
+
                        <p className="text-sm text-destructive">{t('admin_rental_remove_confirm_text')}</p>
                   </div>
                    <DialogFooter>
@@ -400,3 +463,4 @@ export default function RentalsPage() {
   );
 }
 
+    
