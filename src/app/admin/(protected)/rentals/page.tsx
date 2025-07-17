@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { Plus, Minus, Search, Warehouse, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, Search, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -21,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
 type RentalStatus = 'rented' | 'departed';
 
@@ -81,6 +83,7 @@ export default function RentalsPage() {
     const [history, setHistory] = useState<Rental[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const dateLocale = language === 'uz' ? uz : ru;
 
     const isSenior = user?.currentSession?.role === 'senior';
@@ -217,6 +220,10 @@ export default function RentalsPage() {
         );
     }, [history, searchQuery]);
 
+    const handleToggleExpand = (id: string) => {
+        setExpandedItems(prev => prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]);
+    }
+
     const renderHistory = () => {
         if (isLoadingHistory || isAuthLoading) {
             return Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />);
@@ -226,45 +233,62 @@ export default function RentalsPage() {
         }
         return (
             <AnimatePresence>
-                {filteredHistory.map(item => (
-                    <motion.div
-                        key={item.id}
-                        variants={cardVariants}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        transition={{ duration: 0.3 }}
-                        layout
-                    >
-                        <Card>
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>{item.containerNumber}</CardTitle>
-                                        <CardDescription>{t('admin_rental_total_amount_label')}: <span className="font-bold text-foreground">{formatNumberWithSpaces(item.rentAmount)}</span></CardDescription>
-                                    </div>
-                                    <Badge variant={item.status === 'rented' ? 'destructive' : 'default'}>
-                                        {t(`admin_rental_status_${item.status}`)}
-                                    </Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="text-sm space-y-2">
-                                <div className="text-muted-foreground">
-                                    <p>{t('admin_rental_arrival_info')}: {format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
-                                    <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.arrivalVehicleNumber || 'N/A'}</span></p>
-                                    <p>{t('admin_rental_down_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.downPayment)}</span></p>
-                                </div>
-                                {item.departureDate && (
-                                     <div className="text-muted-foreground border-t pt-2">
-                                         <p>{t('admin_rental_departure_info')}: {format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
-                                         <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.departureVehicleNumber || 'N/A'}</span></p>
-                                         <p>{t('admin_rental_final_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.finalPayment || 0)}</span></p>
-                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ))}
+                {filteredHistory.map(item => {
+                    const isExpanded = expandedItems.includes(item.id);
+                    return (
+                        <motion.div
+                            key={item.id}
+                            variants={cardVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={{ duration: 0.3 }}
+                            layout
+                        >
+                            <Collapsible open={isExpanded} onOpenChange={() => handleToggleExpand(item.id)}>
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <CardTitle>{item.containerNumber}</CardTitle>
+                                                <CardDescription>{t('admin_rental_total_amount_label')}: <span className="font-bold text-foreground">{formatNumberWithSpaces(item.rentAmount)}</span></CardDescription>
+                                            </div>
+                                            <Badge variant={item.status === 'rented' ? 'destructive' : 'default'}>
+                                                {t(`admin_rental_status_${item.status}`)}
+                                            </Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <CollapsibleContent>
+                                        <CardContent className="text-sm space-y-3 pt-0 pb-4">
+                                            <div className="text-muted-foreground border-t pt-3">
+                                                <p className="font-semibold text-foreground mb-1">{t('admin_rental_arrival_info')}</p>
+                                                <p>{format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                                                <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.arrivalVehicleNumber || 'N/A'}</span></p>
+                                                <p>{t('admin_rental_down_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.downPayment)}</span></p>
+                                            </div>
+                                            {item.departureDate && (
+                                                <div className="text-muted-foreground border-t pt-3">
+                                                    <p className="font-semibold text-foreground mb-1">{t('admin_rental_departure_info')}</p>
+                                                    <p>{format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                                                    <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.departureVehicleNumber || 'N/A'}</span></p>
+                                                    <p>{t('admin_rental_final_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.finalPayment || 0)}</span></p>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </CollapsibleContent>
+                                     <CardFooter>
+                                        <CollapsibleTrigger asChild>
+                                             <Button variant="ghost" className="w-full">
+                                                {isExpanded ? "Скрыть" : "Показать больше"}
+                                                <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                    </CardFooter>
+                                </Card>
+                            </Collapsible>
+                        </motion.div>
+                    )
+                })}
             </AnimatePresence>
         );
     }
