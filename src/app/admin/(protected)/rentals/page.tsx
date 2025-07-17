@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 
 type RentalStatus = 'rented' | 'departed';
@@ -462,5 +462,3 @@ export default function RentalsPage() {
     </>
   );
 }
-
-    
