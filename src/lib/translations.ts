@@ -338,6 +338,8 @@ export const translations = {
     admin_rental_status_departed: "Уехал",
     admin_rental_arrival_info: "Информация о прибытии",
     admin_rental_departure_info: "Информация об отбытии",
+    admin_show_details_button: "Показать больше",
+    admin_hide_details_button: "Скрыть",
 
     admin_edit_button: "Изменить",
     admin_edit_user_title: "Редактировать пользователя",
@@ -696,6 +698,8 @@ export const translations = {
     admin_rental_status_departed: "Ketgan",
     admin_rental_arrival_info: "Kelish ma'lumoti",
     admin_rental_departure_info: "Ketish ma'lumoti",
+    admin_show_details_button: "Batafsil ko'rish",
+    admin_hide_details_button: "Yashirish",
     
     admin_edit_button: "O'zgartirish",
     admin_edit_user_title: "Foydalanuvchini tahrirlash",

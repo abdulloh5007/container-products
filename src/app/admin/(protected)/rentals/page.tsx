@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { Plus, Minus, Search, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Plus, Minus, Search, ArrowLeft, ChevronDown, CalendarClock, Truck, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -259,19 +259,37 @@ export default function RentalsPage() {
                                         </div>
                                     </CardHeader>
                                     <CollapsibleContent>
-                                        <CardContent className="text-sm space-y-3 pt-0 pb-4">
-                                            <div className="text-muted-foreground border-t pt-3">
-                                                <p className="font-semibold text-foreground mb-1">{t('admin_rental_arrival_info')}</p>
-                                                <p>{format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
-                                                <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.arrivalVehicleNumber || 'N/A'}</span></p>
-                                                <p>{t('admin_rental_down_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.downPayment)}</span></p>
+                                        <CardContent className="text-sm space-y-4 pt-0 pb-4">
+                                            <div className="text-muted-foreground border-t pt-4 space-y-2">
+                                                <p className="font-semibold text-foreground mb-2">{t('admin_rental_arrival_info')}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <CalendarClock className="h-4 w-4" />
+                                                    <span>{format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Truck className="h-4 w-4" />
+                                                    <span>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.arrivalVehicleNumber || 'N/A'}</span></span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Wallet className="h-4 w-4" />
+                                                    <span>{t('admin_rental_down_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.downPayment)}</span></span>
+                                                </div>
                                             </div>
                                             {item.departureDate && (
-                                                <div className="text-muted-foreground border-t pt-3">
-                                                    <p className="font-semibold text-foreground mb-1">{t('admin_rental_departure_info')}</p>
-                                                    <p>{format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
-                                                    <p>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.departureVehicleNumber || 'N/A'}</span></p>
-                                                    <p>{t('admin_rental_final_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.finalPayment || 0)}</span></p>
+                                                <div className="text-muted-foreground border-t pt-4 space-y-2">
+                                                    <p className="font-semibold text-foreground mb-2">{t('admin_rental_departure_info')}</p>
+                                                     <div className="flex items-center gap-2">
+                                                        <CalendarClock className="h-4 w-4" />
+                                                        <span>{format(item.departureDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck className="h-4 w-4" />
+                                                        <span>{t('admin_rental_vehicle_number_label')}: <span className="font-medium text-foreground">{item.departureVehicleNumber || 'N/A'}</span></span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Wallet className="h-4 w-4" />
+                                                        <span>{t('admin_rental_final_payment_label')}: <span className="font-medium text-foreground">{formatNumberWithSpaces(item.finalPayment || 0)}</span></span>
+                                                    </div>
                                                 </div>
                                             )}
                                         </CardContent>
@@ -279,7 +297,7 @@ export default function RentalsPage() {
                                      <CardFooter>
                                         <CollapsibleTrigger asChild>
                                              <Button variant="ghost" className="w-full">
-                                                {isExpanded ? "Скрыть" : "Показать больше"}
+                                                {isExpanded ? t('admin_hide_details_button') : t('admin_show_details_button')}
                                                 <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
                                             </Button>
                                         </CollapsibleTrigger>
@@ -486,3 +504,4 @@ export default function RentalsPage() {
     </>
   );
 }
+
