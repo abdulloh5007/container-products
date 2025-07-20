@@ -6,7 +6,6 @@ import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/contexts/theme-provider';
-import { AppRestorer } from '@/components/app-restorer';
 
 export const metadata: Metadata = {
   title: 'CONTAINER PRODUCTS',
@@ -42,7 +41,6 @@ export default function RootLayout({
             <Toaster />
           </LanguageProvider>
         </ThemeProvider>
-        <AppRestorer />
       </body>
     </html>
   );
