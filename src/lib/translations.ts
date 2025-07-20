@@ -346,6 +346,8 @@ export const translations = {
     admin_edit_user_desc: "Изменить имя и роль для \"{deviceName}\".",
     admin_session_update_success_title: "Пользователь обновлен",
     admin_session_update_success_desc: "Данные для {deviceName} были успешно обновлены.",
+    
+    admin_refresh_button: "Обновить",
 
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
@@ -706,6 +708,8 @@ export const translations = {
     admin_edit_user_desc: "\"{deviceName}\" uchun ism va rolni o'zgartirish.",
     admin_session_update_success_title: "Foydalanuvchi yangilandi",
     admin_session_update_success_desc: "{deviceName} uchun ma'lumotlar muvaffaqiyatli yangilandi.",
+    
+    admin_refresh_button: "Yangilash",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",
@@ -719,5 +723,3 @@ export const translations = {
 
 export type Language = keyof typeof translations;
 export type TranslationKeys = keyof typeof translations.ru;
-
-    

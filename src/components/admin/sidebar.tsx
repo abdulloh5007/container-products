@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History, ListCollapse, Warehouse } from 'lucide-react';
+import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History, ListCollapse, Warehouse, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -31,6 +31,10 @@ export function Sidebar() {
     }
   };
   
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+  
   const closeSheet = () => setSheetOpen(false);
 
   const managementNavItems = [
@@ -40,7 +44,7 @@ export function Sidebar() {
   
   const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
   const stockHistoryNavItem = { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: ListCollapse };
-  const rentalsNavItem = { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior', 'junior'] };
+  const rentalsNavItem = { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior'] };
   
   const mainNavItems = [
       { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },
@@ -109,6 +113,10 @@ export function Sidebar() {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleRefresh}>
+                <RefreshCw className="h-5 w-5" />
+                <span className="sr-only">{t('admin_refresh_button')}</span>
+            </Button>
             <ThemeSwitcher />
             <LanguageSwitcher />
             <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
