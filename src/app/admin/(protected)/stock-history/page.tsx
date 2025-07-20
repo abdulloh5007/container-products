@@ -315,7 +315,7 @@ export default function AdminStockHistoryPage() {
           <h1 className="text-3xl font-bold tracking-tight whitespace-wrap text-center sm:text-left sm:whitespace-nowrap">{t('admin_stock_history_title')}</h1>
           <div className="flex w-full justify-end">
             <ViewSwitcher view={view} setView={setView} />
-           </div>
+        </div>
       </div>
       
       <div className="flex flex-col sm:flex-row items-center gap-4">
