@@ -13,12 +13,15 @@ import { useLanguage } from '@/hooks/use-language';
 import { Container, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthLoading, isRegistrationAllowed, translateFirebaseError } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+  
+  useInputScrollFix();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

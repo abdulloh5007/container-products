@@ -14,6 +14,7 @@ import { Container, Hourglass, ShieldAlert, Eye, EyeOff, XCircle } from 'lucide-
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 
 function LoginSkeleton() {
     return (
@@ -216,6 +217,7 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+    useInputScrollFix();
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
             <Suspense fallback={<LoginSkeleton />}>

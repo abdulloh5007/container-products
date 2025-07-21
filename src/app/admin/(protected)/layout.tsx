@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Sidebar } from '@/components/admin/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
+import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 
 
 function AdminSkeleton() {
@@ -39,6 +40,8 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  
+  useInputScrollFix();
 
   useEffect(() => {
     // Wait until loading is finished before checking auth
