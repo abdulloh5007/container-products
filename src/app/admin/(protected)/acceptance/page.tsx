@@ -383,7 +383,7 @@ export default function AdminAcceptancePage() {
                 <Input
                     id="container-number-acceptance"
                     value={acceptanceContainerNumber}
-                    onChange={(e) => setAcceptanceContainerNumber(e.target.value)}
+                    onChange={(e) => setAcceptanceContainerNumber(e.target.value.toUpperCase())}
                     placeholder={t('admin_history_container_number_placeholder')}
                     disabled={!!acceptingContainerId}
                 />
@@ -411,7 +411,7 @@ export default function AdminAcceptancePage() {
                 <Input
                     id="container-number-dispatch"
                     value={dispatchContainerNumber}
-                    onChange={(e) => setDispatchContainerNumber(e.target.value)}
+                    onChange={(e) => setDispatchContainerNumber(e.target.value.toUpperCase())}
                     placeholder={t('admin_history_container_number_placeholder')}
                     disabled={!!dispatchingContainerId}
                 />
