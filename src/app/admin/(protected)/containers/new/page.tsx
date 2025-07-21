@@ -59,7 +59,6 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, onPreviewClick: (url: string) => void }) {
   const { t } = useLanguage();
   const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
@@ -85,7 +84,7 @@ function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: Fi
     onDrop,
     accept: { 'image/*': [] },
     maxFiles: 1,
-    noClick: true,
+    noClick: !!currentPreview, // Disable click to open if there is a preview
     noKeyboard: true,
   });
 
@@ -96,12 +95,12 @@ function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: Fi
 
   if (currentPreview) {
     return (
-        <div {...getRootProps()} className="relative h-48 w-full group rounded-md overflow-hidden">
+        <div {...getRootProps()} className="relative h-48 w-full group rounded-md overflow-hidden border-2 border-dashed border-muted-foreground/50">
             <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="bg-muted" />
-            <input {...getInputProps({ ref: inputRef })} />
+            <input {...getInputProps()} />
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" className="text-white hover:bg-white/20 hover:text-white" onClick={() => onPreviewClick(currentPreview)}>
+                    <Button variant="ghost" className="text-white hover:bg-white/20 hover:text-white" onClick={(e) => {e.stopPropagation(); onPreviewClick(currentPreview)}}>
                        <Search className="mr-2 h-4 w-4" />
                        {t('admin_view_image_button')}
                     </Button>
@@ -565,5 +564,3 @@ export default function NewContainerPage() {
     </>
   );
 }
-
-    
