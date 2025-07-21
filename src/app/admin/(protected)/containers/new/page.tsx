@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
-import { X, Upload, Plus, Minus, ArrowLeft, Search, Grip } from 'lucide-react';
+import { X, Upload, Plus, Minus, ArrowLeft, Search, Grip, Pencil } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -17,6 +17,7 @@ import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, orderBy } f
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
+import { cn } from '@/lib/utils';
 
 type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
@@ -58,6 +59,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, onPreviewClick: (url: string) => void }) {
   const { t } = useLanguage();
   const [currentPreview, setCurrentPreview] = useState<string | null>(previewUrl || null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles[0]) {
@@ -79,25 +81,42 @@ function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: Fi
     }
   }, [file, previewUrl]);
   
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
     maxFiles: 1,
+    noClick: true,
+    noKeyboard: true,
   });
+
+  const handleEditClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      open();
+  }
 
   if (currentPreview) {
     return (
-        <div className="relative h-48 w-full group cursor-pointer" onClick={() => onPreviewClick(currentPreview)}>
-            <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="rounded-md" />
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <p className="text-white font-semibold">{t('admin_view_image_button')}</p>
+        <div {...getRootProps()} className="relative h-48 w-full group rounded-md overflow-hidden">
+            <Image src={currentPreview} alt="Preview" layout="fill" objectFit="contain" className="bg-muted" />
+            <input {...getInputProps({ ref: inputRef })} />
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" className="text-white hover:bg-white/20 hover:text-white" onClick={() => onPreviewClick(currentPreview)}>
+                       <Search className="mr-2 h-4 w-4" />
+                       {t('admin_view_image_button')}
+                    </Button>
+                    <Button variant="ghost" className="text-white hover:bg-white/20 hover:text-white" onClick={handleEditClick}>
+                       <Pencil className="mr-2 h-4 w-4" />
+                       {t('admin_edit_button')}
+                    </Button>
+                </div>
             </div>
         </div>
     )
   }
 
   return (
-    <div {...getRootProps()} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors h-48 flex flex-col items-center justify-center">
+    <div {...getRootProps({onClick: open})} className="border-2 border-dashed border-muted-foreground rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors h-48 flex flex-col items-center justify-center">
       <input {...getInputProps()} />
        <div className="flex flex-col items-center gap-2 text-muted-foreground">
         <Upload className="h-8 w-8" />
@@ -546,3 +565,5 @@ export default function NewContainerPage() {
     </>
   );
 }
+
+    
