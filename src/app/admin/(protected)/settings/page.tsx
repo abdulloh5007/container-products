@@ -269,7 +269,7 @@ export default function SettingsPage() {
         }
 
         return (
-            <AlertDialog open={!!alertDialogState} onOpenChange={() => setAlertDialogState(null)}>
+            <AlertDialog open={!!alertDialogState} onOpenChange={(open) => !open && setAlertDialogState(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{titles[type]}</AlertDialogTitle>

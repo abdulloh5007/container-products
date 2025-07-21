@@ -211,6 +211,13 @@ export default function RentalsPage() {
         }
         setRemoveModalOpen(isOpen);
     }
+    
+    const onAddModalOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            resetAddForm();
+        }
+        setAddModalOpen(isOpen);
+    }
 
     const filteredHistory = useMemo(() => {
         return history.filter(item =>
@@ -377,7 +384,7 @@ export default function RentalsPage() {
       </div>
 
       {/* Add Rental Dialog */}
-      <Dialog open={isAddModalOpen} onOpenChange={setAddModalOpen}>
+      <Dialog open={isAddModalOpen} onOpenChange={onAddModalOpenChange}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>{t('admin_rental_add_title')}</DialogTitle>
@@ -418,7 +425,7 @@ export default function RentalsPage() {
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setAddModalOpen(false)}>{t('admin_cancel_button')}</Button>
+                <Button variant="outline" onClick={() => onAddModalOpenChange(false)}>{t('admin_cancel_button')}</Button>
                 <Button onClick={handleAddRental} disabled={isSubmitting}>
                     {isSubmitting ? t('admin_saving_text') : t('admin_add_button')}
                 </Button>
