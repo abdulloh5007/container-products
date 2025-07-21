@@ -386,11 +386,11 @@ export default function RentalsPage() {
             <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                     <Label htmlFor="container-number">{t('admin_history_container_number')}</Label>
-                    <Input id="container-number" value={containerNumber} onChange={e => setContainerNumber(e.target.value)} disabled={isSubmitting} />
+                    <Input id="container-number" value={containerNumber} onChange={e => setContainerNumber(e.target.value.toUpperCase())} disabled={isSubmitting} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="arrival-vehicle-number">{t('admin_rental_vehicle_number_arrival_label')}</Label>
-                    <Input id="arrival-vehicle-number" value={arrivalVehicleNumber} onChange={e => setArrivalVehicleNumber(e.target.value)} disabled={isSubmitting} />
+                    <Input id="arrival-vehicle-number" value={arrivalVehicleNumber} onChange={e => setArrivalVehicleNumber(e.target.value.toUpperCase())} disabled={isSubmitting} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -475,7 +475,7 @@ export default function RentalsPage() {
 
                        <div className="space-y-2">
                            <Label htmlFor="departure-vehicle-number">{t('admin_rental_vehicle_number_departure_label')}</Label>
-                           <Input id="departure-vehicle-number" value={departureVehicleNumber} onChange={(e) => setDepartureVehicleNumber(e.target.value)} disabled={isSubmitting} />
+                           <Input id="departure-vehicle-number" value={departureVehicleNumber} onChange={(e) => setDepartureVehicleNumber(e.target.value.toUpperCase())} disabled={isSubmitting} />
                        </div>
 
                        <div className="space-y-2">
@@ -504,4 +504,3 @@ export default function RentalsPage() {
     </>
   );
 }
-
