@@ -96,14 +96,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const setViewMode = (mode: ViewMode) => {
     setViewModeState(mode);
-    localStorage.setItem('viewMode', mode);
+    idb.set('viewMode', mode);
   };
   
   useEffect(() => {
-    const storedViewMode = localStorage.getItem('viewMode') as ViewMode;
-    if (storedViewMode === 'classic' || storedViewMode === 'modern') {
-      setViewModeState(storedViewMode);
+    const loadPersistedData = async () => {
+      const storedViewMode = await idb.get<ViewMode>('viewMode');
+      if (storedViewMode === 'classic' || storedViewMode === 'modern') {
+        setViewModeState(storedViewMode);
+      }
+      const storedLang = await idb.get<Language>('language');
+      if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
+          setLanguage(storedLang);
+      }
     }
+    loadPersistedData();
   }, []);
 
   const translateFirebaseError = useCallback((errorCode: string): string => {
@@ -112,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return translations[language][errorKey] || translations[language][fallbackKey];
   }, [language]);
   
-  // Effect to check if registration should be allowed
   useEffect(() => {
     const checkUsers = async () => {
         setIsAuthLoading(true);
@@ -132,24 +138,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeSession = async () => {
-      let sessionId = await idb.get('currentSessionId');
+      let sessionId = await idb.get<string>('currentSessionId');
       if (!sessionId) {
-          const seniorSessionId = await idb.get('seniorSessionId');
+          const seniorSessionId = await idb.get<string>('seniorSessionId');
           if (seniorSessionId) {
-              // Automatically restore session for senior
               sessionId = seniorSessionId;
               await idb.set('currentSessionId', sessionId);
           }
       }
-      setCurrentSessionId(sessionId);
+      setCurrentSessionId(sessionId || null);
     };
 
     initializeSession();
-
-    const storedLang = localStorage.getItem('language');
-    if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
-        setLanguage(storedLang);
-    }
   }, []);
 
   useEffect(() => {
@@ -229,18 +229,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const userData = userDocSnap.data();
     const existingSessions = userData.sessions || [];
-
-    const seniorSession = existingSessions.find((s: Session) => s.role === 'senior');
     
-    if (seniorSession) {
-        // This is the senior user, reuse their session
-        await idb.set('currentSessionId', seniorSession.id);
-        await idb.set('seniorSessionId', seniorSession.id);
-        setCurrentSessionId(seniorSession.id);
+    const seniorSessionInDb = existingSessions.find((s: Session) => s.role === 'senior');
+
+    if (seniorSessionInDb) {
+        // This is the senior user logging in. Reuse their existing senior session.
+        await idb.set('currentSessionId', seniorSessionInDb.id);
+        await idb.set('seniorSessionId', seniorSessionInDb.id);
+        setCurrentSessionId(seniorSessionInDb.id);
         return;
     }
-
-    // If not senior, create a new pending session
+    
+    // If not a senior user, create a new pending session for this device
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
@@ -279,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newSession: Session = {
         id: newSessionId,
         deviceName: getDeviceName(),
+        name: name,
         role: isFirstUser ? 'senior' : 'pending',
         createdAt: Timestamp.now()
     }
@@ -307,16 +308,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user && user.currentSession) {
         const sessionToLogout = user.currentSession;
         if (sessionToLogout.role === 'senior') {
-            // Don't remove session from DB, just clear current session from IDB
-            await idb.del('currentSessionId');
-            // seniorSessionId remains in IDB
+            // Preserve the senior session ID for quick re-login
+            await idb.set('seniorSessionId', sessionToLogout.id);
         } else {
-            // For other roles, remove the session from Firestore and IDB
+            // For other roles, remove the session from Firestore
             const userDocRef = doc(db, 'users', user.uid);
             await updateDoc(userDocRef, { sessions: arrayRemove(sessionToLogout) });
-            await idb.del('currentSessionId');
-            await idb.del('seniorSessionId'); // Ensure no stale senior session
         }
+        // Always clear the current session ID
+        await idb.del('currentSessionId');
     }
     
     await signOut(auth);

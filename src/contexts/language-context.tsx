@@ -3,6 +3,7 @@
 
 import { createContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import { translations, Language, TranslationKeys } from '@/lib/translations';
+import * as idb from '@/lib/indexed-db';
 
 type TFunction = (key: TranslationKeys, replacements?: Record<string, string>) => string;
 
@@ -18,17 +19,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Start with the default language to avoid hydration mismatch.
   const [language, setLanguageState] = useState<Language>('ru');
 
-  // On component mount (client-side only), check localStorage.
+  // On component mount (client-side only), check IndexedDB.
   useEffect(() => {
-    const storedLang = localStorage.getItem('language');
-    if (storedLang === 'ru' || storedLang === 'uz') {
-      setLanguageState(storedLang);
-    }
+    const getLang = async () => {
+      const storedLang = await idb.get<Language>('language');
+      if (storedLang === 'ru' || storedLang === 'uz') {
+        setLanguageState(storedLang);
+      }
+    };
+    getLang();
   }, []);
 
   const setLanguage = (newLanguage: Language) => {
     setLanguageState(newLanguage);
-    localStorage.setItem('language', newLanguage);
+    idb.set('language', newLanguage);
   };
 
   const t = useMemo(() => (key: TranslationKeys, replacements?: Record<string, string>): string => {
