@@ -56,7 +56,6 @@ type AuthContextType = {
   approveSession: (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   updateUserRole: (session: Session, name: string, role: 'junior' | 'worker') => Promise<void>;
-  deleteUserAccount: () => Promise<void>;
   translateFirebaseError: (errorCode: string) => string;
 };
 
@@ -219,12 +218,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         setPendingRequests(pendingCount);
                     } else {
                        if (localSessionId) {
+                           // This session ID is invalid, clear it and sign out.
                            signOut(auth); 
                         } else {
+                           // No session ID, but user is logged in firebase. Stay in this state.
                            setIsAuthLoading(false);
                         }
                     }
                 } else {
+                   // User doc deleted, force sign out.
                    signOut(auth);
                 }
                 if(isAuthLoading) setIsAuthLoading(false);
@@ -344,6 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Senior logout: just sign out from Firebase, don't clear session ID or DB entry
         if (loggingOutSession?.role === 'senior') {
             await signOut(auth);
+            // We intentionally do not call clearSessionId() here
             return;
         }
 
@@ -361,7 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     await signOut(auth);
-    clearSessionId();
+    clearSessionId(); // This is for non-senior roles or if there's no session info
   };
 
 
@@ -387,6 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updatePassword(firebaseUser, newPassword);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
+        // On password change, log out all other sessions for security
         await updateDoc(userDocRef, {
             sessions: [user.currentSession]
         });
@@ -395,25 +399,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(translateFirebaseError(error.code));
     }
   };
-  
-  const deleteUserAccount = async () => {
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser || !user || user.currentSession?.role !== 'senior') {
-          throw new Error(translateFirebaseError('auth/operation-not-allowed'));
-      }
-
-      try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          await deleteDoc(userDocRef);
-          await deleteUser(firebaseUser);
-          await signOut(auth);
-          clearSessionId();
-      } catch (error: any) {
-          throw new Error(translateFirebaseError(error.code));
-      }
-  };
 
   const toggleManagementMode = async () => {
+    if (user?.currentSession?.role !== 'senior') return;
     const settingsDocRef = doc(db, 'settings', 'global');
     try {
         await updateDoc(settingsDocRef, { isManagementModeEnabled: !isManagementModeEnabled });
@@ -469,9 +457,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     updateUserPassword,
-    deleteUserAccount,
     pendingRequests,
-    setPendingRequests,
+    setPendingRequests: (count: number) => setPendingRequests(count),
     isManagementModeEnabled,
     isLoadingSettings,
     toggleManagementMode,
@@ -483,7 +470,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     translateFirebaseError,
     viewMode,
     setViewMode,
-  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, viewMode, translateFirebaseError]);
+  // I removed deleteUserAccount as requested
+  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, viewMode, setViewMode, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>

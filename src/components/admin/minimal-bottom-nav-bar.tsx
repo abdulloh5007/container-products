@@ -27,10 +27,8 @@ export function MinimalBottomNavBar() {
   if (navItems.length === 0) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card p-2 md:hidden">
-      <div className={cn("grid gap-2",
-        `grid-cols-${navItems.length}`
-      )}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t rounded-lg bg-primary/10 backdrop-blur-md p-2 shadow-xl transition-all duration-300">
+      <div className={cn("grid gap-2", `grid-cols-${navItems.length}`)}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -39,10 +37,10 @@ export function MinimalBottomNavBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 rounded-lg p-2 transition-colors',
+                'flex flex-col items-center justify-center gap-1 rounded-lg p-2 transition-all duration-300 text-[10px] sm:text-xs',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted'
+                  ? 'bg-primary text-primary-foreground scale-105'
+                  : 'text-muted-foreground hover:bg-muted hover:scale-105'
               )}
             >
               <Icon className="h-5 w-5" />
@@ -52,5 +50,6 @@ export function MinimalBottomNavBar() {
         })}
       </div>
     </nav>
+
   );
 }

@@ -9,29 +9,23 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Eye, EyeOff, LogOut } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatPhoneNumber, deformatPhoneNumber } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 export default function ProfileSettingsPage() {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, logout, isAuthLoading, updateUserProfile, deleteUserAccount, updateUserPassword } = useAuth();
+    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [isDeleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
-    // Profile tab state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
-
-    const role = currentUser?.currentSession?.role;
-    const isSenior = role === 'senior';
 
     useEffect(() => {
         if (!isAuthLoading && currentUser) {
@@ -48,7 +42,6 @@ export default function ProfileSettingsPage() {
       try {
         await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
         
-        let passwordUpdated = false;
         if (password) {
           if (password.length < 6) {
             toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('firebase_error_auth_weak-password') });
@@ -56,14 +49,10 @@ export default function ProfileSettingsPage() {
             return;
           }
           await updateUserPassword(password);
-          passwordUpdated = true;
           setPassword('');
-          toast({ title: t('admin_password_update_success_title'), description: t('admin_password_update_success_desc') });
         }
         
-        if (!passwordUpdated) {
-          toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
-        }
+        toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
         
       } catch (error) {
         toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
@@ -72,20 +61,6 @@ export default function ProfileSettingsPage() {
       }
     };
 
-    const handleDeleteAccount = async () => {
-        setIsSubmitting(true);
-        try {
-            await deleteUserAccount();
-            toast({ title: t('admin_account_delete_success_title'), description: t('admin_account_delete_success_desc') });
-            router.push('/admin/login');
-        } catch (error) {
-            console.error("Error deleting account:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: (error as Error).message });
-        } finally {
-            setIsSubmitting(false);
-            setDeleteAlertOpen(false);
-        }
-    }
     
     if (isAuthLoading) {
         return (
@@ -174,42 +149,7 @@ export default function ProfileSettingsPage() {
                     </form>
                 </CardContent>
             </Card>
-
-             {isSenior && (
-                <Card className="border-destructive">
-                    <CardHeader>
-                        <CardTitle className="text-destructive">{t('admin_account_delete_title')}</CardTitle>
-                        <CardDescription>{t('admin_account_delete_desc')}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <Button variant="destructive" onClick={() => setDeleteAlertOpen(true)}>
-                            {t('admin_account_delete_button')}
-                        </Button>
-                    </CardContent>
-                </Card>
-            )}
-
         </div>
-
-        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{t('admin_account_delete_confirm_title')}</AlertDialogTitle>
-                    <AlertDialogDescription>{t('admin_account_delete_confirm_desc')}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteAlertOpen(false)}>{t('admin_cancel_button')}</AlertDialogCancel>
-                    <AlertDialogAction 
-                        onClick={handleDeleteAccount} 
-                        disabled={isSubmitting}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                        {isSubmitting ? t('admin_saving_text') : t('admin_delete_button')}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
       </>
     );
 }
