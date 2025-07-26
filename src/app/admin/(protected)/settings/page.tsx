@@ -814,15 +814,15 @@ export default function SettingsPage() {
     const { viewMode, isAuthLoading, user } = useAuth();
     const router = useRouter();
 
-    const isWorker = user?.currentSession?.role === 'worker';
+    const role = user?.currentSession?.role;
     
     useEffect(() => {
-        if (!isAuthLoading && isWorker) {
-            router.replace('/admin/stock');
+        if (!isAuthLoading && (role === 'worker' || role === 'junior')) {
+            router.replace('/admin/acceptance');
         }
-    }, [isAuthLoading, isWorker, router]);
+    }, [isAuthLoading, role, router]);
 
-    if (isAuthLoading || isWorker) {
+    if (isAuthLoading || role === 'worker' || role === 'junior') {
          return (
              <div className="max-w-4xl mx-auto space-y-8">
                  <Skeleton className="h-8 w-64" />
@@ -837,5 +837,3 @@ export default function SettingsPage() {
     
     return viewMode === 'classic' ? <ClassicSettingsView /> : <ModernSettingsView />;
 }
-
-    

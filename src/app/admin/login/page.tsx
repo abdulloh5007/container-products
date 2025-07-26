@@ -100,13 +100,17 @@ function LoginForm() {
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated && user) {
       const role = user.currentSession?.role;
+      if (role === 'pending') {
+          setLoginState('pending');
+          return;
+      }
       let redirectTo = '/admin/acceptance'; // Default for senior/junior
       if (role === 'worker') {
         redirectTo = '/admin/stock';
       }
       router.replace(searchParams.get('redirectTo') || redirectTo);
     }
-  }, [isAuthenticated, isAuthLoading, router, searchParams, user]);
+  }, [isAuthenticated, isAuthLoading, router, searchParams, user, setLoginState]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
