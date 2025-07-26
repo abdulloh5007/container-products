@@ -323,34 +323,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const localSessionId = currentSessionId;
   
     if (firebaseUser && user && localSessionId) {
-        try {
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const docSnap = await getDoc(userDocRef);
+        const loggingOutSession = user.sessions.find(s => s.id === localSessionId);
+        
+        // Senior logout: just sign out from Firebase, don't clear session ID or DB entry
+        if (loggingOutSession?.role === 'senior') {
+            await signOut(auth);
+            return;
+        }
 
-            if (docSnap.exists()) {
-                const sessionList = (docSnap.data().sessions || []) as Session[];
-                const loggingOutSession = sessionList.find(s => s.id === localSessionId);
-
-                if (loggingOutSession) {
-                    let updatedSessions = sessionList.filter(s => s.id !== localSessionId);
-                    const wasSenior = loggingOutSession.role === 'senior';
-
-                    if (wasSenior) {
-                        const juniorSessions = updatedSessions.filter(s => s.role === 'junior');
-                        if (juniorSessions.length > 0) {
-                            juniorSessions.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-                            const nextSeniorId = juniorSessions[0].id;
-                            updatedSessions = updatedSessions.map(s => s.id === nextSeniorId ? { ...s, role: 'senior' } : s);
-                        } else {
-                            // No juniors to promote, clear all sessions as requested
-                            updatedSessions = [];
-                        }
-                    }
-                    await updateDoc(userDocRef, { sessions: updatedSessions });
-                }
+        // Other roles: remove session from Firestore and clear local session ID
+        if (loggingOutSession) {
+            try {
+                const userDocRef = doc(db, 'users', firebaseUser.uid);
+                await updateDoc(userDocRef, {
+                    sessions: arrayRemove(loggingOutSession)
+                });
+            } catch (error) {
+                console.error("Firestore update error during logout:", error);
             }
-        } catch (error) {
-            console.error("Firestore update error during logout:", error);
         }
     }
     
