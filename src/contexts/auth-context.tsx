@@ -65,8 +65,6 @@ const generateSessionId = () => {
 }
 
 const getDeviceName = (): string => {
-    // This function can be simplified as UAParser is removed.
-    // A more basic implementation is sufficient for display purposes.
     if (typeof window === 'undefined') {
         return 'Unknown Server';
     }
@@ -140,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeSession = async () => {
       let sessionId = await idb.get<string>('currentSessionId');
       if (!sessionId) {
+          // If a senior logged out on this device, let's restore their session automatically
           const seniorSessionId = await idb.get<string>('seniorSessionId');
           if (seniorSessionId) {
               sessionId = seniorSessionId;
@@ -166,6 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoadingSettings(false);
     });
 
+    if (isAuthLoading) {
+      // Defer auth subscription until client-side session is initialized
+      return;
+    }
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser && currentSessionId) {
              const userDocRef = doc(db, "users", firebaseUser.uid);
@@ -181,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         } else {
                             setLoginState('form');
                         }
-                        setUser({ ...userData, currentSession });
+                        setUser({ ...userData, uid: firebaseUser.uid, currentSession });
                         const pendingCount = sessions.filter(s => s.role === 'pending').length;
                         setPendingRequests(pendingCount);
                     } else {
@@ -190,12 +194,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 } else {
                    signOut(auth);
                 }
-                if(isAuthLoading) setIsAuthLoading(false);
+                setIsAuthLoading(false);
             });
             return () => unsubscribeUser();
         } else {
             setUser(null);
             if (currentSessionId) {
+                // If there's a session ID but no firebase user, it's invalid.
                 idb.del('currentSessionId');
                 setCurrentSessionId(null);
             }
@@ -218,29 +223,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const firebaseUser = userCredential.user;
-    const userDocRef = doc(db, "users", firebaseUser.uid);
+    
+    // There is only one user document, find it
+    const usersCollection = await getDocs(collection(db, 'users'));
+    if (usersCollection.empty) {
+        setLoginState('no_account');
+        await signOut(auth);
+        throw new Error(translateFirebaseError('auth/user-not-found'));
+    }
+    const userDocRef = usersCollection.docs[0].ref;
     const userDocSnap = await getDoc(userDocRef);
 
-    if (!userDocSnap.exists()) {
+    if (!userDocSnap.exists() || userDocSnap.id !== firebaseUser.uid) {
+        // This should not happen if there's only one user, but as a safeguard.
         setLoginState('no_account');
         await signOut(auth);
         throw new Error(translateFirebaseError('auth/user-not-found'));
     }
     
     const userData = userDocSnap.data();
-    const existingSessions = userData.sessions || [];
+    const sessions = userData.sessions || [];
     
-    const seniorSessionInDb = existingSessions.find((s: Session) => s.role === 'senior');
+    // THE CRITICAL CHECK: First check IndexedDB for a senior session "key"
+    const seniorSessionIdFromDb = await idb.get<string>('seniorSessionId');
 
-    if (seniorSessionInDb) {
-        // This is the senior user logging in. Reuse their existing senior session.
-        await idb.set('currentSessionId', seniorSessionInDb.id);
-        await idb.set('seniorSessionId', seniorSessionInDb.id);
-        setCurrentSessionId(seniorSessionInDb.id);
-        return;
+    if (seniorSessionIdFromDb) {
+        const seniorSessionInFirestore = sessions.find((s: Session) => s.id === seniorSessionIdFromDb && s.role === 'senior');
+        if (seniorSessionInFirestore) {
+            // This is the senior re-logging into their privileged session.
+            await idb.set('currentSessionId', seniorSessionInFirestore.id);
+            setCurrentSessionId(seniorSessionInFirestore.id);
+            return;
+        }
     }
     
-    // If not a senior user, create a new pending session for this device
+    // If no senior key, or key is invalid, this is a new device/session that needs approval.
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
@@ -267,7 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Registration is not allowed.");
     }
 
-    let isFirstUser = snapshot.empty;
+    // Only the very first user ever becomes senior automatically.
+    const isFirstUser = snapshot.empty;
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password).catch(error => {
       throw new Error(translateFirebaseError(error.code));
@@ -284,14 +302,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: Timestamp.now()
     }
 
-    const newUser: Omit<AppUser, 'currentSession'> = {
-       uid: firebaseUser.uid,
+    const newUserDoc: Omit<AppUser, 'currentSession' | 'uid'> = {
        name: name,
        email: firebaseUser.email,
        sessions: [newSession]
     };
     
-    await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+    await setDoc(doc(db, "users", firebaseUser.uid), newUserDoc);
     
     await idb.set('currentSessionId', newSessionId);
     if(isFirstUser) {
@@ -307,15 +324,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (user && user.currentSession) {
         const sessionToLogout = user.currentSession;
+        const userDocRef = doc(db, 'users', user.uid);
+        
         if (sessionToLogout.role === 'senior') {
             // Preserve the senior session ID for quick re-login
             await idb.set('seniorSessionId', sessionToLogout.id);
         } else {
             // For other roles, remove the session from Firestore
-            const userDocRef = doc(db, 'users', user.uid);
             await updateDoc(userDocRef, { sessions: arrayRemove(sessionToLogout) });
         }
-        // Always clear the current session ID
+        // Always clear the current active session ID
         await idb.del('currentSessionId');
     }
     
@@ -432,3 +450,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
