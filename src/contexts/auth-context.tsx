@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeSession = async () => {
       let sessionId = await idb.get<string>('currentSessionId');
       if (!sessionId) {
-          // If a senior logged out on this device, let's restore their session automatically
+          // If a senior logged out on this device, let's restore their session automatically 
           const seniorSessionId = await idb.get<string>('seniorSessionId');
           if (seniorSessionId) {
               sessionId = seniorSessionId;
