@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, SessionRole, Session, ViewMode } from '@/contexts/auth-context';
@@ -10,13 +10,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, Monitor, LogOut, Eye, EyeOff, Smartphone, ShieldAlert, Archive, Edit, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Devices, LayoutTemplate } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Settings2, LogOut, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Users, LayoutTemplate } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeSwitcher } from '@/components/theme-switcher';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 function SettingsItem({ icon: Icon, title, description, onClick, children }: { icon: React.ElementType, title: string, description?: string, onClick?: () => void, children?: React.ReactNode }) {
@@ -210,7 +208,7 @@ export default function SettingsPage() {
             <Card>
                 <CardContent className="p-0 divide-y">
                     <SettingsItem title={t('admin_settings_profile_title')} icon={UserCircle} onClick={() => router.push('/admin/settings/profile')} />
-                    <SettingsItem title={t('admin_settings_tab_users')} icon={Devices} onClick={() => router.push('/admin/settings/devices')} />
+                    <SettingsItem title={t('admin_settings_tab_users')} icon={Users} onClick={() => router.push('/admin/settings/devices')} />
                 </CardContent>
             </Card>
 
