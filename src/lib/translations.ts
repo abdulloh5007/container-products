@@ -349,6 +349,11 @@ export const translations = {
     
     admin_refresh_button: "Обновить",
 
+    admin_view_mode_title: "Режим вида",
+    admin_view_mode_desc: "Выберите, как будет выглядеть панель администратора.",
+    admin_view_mode_classic: "Классический",
+    admin_view_mode_modern: "Современный",
+
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
     'firebase_error_auth_email-already-in-use': "Этот email уже используется другим аккаунтом.",
@@ -710,6 +715,11 @@ export const translations = {
     admin_session_update_success_desc: "{deviceName} uchun ma'lumotlar muvaffaqiyatli yangilandi.",
     
     admin_refresh_button: "Yangilash",
+
+    admin_view_mode_title: "Ko'rinish rejimi",
+    admin_view_mode_desc: "Administrator panelining ko'rinishini tanlang.",
+    admin_view_mode_classic: "Klassik",
+    admin_view_mode_modern: "Zamonaviy",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",

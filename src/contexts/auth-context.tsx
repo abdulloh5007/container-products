@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 
 
 export type SessionRole = 'senior' | 'junior' | 'worker' | 'pending';
+export type ViewMode = 'classic' | 'modern';
 
 export interface Session {
     id: string; // Unique ID for the session, e.g., a random string or hash
@@ -42,6 +43,8 @@ type AuthContextType = {
   isManagementModeEnabled: boolean;
   isLoadingSettings: boolean;
   loginState: LoginState;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
   setLoginState: (state: LoginState) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -99,7 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginState, setLoginState] = useState<LoginState>('form');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
+  const [viewMode, setViewModeState] = useState<ViewMode>('classic');
   const router = useRouter();
+  
+  const setViewMode = (mode: ViewMode) => {
+    setViewModeState(mode);
+    localStorage.setItem('viewMode', mode);
+  };
+  
+  useEffect(() => {
+    const storedViewMode = localStorage.getItem('viewMode') as ViewMode;
+    if (storedViewMode === 'classic' || storedViewMode === 'modern') {
+      setViewModeState(storedViewMode);
+    }
+  }, []);
 
   const getSessionId = useCallback(() => {
     let sessionId = localStorage.getItem('sessionId');
@@ -465,7 +481,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteSession,
     updateUserRole,
     translateFirebaseError,
-  }), [user, isAuthLoading, isRegistrationAllowed, login, register, logout, updateUserProfile, updateUserPassword, deleteUserAccount, pendingRequests, isManagementModeEnabled, isLoadingSettings, toggleManagementMode, loginState, approveSession, deleteSession, updateUserRole, translateFirebaseError]);
+    viewMode,
+    setViewMode,
+  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, viewMode, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>

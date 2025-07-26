@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/admin/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
+import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
 
 
 function AdminSkeleton() {
@@ -37,7 +38,7 @@ function AdminSkeleton() {
 }
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, viewMode } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   
@@ -77,9 +78,9 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-        <Sidebar />
+        {viewMode === 'classic' && <Sidebar />}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
-        <BottomNavBar />
+        {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
     </div>
   );
 }

@@ -100,7 +100,7 @@ export function Sidebar() {
   }
 
 
-  const isSettingsActive = pathname === '/admin/settings';
+  const isSettingsActive = pathname.startsWith('/admin/settings');
 
   return (
       <header className="sticky top-0 z-40 w-full border-b bg-card">
