@@ -476,7 +476,7 @@ export default function AdminAcceptancePage() {
     <>
     <div className="space-y-8">
         {isSenior && pendingSessions && pendingSessions.length > 0 && (
-            <div className="space-y-4 sticky top-4 z-50">
+            <div className="space-y-4 sticky top-4 z-50" data-intro="pending-requests">
                 {pendingSessions.map(session => (
                     <PendingRequestAlert key={session.id} session={session} />
                 ))}

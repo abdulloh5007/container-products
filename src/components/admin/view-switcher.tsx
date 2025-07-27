@@ -17,7 +17,7 @@ export function ViewSwitcher({ view, setView }: ViewSwitcherProps) {
   const inactiveClass = "bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground";
   
   return (
-    <div className="flex items-center rounded-lg bg-muted p-1 space-x-1">
+    <div className="flex items-center rounded-lg bg-muted p-1 space-x-1" data-intro="view-switcher">
       <Button
         variant="ghost"
         size="sm"
