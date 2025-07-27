@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
+import * as idb from '@/lib/indexed-db';
 
 function LoginSkeleton() {
     return (
@@ -89,7 +90,7 @@ function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isAuthLoading, loginState, setLoginState, user, isRegistrationAllowed } = useAuth();
+  const { login, isAuthenticated, isLoading, loginState, setLoginState, user, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -98,7 +99,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated && user) {
+    if (!isLoading && isAuthenticated && user) {
       const role = user.currentSession?.role;
       if (role === 'pending') {
           setLoginState('pending');
@@ -110,7 +111,7 @@ function LoginForm() {
       }
       router.replace(searchParams.get('redirectTo') || redirectTo);
     }
-  }, [isAuthenticated, isAuthLoading, router, searchParams, user, setLoginState]);
+  }, [isAuthenticated, isLoading, router, searchParams, user, setLoginState]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +130,7 @@ function LoginForm() {
     }
   };
 
-  if (isAuthLoading) {
+  if (isLoading) {
     return <LoginSkeleton />;
   }
   

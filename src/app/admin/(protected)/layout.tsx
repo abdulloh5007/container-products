@@ -11,6 +11,7 @@ import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
 import { useLanguage } from '@/hooks/use-language';
 import { Walkthrough } from '@/components/admin/walkthrough';
+import * as idb from '@/lib/indexed-db';
 
 
 function AdminSkeleton() {
@@ -52,13 +53,14 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   useInputScrollFix();
 
   useEffect(() => {
-    // Wait until loading is finished before checking auth
-    if (!isLoading && !isAuthenticated) {
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
       router.replace('/admin/login');
       return;
     }
     
-    if (!isLoading && isAuthenticated) {
+    if (isAuthenticated) {
         const role = user?.currentSession?.role;
         
         if (role === 'pending') {
@@ -110,7 +112,7 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   return (
     <div className="flex min-h-screen flex-col bg-background">
         {viewMode === 'classic' ? <Sidebar /> : null}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 md:pb-8">{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
         <Walkthrough
             isOpen={isWalkthroughEnabled}

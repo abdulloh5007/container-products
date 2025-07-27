@@ -24,12 +24,7 @@ export function Sidebar() {
   const pendingRequests = user?.sessions.filter(s => s.role === 'pending').length || 0;
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      router.push('/admin/login');
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+    await logout();
   };
   
   const handleRefresh = () => {
