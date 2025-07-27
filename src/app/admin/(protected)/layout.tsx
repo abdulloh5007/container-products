@@ -40,7 +40,7 @@ function AdminSkeleton() {
   )
 }
 
-const WALKTHROUGH_STORAGE_KEY = 'admin-walkthrough-seen';
+const WALKTHROUGH_ACCEPTANCE_KEY = 'walkthrough-acceptance-seen';
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading, viewMode } = useAuth();
@@ -67,16 +67,18 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
             return;
         }
 
-        if (role === 'worker' && pathname !== '/admin/stock') {
+        if (role === 'worker' && pathname !== '/admin/stock' && pathname !== '/admin/stock-history') {
             router.replace('/admin/stock');
             return;
         }
         
-        // Walkthrough logic
+        // Walkthrough logic for acceptance page
         if (role === 'senior' && pathname === '/admin/acceptance') {
-            const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_STORAGE_KEY);
-            if (!hasSeenWalkthrough) {
-                setWalkthroughEnabled(true);
+            const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_ACCEPTANCE_KEY);
+            // Only show if there are pending requests to point to
+            if (!hasSeenWalkthrough && user?.sessions.some(s => s.role === 'pending')) {
+                // Short delay to ensure the element is rendered
+                setTimeout(() => setWalkthroughEnabled(true), 500);
             }
         } else {
             setWalkthroughEnabled(false);
@@ -96,17 +98,13 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   
   const onExit = () => {
     setWalkthroughEnabled(false);
-    localStorage.setItem(WALKTHROUGH_STORAGE_KEY, 'true');
+    localStorage.setItem(WALKTHROUGH_ACCEPTANCE_KEY, 'true');
   };
   
   const steps = [
     {
       element: '[data-intro="pending-requests"]',
-      intro: 'Здесь появляются новые запросы на доступ. Теперь вы можете одобрять или отклонять их прямо с главного экрана.',
-    },
-    {
-      element: '[data-intro="view-switcher"]',
-      intro: 'Используйте этот переключатель для изменения вида страниц между таблицей и карточками для более удобного просмотра.',
+      intro: t('admin_walkthrough_pending_requests'),
     },
   ];
 
@@ -118,14 +116,15 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
         initialStep={0}
         onExit={onExit}
         options={{
-          nextLabel: 'Далее',
-          prevLabel: 'Назад',
-          doneLabel: 'Готово',
+          nextLabel: t('admin_walkthrough_next'),
+          prevLabel: t('admin_walkthrough_prev'),
+          doneLabel: t('admin_walkthrough_done'),
           tooltipClass: 'custom-tooltip-class',
+          showBullets: false,
         }}
       />
     <div className="flex min-h-screen flex-col bg-background">
-        {viewMode === 'classic' && <Sidebar />}
+        {viewMode === 'classic' ? <Sidebar /> : null}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
     </div>

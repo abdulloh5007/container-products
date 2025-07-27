@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, LogOut, Eye, EyeOff, Smartphone, Archive, Edit, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Users, LayoutTemplate, Monitor } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, LogOut, Eye, EyeOff, Smartphone, Archive, Edit, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Users, LayoutTemplate, Monitor, Warehouse } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Steps } from 'intro.js-react';
 
 // --- Components for MODERN view ---
 
@@ -37,7 +38,7 @@ function NavButton({ icon: Icon, title, href }: { icon: React.ElementType, title
     )
 }
 
-function SettingsItem({ icon: Icon, title, description, onClick, children }: { icon: React.ElementType, title: string, description?: string, onClick?: () => void, children?: React.ReactNode }) {
+function SettingsItem({ icon: Icon, title, description, onClick, children, 'data-intro': dataIntro }: { icon: React.ElementType, title: string, description?: string, onClick?: () => void, children?: React.ReactNode, 'data-intro'?: string }) {
     const content = (
         <>
             <div className="flex items-center gap-4">
@@ -53,14 +54,14 @@ function SettingsItem({ icon: Icon, title, description, onClick, children }: { i
 
     if (onClick) {
         return (
-            <button onClick={onClick} className="w-full text-left p-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-between">
+            <button data-intro={dataIntro} onClick={onClick} className="w-full text-left p-4 rounded-lg hover:bg-muted transition-colors flex items-center justify-between">
                 {content}
             </button>
         )
     }
 
     return (
-        <div className="w-full p-4 flex items-center justify-between">
+        <div data-intro={dataIntro} className="w-full p-4 flex items-center justify-between">
             {content}
         </div>
     )
@@ -108,7 +109,7 @@ function ViewModeSwitcherCard({ viewMode, setViewMode }: { viewMode: ViewMode, s
     );
 
     return (
-        <Card>
+        <Card data-intro="view-mode-switcher">
             <CardHeader>
                 <CardTitle>{t('admin_view_mode_title')}</CardTitle>
                 <CardDescription>{t('admin_view_mode_desc')}</CardDescription>
@@ -135,11 +136,10 @@ function ViewModeSwitcherCard({ viewMode, setViewMode }: { viewMode: ViewMode, s
 
 function ModernSettingsView() {
     const { t } = useLanguage();
-    const { logout, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, viewMode, setViewMode } = useAuth();
+    const { logout, user, isManagementModeEnabled, toggleManagementMode, isLoading: isLoadingSettings, viewMode, setViewMode } = useAuth();
     const router = useRouter();
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
-    const role = useAuth().user?.currentSession?.role;
-    const isSenior = role === 'senior';
+    const isSenior = user?.currentSession?.role === 'senior';
 
     const handleToggleManagementMode = async () => {
         setIsUpdatingMode(true);
@@ -156,7 +156,7 @@ function ModernSettingsView() {
         <div className="max-w-4xl mx-auto space-y-8">
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <NavButton href="/admin/history" icon={History} title={t('admin_sidebar_history')} />
                 <NavButton href="/admin/stock-history" icon={ListCollapse} title={t('admin_sidebar_stock_history')} />
                 {isManagementModeEnabled && isSenior && (
@@ -165,6 +165,7 @@ function ModernSettingsView() {
                         <NavButton href="/admin/containers" icon={Box} title={t('admin_sidebar_containers')} />
                     </>
                 )}
+                {isSenior && <NavButton href="/admin/rentals" icon={Warehouse} title={t('admin_rentals_title')} />}
             </div>
 
             <Card>
@@ -231,7 +232,7 @@ function ModernSettingsView() {
 function ProfileTab() {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, isManagementModeEnabled, toggleManagementMode, isLoadingSettings, viewMode, setViewMode } = useAuth();
+    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, isManagementModeEnabled, toggleManagementMode, isLoading: isLoadingSettings, viewMode, setViewMode } = useAuth();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -783,7 +784,7 @@ function DevicesTab() {
 
 function ClassicSettingsView() {
     const { t } = useLanguage();
-    const { user, isAuthLoading } = useAuth();
+    const { user } = useAuth();
     const role = user?.currentSession?.role;
     const isSenior = role === 'senior';
     
@@ -792,9 +793,9 @@ function ClassicSettingsView() {
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
 
             <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className={cn("grid w-full", isSenior ? "grid-cols-2" : "grid-cols-1")}>
                     <TabsTrigger value="profile">{t('admin_settings_tab_profile')}</TabsTrigger>
-                    {isSenior && <TabsTrigger value="devices">{t('admin_users_title')}</TabsTrigger>}
+                    {isSenior && <TabsTrigger value="devices">{t('admin_settings_tab_users')}</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="profile" className="mt-6">
                     <ProfileTab />
@@ -809,20 +810,34 @@ function ClassicSettingsView() {
     );
 }
 
+const WALKTHROUGH_SETTINGS_KEY = 'walkthrough-settings-seen';
+
 // --- Main Page Component ---
 export default function SettingsPage() {
-    const { viewMode, isAuthLoading, user } = useAuth();
+    const { t } = useLanguage();
+    const { user, viewMode, isAuthLoading } = useAuth();
     const router = useRouter();
+    const [isWalkthroughEnabled, setWalkthroughEnabled] = useState(false);
 
     const role = user?.currentSession?.role;
+    const isSenior = role === 'senior';
     
     useEffect(() => {
-        if (!isAuthLoading && (role === 'worker' || role === 'junior')) {
+        if (!isAuthLoading && !isSenior) {
             router.replace('/admin/acceptance');
         }
-    }, [isAuthLoading, role, router]);
+    }, [isAuthLoading, isSenior, router]);
+    
+    useEffect(() => {
+        if (isSenior) {
+            const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_SETTINGS_KEY);
+            if (!hasSeenWalkthrough) {
+                setTimeout(() => setWalkthroughEnabled(true), 500);
+            }
+        }
+    }, [isSenior]);
 
-    if (isAuthLoading || role === 'worker' || role === 'junior') {
+    if (isAuthLoading || !isSenior) {
          return (
              <div className="max-w-4xl mx-auto space-y-8">
                  <Skeleton className="h-8 w-64" />
@@ -834,6 +849,35 @@ export default function SettingsPage() {
             </div>
         )
     }
+
+    const onExit = () => {
+        setWalkthroughEnabled(false);
+        localStorage.setItem(WALKTHROUGH_SETTINGS_KEY, 'true');
+    };
+
+    const steps = [
+        {
+            element: '[data-intro="view-mode-switcher"]',
+            intro: t('admin_walkthrough_view_switcher'),
+        },
+    ];
     
-    return viewMode === 'classic' ? <ClassicSettingsView /> : <ModernSettingsView />;
+    return (
+        <>
+            <Steps
+                enabled={isWalkthroughEnabled}
+                steps={steps}
+                initialStep={0}
+                onExit={onExit}
+                options={{
+                    nextLabel: t('admin_walkthrough_next'),
+                    prevLabel: t('admin_walkthrough_prev'),
+                    doneLabel: t('admin_walkthrough_done'),
+                    tooltipClass: 'custom-tooltip-class',
+                    showBullets: false,
+                }}
+            />
+            {viewMode === 'classic' ? <ClassicSettingsView /> : <ModernSettingsView />}
+        </>
+    );
 }

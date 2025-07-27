@@ -354,6 +354,12 @@ export const translations = {
     admin_view_mode_classic: "Классический",
     admin_view_mode_modern: "Современный",
 
+    admin_walkthrough_pending_requests: "Здесь появляются новые запросы на доступ. Теперь вы можете одобрять или отклонять их прямо с главного экрана.",
+    admin_walkthrough_view_switcher: "Используйте этот переключатель для изменения вида страниц между таблицей и карточками для более удобного просмотра.",
+    admin_walkthrough_next: "Далее",
+    admin_walkthrough_prev: "Назад",
+    admin_walkthrough_done: "Готово",
+
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
     'firebase_error_auth_email-already-in-use': "Этот email уже используется другим аккаунтом.",
@@ -720,6 +726,12 @@ export const translations = {
     admin_view_mode_desc: "Administrator panelining ko'rinishini tanlang.",
     admin_view_mode_classic: "Klassik",
     admin_view_mode_modern: "Zamonaviy",
+
+    admin_walkthrough_pending_requests: "Bu yerda yangi kirish so'rovlari paydo bo'ladi. Endi siz ularni to'g'ridan-to'g'ri bosh ekrandan tasdiqlashingiz yoki rad etishingiz mumkin.",
+    admin_walkthrough_view_switcher: "Sahifalarni jadval va kartochkalar ko'rinishi o'rtasida o'zgartirish uchun ushbu almashtirgichdan foydalaning.",
+    admin_walkthrough_next: "Keyingisi",
+    admin_walkthrough_prev: "Orqaga",
+    admin_walkthrough_done: "Tayyor",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",
