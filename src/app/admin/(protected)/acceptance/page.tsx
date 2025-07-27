@@ -84,55 +84,89 @@ function PendingRequestAlert({ session }: { session: Session }) {
     }
 
     return (
-        <Alert variant="default" className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
-            <UserCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <AlertTitle className="text-amber-800 dark:text-amber-200">{t('admin_session_pending_title')}</AlertTitle>
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
-                <p className="mb-4">{t('admin_session_dialog_confirm_setup_desc', { deviceName: session.deviceName })}</p>
-                <div className="space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor={`session-name-${session.id}`} className="text-foreground">{t('admin_session_dialog_name_label')}</Label>
+        <Alert className="backdrop-blur-md bg-white/10 dark:bg-zinc-800/20 shadow-2xl border border-white/20 dark:border-zinc-700/30 rounded-xl p-4 transition-all duration-500">
+            <div className="flex items-start gap-3">
+                <UserCheck className="h-5 w-5 text-cyan-500 dark:text-cyan-400 mt-1" />
+                <div className="flex-1">
+                <AlertTitle className="text-zinc-900 dark:text-white mb-2 font-semibold">
+                    {t("admin_session_pending_title")}
+                </AlertTitle>
+
+                <AlertDescription className="text-zinc-800 dark:text-zinc-300 space-y-4 text-sm">
+                    <p>
+                    {t("admin_session_dialog_confirm_setup_desc", {
+                        deviceName: session.deviceName,
+                    })}
+                    </p>
+
+                    <div className="space-y-2">
+                    {/* Input name */}
+                    <div className="space-y-1">
+                        <Label htmlFor={`session-name-${session.id}`} className="text-zinc-800 dark:text-zinc-200">
+                        {t("admin_session_dialog_name_label")}
+                        </Label>
                         <Input
-                            id={`session-name-${session.id}`}
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            disabled={isSubmitting}
+                        id={`session-name-${session.id}`}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={isSubmitting}
+                        className="bg-white/20 dark:bg-zinc-900/40 backdrop-blur-sm border border-white/20 dark:border-zinc-700 text-zinc-900 dark:text-white"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-foreground">{t('admin_session_dialog_role_label')}</Label>
-                        <RadioGroup 
-                            value={role} 
-                            onValueChange={(value) => setRole(value as 'junior' | 'worker')} 
-                            className="flex gap-4"
-                            disabled={isSubmitting}
+
+                    {/* Role selector */}
+                    <div className="space-y-1">
+                        <Label className="text-zinc-800 dark:text-zinc-200">
+                        {t("admin_session_dialog_role_label")}
+                        </Label>
+                        <RadioGroup
+                        value={role}
+                        onValueChange={(value) => setRole(value as "junior" | "worker")}
+                        className="flex gap-4 pt-1"
+                        disabled={isSubmitting}
                         >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="junior" id={`role-junior-${session.id}`} className="border-primary" />
-                                <Label htmlFor={`role-junior-${session.id}`} className="flex items-center gap-2 font-normal cursor-pointer text-foreground">
-                                   <User className="h-4 w-4 text-blue-500" /> {t('admin_role_junior')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="worker" id={`role-worker-${session.id}`} className="border-primary"/>
-                                <Label htmlFor={`role-worker-${session.id}`} className="flex items-center gap-2 font-normal cursor-pointer text-foreground">
-                                    <Archive className="h-4 w-4 text-green-500" /> {t('admin_role_worker')}
-                                </Label>
-                            </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="junior" id={`role-junior-${session.id}`} className="border-cyan-500" />
+                            <Label htmlFor={`role-junior-${session.id}`} className="flex items-center gap-2 text-sm font-normal cursor-pointer text-zinc-800 dark:text-zinc-200 hover:text-cyan-600 dark:hover:text-cyan-400">
+                            <User className="h-4 w-4 text-cyan-500" />
+                            {t("admin_role_junior")}
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="worker" id={`role-worker-${session.id}`} className="border-green-500" />
+                            <Label htmlFor={`role-worker-${session.id}`} className="flex items-center gap-2 text-sm font-normal cursor-pointer text-zinc-800 dark:text-zinc-200 hover:text-green-600 dark:hover:text-green-400">
+                            <Archive className="h-4 w-4 text-green-500" />
+                            {t("admin_role_worker")}
+                            </Label>
+                        </div>
                         </RadioGroup>
                     </div>
-                    <div className="flex gap-2 justify-end">
-                        <Button variant="destructive" size="sm" onClick={handleDecline} disabled={isSubmitting}>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            {t('admin_delete_button')}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDecline}
+                        disabled={isSubmitting}
+                        >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        {t("admin_delete_button")}
                         </Button>
-                        <Button variant="default" size="sm" onClick={handleApprove} disabled={isSubmitting}>
-                           <UserCheck className="mr-2 h-4 w-4" />
-                           {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
+                        <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleApprove}
+                        disabled={isSubmitting}
+                        >
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        {isSubmitting ? t("admin_saving_text") : t("admin_confirm_button")}
                         </Button>
                     </div>
+                    </div>
+                </AlertDescription>
                 </div>
-            </AlertDescription>
+            </div>
         </Alert>
     );
 }
@@ -442,7 +476,7 @@ export default function AdminAcceptancePage() {
     <>
     <div className="space-y-8">
         {isSenior && pendingSessions && pendingSessions.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-4 sticky top-4 z-50">
                 {pendingSessions.map(session => (
                     <PendingRequestAlert key={session.id} session={session} />
                 ))}
@@ -542,5 +576,3 @@ export default function AdminAcceptancePage() {
     </>
   );
 }
-
-    
