@@ -11,13 +11,16 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, writeBatch, increment, query, orderBy, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle, ArrowUpRightFromSquare } from 'lucide-react';
+import { CheckCircle, ArrowUpRightFromSquare, UserCheck, XCircle, User, Archive } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth, Session, SessionRole } from '@/contexts/auth-context';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type ProductType = 'kit' | 'unit' | 'area';
 interface IncludedProduct {
@@ -42,9 +45,103 @@ interface FullscreenState {
   startIndex: number;
 }
 
+function PendingRequestAlert({ session }: { session: Session }) {
+    const { t } = useLanguage();
+    const { toast } = useToast();
+    const { approveSession, deleteSession } = useAuth();
+    const [name, setName] = useState(session.deviceName);
+    const [role, setRole] = useState<'junior' | 'worker'>('junior');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const handleApprove = async () => {
+        if (!name) {
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_dialog_name_required') });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await approveSession(session, name, role);
+            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: name }) });
+        } catch (error) {
+            console.error("Error confirming access:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    const handleDecline = async () => {
+        setIsSubmitting(true);
+        try {
+            await deleteSession(session);
+            toast({ title: t('admin_session_delete_success_title'), description: t('admin_session_delete_success_desc', { deviceName: session.deviceName }) });
+        } catch (error) {
+            console.error("Error deleting session:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_delete_error_desc') });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <Alert variant="default" className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+            <UserCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">{t('admin_session_pending_title')}</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                <p className="mb-4">{t('admin_session_dialog_confirm_setup_desc', { deviceName: session.deviceName })}</p>
+                <div className="space-y-4">
+                     <div className="space-y-2">
+                        <Label htmlFor={`session-name-${session.id}`} className="text-foreground">{t('admin_session_dialog_name_label')}</Label>
+                        <Input
+                            id={`session-name-${session.id}`}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-foreground">{t('admin_session_dialog_role_label')}</Label>
+                        <RadioGroup 
+                            value={role} 
+                            onValueChange={(value) => setRole(value as 'junior' | 'worker')} 
+                            className="flex gap-4"
+                            disabled={isSubmitting}
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="junior" id={`role-junior-${session.id}`} className="border-primary" />
+                                <Label htmlFor={`role-junior-${session.id}`} className="flex items-center gap-2 font-normal cursor-pointer text-foreground">
+                                   <User className="h-4 w-4 text-blue-500" /> {t('admin_role_junior')}
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="worker" id={`role-worker-${session.id}`} className="border-primary"/>
+                                <Label htmlFor={`role-worker-${session.id}`} className="flex items-center gap-2 font-normal cursor-pointer text-foreground">
+                                    <Archive className="h-4 w-4 text-green-500" /> {t('admin_role_worker')}
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                        <Button variant="destructive" size="sm" onClick={handleDecline} disabled={isSubmitting}>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            {t('admin_delete_button')}
+                        </Button>
+                        <Button variant="default" size="sm" onClick={handleApprove} disabled={isSubmitting}>
+                           <UserCheck className="mr-2 h-4 w-4" />
+                           {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
+                        </Button>
+                    </div>
+                </div>
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 export default function AdminAcceptancePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
   const [containers, setContainers] = useState<Container[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingContainerId, setAcceptingContainerId] = useState<string | null>(null);
@@ -55,6 +152,9 @@ export default function AdminAcceptancePage() {
   const [containerToDispatch, setContainerToDispatch] = useState<Container | null>(null);
   const { view, setView } = useViewSwitcher('acceptance');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
+  
+  const isSenior = user?.currentSession?.role === 'senior';
+  const pendingSessions = user?.sessions.filter(s => s.role === 'pending');
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -341,6 +441,13 @@ export default function AdminAcceptancePage() {
   return (
     <>
     <div className="space-y-8">
+        {isSenior && pendingSessions && pendingSessions.length > 0 && (
+            <div className="space-y-4">
+                {pendingSessions.map(session => (
+                    <PendingRequestAlert key={session.id} session={session} />
+                ))}
+            </div>
+        )}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h1 className="text-3xl font-bold tracking-tight whitespace-wrap text-center sm:text-left sm:whitespace-nowrap">{t('admin_acceptance_title')}</h1>
         <div className="flex w-full justify-end">
@@ -435,3 +542,5 @@ export default function AdminAcceptancePage() {
     </>
   );
 }
+
+    
