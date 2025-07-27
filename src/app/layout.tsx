@@ -6,7 +6,6 @@ import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/contexts/theme-provider';
-import 'intro.js/introjs.css';
 
 
 export const metadata: Metadata = {

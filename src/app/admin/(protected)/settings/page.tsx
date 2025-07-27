@@ -25,7 +25,6 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Steps } from 'intro.js-react';
 
 // --- Components for MODERN view ---
 
@@ -864,19 +863,6 @@ export default function SettingsPage() {
     
     return (
         <>
-            <Steps
-                enabled={isWalkthroughEnabled}
-                steps={steps}
-                initialStep={0}
-                onExit={onExit}
-                options={{
-                    nextLabel: t('admin_walkthrough_next'),
-                    prevLabel: t('admin_walkthrough_prev'),
-                    doneLabel: t('admin_walkthrough_done'),
-                    tooltipClass: 'custom-tooltip-class',
-                    showBullets: false,
-                }}
-            />
             {viewMode === 'classic' ? <ClassicSettingsView /> : <ModernSettingsView />}
         </>
     );

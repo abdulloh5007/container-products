@@ -9,8 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
-import 'intro.js/introjs.css';
-import { Steps } from 'intro.js-react';
 import { useLanguage } from '@/hooks/use-language';
 
 
@@ -109,25 +107,10 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   ];
 
   return (
-    <>
-    <Steps
-        enabled={isWalkthroughEnabled}
-        steps={steps}
-        initialStep={0}
-        onExit={onExit}
-        options={{
-          nextLabel: t('admin_walkthrough_next'),
-          prevLabel: t('admin_walkthrough_prev'),
-          doneLabel: t('admin_walkthrough_done'),
-          tooltipClass: 'custom-tooltip-class',
-          showBullets: false,
-        }}
-      />
     <div className="flex min-h-screen flex-col bg-background">
         {viewMode === 'classic' ? <Sidebar /> : null}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
     </div>
-    </>
   );
 }
