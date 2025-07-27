@@ -35,15 +35,19 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
       try {
         const element = document.querySelector(steps[currentStep].element);
         if (element) {
-          const rect = element.getBoundingClientRect();
-          setTargetPosition({
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-          });
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Delay to allow for scroll animation
+          setTimeout(() => {
+            const rect = element.getBoundingClientRect();
+            setTargetPosition({
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+            });
+          }, 400); // Adjust delay if scroll is slower/faster
         } else {
-          // If element not found, close the walkthrough to prevent errors
           onClose();
         }
       } catch (e) {
@@ -79,6 +83,7 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
   }
 
   const handleClose = () => {
+    setTargetPosition(null);
     setCurrentStep(0);
     onClose();
   };
@@ -107,7 +112,8 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
               transition: { type: 'spring', stiffness: 300, damping: 30 }
             }}
             style={{
-                boxShadow: '0 0 0 9999px hsla(0, 0%, 0%, 0.6)',
+                boxShadow: '0 0 0 9999px hsla(var(--background) / 0.6)',
+                backdropFilter: 'blur(2px)'
             }}
           />
 
@@ -124,7 +130,7 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
             }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <div className="bg-card text-card-foreground p-4 rounded-lg shadow-2xl space-y-4">
+            <div className="bg-card text-card-foreground p-4 rounded-lg shadow-2xl space-y-4 border">
               <p>{steps[currentStep].intro}</p>
               <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">{currentStep + 1} / {steps.length}</span>
