@@ -10,6 +10,7 @@ import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
 import { useLanguage } from '@/hooks/use-language';
+import { Walkthrough } from '@/components/admin/walkthrough';
 
 
 function AdminSkeleton() {
@@ -94,12 +95,12 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
     return null;
   }
   
-  const onExit = () => {
+  const onExitWalkthrough = () => {
     setWalkthroughEnabled(false);
     localStorage.setItem(WALKTHROUGH_ACCEPTANCE_KEY, 'true');
   };
   
-  const steps = [
+  const acceptanceSteps = [
     {
       element: '[data-intro="pending-requests"]',
       intro: t('admin_walkthrough_pending_requests'),
@@ -111,6 +112,11 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
         {viewMode === 'classic' ? <Sidebar /> : null}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
+        <Walkthrough
+            isOpen={isWalkthroughEnabled}
+            steps={acceptanceSteps}
+            onClose={onExitWalkthrough}
+        />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Walkthrough } from '@/components/admin/walkthrough';
 
 // --- Components for MODERN view ---
 
@@ -849,12 +850,12 @@ export default function SettingsPage() {
         )
     }
 
-    const onExit = () => {
+    const onExitWalkthrough = () => {
         setWalkthroughEnabled(false);
         localStorage.setItem(WALKTHROUGH_SETTINGS_KEY, 'true');
     };
 
-    const steps = [
+    const settingsSteps = [
         {
             element: '[data-intro="view-mode-switcher"]',
             intro: t('admin_walkthrough_view_switcher'),
@@ -864,6 +865,11 @@ export default function SettingsPage() {
     return (
         <>
             {viewMode === 'classic' ? <ClassicSettingsView /> : <ModernSettingsView />}
+             <Walkthrough
+                isOpen={isWalkthroughEnabled}
+                steps={settingsSteps}
+                onClose={onExitWalkthrough}
+            />
         </>
     );
 }
