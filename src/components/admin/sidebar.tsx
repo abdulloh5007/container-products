@@ -16,16 +16,17 @@ import { ThemeSwitcher } from '@/components/theme-switcher';
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout, pendingRequests, isManagementModeEnabled, user } = useAuth();
+  const { logout, user } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isSenior = user?.currentSession.role === 'senior';
   const role = user?.currentSession.role;
+  const pendingRequests = user?.sessions.filter(s => s.role === 'pending').length || 0;
 
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.reload();
+      router.push('/admin/login');
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -59,7 +60,7 @@ export function Sidebar() {
   const renderNavGrid = () => {
       let navItems = [...mainNavItems];
 
-      if (isManagementModeEnabled && isSenior) {
+      if (user?.isManagementModeEnabled && isSenior) {
         navItems.push(...managementNavItems.map(item => ({ ...item, roles: ['senior'] })));
       }
       
@@ -139,7 +140,7 @@ export function Sidebar() {
                    {renderNavGrid()}
                 </div>
                  <div className="mt-auto border-t pt-4 space-y-2">
-                   {(isSenior || role === 'junior') && (
+                   {isSenior && (
                      <Button 
                        variant="ghost" 
                        className={cn(
@@ -150,7 +151,7 @@ export function Sidebar() {
                      >
                        <Settings className="h-5 w-5" />
                        {t('admin_sidebar_settings')}
-                        {pendingRequests > 0 && isSenior && (
+                        {pendingRequests > 0 && (
                           <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full" />
                         )}
                      </Button>

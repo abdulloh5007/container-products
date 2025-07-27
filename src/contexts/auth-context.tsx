@@ -29,6 +29,7 @@ export interface AppUser {
     photoURL?: string | null;
     sessions: Session[];
     currentSession: Session | null;
+    isManagementModeEnabled?: boolean;
 }
 
 export type LoginState = 'form' | 'pending' | 'failed' | 'no_account' | 'access_denied';
@@ -38,9 +39,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   isRegistrationAllowed: boolean;
-  pendingRequests: number;
-  isManagementModeEnabled: boolean;
-  isLoadingSettings: boolean;
+  toggleManagementMode: () => Promise<void>;
   loginState: LoginState;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -50,8 +49,6 @@ type AuthContextType = {
   logout: () => Promise<void>;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
-  setPendingRequests: (count: number) => void;
-  toggleManagementMode: () => Promise<void>;
   approveSession: (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   updateUserRole: (session: Session, name: string, role: 'junior' | 'worker') => Promise<void>;
@@ -83,9 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState(0);
-  const [isManagementModeEnabled, setIsManagementModeEnabled] = useState(false);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [loginState, setLoginState] = useState<LoginState>('form');
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
@@ -138,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeSession = async () => {
       let sessionId = await idb.get<string>('currentSessionId');
       if (!sessionId) {
-          // If a senior logged out on this device, let's restore their session automatically 
           const seniorSessionId = await idb.get<string>('seniorSessionId');
           if (seniorSessionId) {
               sessionId = seniorSessionId;
@@ -152,21 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const settingsDocRef = doc(db, 'settings', 'global');
-    const unsubscribeSettings = onSnapshot(settingsDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            setIsManagementModeEnabled(!!docSnap.data().isManagementModeEnabled);
-        } else {
-            setIsManagementModeEnabled(true);
-        }
-        setIsLoadingSettings(false);
-    }, () => {
-        setIsManagementModeEnabled(true);
-        setIsLoadingSettings(false);
-    });
-
     if (isAuthLoading) {
-      // Defer auth subscription until client-side session is initialized
       return;
     }
 
@@ -186,12 +165,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             setLoginState('form');
                         }
                         setUser({ ...userData, uid: firebaseUser.uid, currentSession });
-                        const pendingCount = sessions.filter(s => s.role === 'pending').length;
-                        setPendingRequests(pendingCount);
                     } else {
-                       signOut(auth); 
+                       // Current session ID not found in user's sessions, likely deleted
+                       // so sign out this device.
+                       signOut(auth);
                     }
                 } else {
+                   // User document doesn't exist.
                    signOut(auth);
                 }
                 setIsAuthLoading(false);
@@ -200,7 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
             setUser(null);
             if (currentSessionId) {
-                // If there's a session ID but no firebase user, it's invalid.
                 idb.del('currentSessionId');
                 setCurrentSessionId(null);
             }
@@ -211,7 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
         unsubscribeAuth();
-        unsubscribeSettings();
     }
   }, [currentSessionId, isAuthLoading]);
   
@@ -223,41 +201,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const firebaseUser = userCredential.user;
-    
-    // There is only one user document, find it
-    const usersCollection = await getDocs(collection(db, 'users'));
-    if (usersCollection.empty) {
-        setLoginState('no_account');
-        await signOut(auth);
-        throw new Error(translateFirebaseError('auth/user-not-found'));
-    }
-    const userDocRef = usersCollection.docs[0].ref;
+    const userDocRef = doc(db, "users", firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
 
-    if (!userDocSnap.exists() || userDocSnap.id !== firebaseUser.uid) {
-        // This should not happen if there's only one user, but as a safeguard.
+    if (!userDocSnap.exists()) {
         setLoginState('no_account');
         await signOut(auth);
         throw new Error(translateFirebaseError('auth/user-not-found'));
     }
     
-    const userData = userDocSnap.data();
-    const sessions = userData.sessions || [];
-    
-    // THE CRITICAL CHECK: First check IndexedDB for a senior session "key"
+    // Check for a saved senior session ID first
     const seniorSessionIdFromDb = await idb.get<string>('seniorSessionId');
-
     if (seniorSessionIdFromDb) {
+        const sessions = userDocSnap.data().sessions || [];
         const seniorSessionInFirestore = sessions.find((s: Session) => s.id === seniorSessionIdFromDb && s.role === 'senior');
         if (seniorSessionInFirestore) {
-            // This is the senior re-logging into their privileged session.
             await idb.set('currentSessionId', seniorSessionInFirestore.id);
             setCurrentSessionId(seniorSessionInFirestore.id);
             return;
         }
     }
     
-    // If no senior key, or key is invalid, this is a new device/session that needs approval.
+    // If not a senior re-logging in, create a new pending session
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
@@ -284,7 +249,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Registration is not allowed.");
     }
 
-    // Only the very first user ever becomes senior automatically.
     const isFirstUser = snapshot.empty;
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password).catch(error => {
@@ -305,7 +269,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUserDoc: Omit<AppUser, 'currentSession' | 'uid'> = {
        name: name,
        email: firebaseUser.email,
-       sessions: [newSession]
+       sessions: [newSession],
+       isManagementModeEnabled: true,
     };
     
     await setDoc(doc(db, "users", firebaseUser.uid), newUserDoc);
@@ -322,23 +287,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    if (user && user.currentSession) {
-        const sessionToLogout = user.currentSession;
+    if (!user || !user.currentSession) return;
+    
+    const sessionToLogout = user.currentSession;
+
+    if (sessionToLogout.role === 'senior') {
+        await idb.set('seniorSessionId', sessionToLogout.id);
+    } else {
         const userDocRef = doc(db, 'users', user.uid);
-        
-        if (sessionToLogout.role === 'senior') {
-            // Preserve the senior session ID for quick re-login
-            await idb.set('seniorSessionId', sessionToLogout.id);
-        } else {
-            // For other roles, remove the session from Firestore
-            await updateDoc(userDocRef, { sessions: arrayRemove(sessionToLogout) });
-        }
-        // Always clear the current active session ID
-        await idb.del('currentSessionId');
+        await updateDoc(userDocRef, { sessions: arrayRemove(sessionToLogout) });
     }
     
+    await idb.del('currentSessionId');
     await signOut(auth);
-    setCurrentSessionId(null); // Triggers re-evaluation of auth state
+    setCurrentSessionId(null); 
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -356,9 +318,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updatePassword(firebaseUser, newPassword);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        // On password change, log out all other sessions for security
         await updateDoc(userDocRef, { sessions: [user.currentSession] });
-        await idb.del('seniorSessionId'); // Force re-auth on other devices
+        await idb.del('seniorSessionId'); 
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
     }
@@ -366,16 +327,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const toggleManagementMode = async () => {
     if (user?.currentSession?.role !== 'senior') return;
-    const settingsDocRef = doc(db, 'settings', 'global');
+    const userDocRef = doc(db, 'users', user.uid);
     try {
-        await updateDoc(settingsDocRef, { isManagementModeEnabled: !isManagementModeEnabled });
+        await updateDoc(userDocRef, { isManagementModeEnabled: !user.isManagementModeEnabled });
     } catch (error) {
-        if ((error as any).code === 'not-found') {
-            await setDoc(settingsDocRef, { isManagementModeEnabled: !isManagementModeEnabled });
-        } else {
-            console.error("Failed to toggle management mode", error);
-            throw error;
-        }
+        console.error("Failed to toggle management mode", error);
+        throw error;
     }
   };
   
@@ -421,10 +378,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     updateUserPassword,
-    pendingRequests,
-    setPendingRequests: (count: number) => setPendingRequests(count),
-    isManagementModeEnabled,
-    isLoadingSettings,
     toggleManagementMode,
     loginState,
     setLoginState,
@@ -434,7 +387,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     translateFirebaseError,
     viewMode,
     setViewMode,
-  }), [user, isAuthLoading, isRegistrationAllowed, pendingRequests, isManagementModeEnabled, isLoadingSettings, loginState, viewMode, translateFirebaseError]);
+  }), [user, isAuthLoading, isRegistrationAllowed, loginState, viewMode, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -450,4 +403,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
