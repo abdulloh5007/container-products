@@ -87,3 +87,62 @@
     -moz-appearance: textfield; /* Firefox */
   }
 }
+
+/* Custom Intro.js Styles */
+.custom-tooltip-class .introjs-tooltip {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.custom-tooltip-class .introjs-arrow.top {
+    border-bottom-color: hsl(var(--border));
+}
+.custom-tooltip-class .introjs-arrow.top-middle, .custom-tooltip-class .introjs-arrow.top-right {
+     border-bottom-color: hsl(var(--card));
+}
+.custom-tooltip-class .introjs-arrow.bottom {
+    border-top-color: hsl(var(--border));
+}
+.custom-tooltip-class .introjs-arrow.bottom-middle, .custom-tooltip-class .introjs-arrow.bottom-right {
+     border-top-color: hsl(var(--card));
+}
+.custom-tooltip-class .introjs-arrow.left {
+    border-right-color: hsl(var(--border));
+}
+.custom-tooltip-class .introjs-arrow.left::after {
+    border-right-color: hsl(var(--card));
+}
+.custom-tooltip-class .introjs-arrow.right {
+    border-left-color: hsl(var(--border));
+}
+.custom-tooltip-class .introjs-arrow.right::after {
+     border-left-color: hsl(var(--card));
+}
+
+
+.custom-tooltip-class .introjs-button {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    text-shadow: none;
+    border-radius: calc(var(--radius) - 2px);
+    transition: background-color 0.2s;
+}
+
+.custom-tooltip-class .introjs-button:hover {
+    background-color: hsl(var(--primary) / 0.9);
+}
+
+.custom-tooltip-class .introjs-button:focus {
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+.custom-tooltip-class .introjs-skipbutton {
+    color: hsl(var(--muted-foreground));
+}
+
+.custom-tooltip-class .introjs-skipbutton:hover {
+    color: hsl(var(--foreground));
+}
