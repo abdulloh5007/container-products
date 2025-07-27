@@ -112,7 +112,7 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   return (
     <div className="flex min-h-screen flex-col bg-background">
         {viewMode === 'classic' ? <Sidebar /> : null}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
         <Walkthrough
             isOpen={isWalkthroughEnabled}

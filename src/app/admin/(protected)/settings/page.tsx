@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, LogOut, Eye, EyeOff, Smartphone, Archive, Edit, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Users, LayoutTemplate, Monitor, Warehouse } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Settings2, LogOut, Eye, EyeOff, Smartphone, Archive, Edit, History, ListCollapse, ChevronRight, Package, Box, Languages, Palette, UserCircle, Users, LayoutTemplate, Monitor, Warehouse, ChevronDown } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -168,13 +168,15 @@ function ModernSettingsView() {
             </div>
 
             <Card>
-                <CardContent className="p-0 divide-y">
-                     <SettingsItem title={t('language')} icon={Languages}>
-                        <LanguageSwitcher />
-                    </SettingsItem>
-                     <SettingsItem title={t('toggle_theme')} icon={Palette}>
-                        <ThemeSwitcher />
-                    </SettingsItem>
+                <CardContent className="p-2 sm:p-4 divide-y sm:divide-y-0 sm:divide-x flex flex-col sm:flex-row">
+                     <div className="flex-1 flex items-center justify-between p-2 sm:pr-4">
+                        <span className="font-semibold">{t('language')}</span>
+                        <LanguageSwitcher hasArrow />
+                     </div>
+                     <div className="flex-1 flex items-center justify-between p-2 sm:pl-4">
+                        <span className="font-semibold">{t('toggle_theme')}</span>
+                        <ThemeSwitcher hasArrow />
+                    </div>
                 </CardContent>
             </Card>
 
