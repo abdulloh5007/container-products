@@ -165,7 +165,6 @@ function ModernSettingsView() {
                         <NavButton href="/admin/containers" icon={Box} title={t('admin_sidebar_containers')} />
                     </>
                 )}
-                {isSenior && <NavButton href="/admin/rentals" icon={Warehouse} title={t('admin_rentals_title')} />}
             </div>
 
             <Card>

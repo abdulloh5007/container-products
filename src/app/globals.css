@@ -86,4 +86,12 @@
   input[type=number] {
     -moz-appearance: textfield; /* Firefox */
   }
+
+  /* Custom Walkthrough Styles */
+  .walkthrough-highlight {
+    position: relative;
+    z-index: 101 !important;
+    transform: scale(1.05);
+    transition: transform 0.3s ease-in-out;
+  }
 }

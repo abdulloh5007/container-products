@@ -29,16 +29,25 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
   const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
   const [targetPosition, setTargetPosition] = useState<Position | null>(null);
+  const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    if (isOpen && steps[currentStep]) {
+    const activeStep = steps[currentStep];
+    if (isOpen && activeStep) {
       try {
-        const element = document.querySelector(steps[currentStep].element);
+        const element = document.querySelector<HTMLElement>(activeStep.element);
+        
+        if (targetElement && element !== targetElement) {
+           targetElement.classList.remove('walkthrough-highlight');
+        }
+
         if (element) {
+          setTargetElement(element);
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
-          // Delay to allow for scroll animation
-          setTimeout(() => {
+          element.classList.add('walkthrough-highlight');
+
+          const updatePosition = () => {
             const rect = element.getBoundingClientRect();
             setTargetPosition({
               top: rect.top,
@@ -46,16 +55,28 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
               width: rect.width,
               height: rect.height,
             });
-          }, 400); // Adjust delay if scroll is slower/faster
+          }
+
+          // Delay to allow for scroll animation
+          const timeoutId = setTimeout(updatePosition, 300); 
+          
+          return () => {
+              clearTimeout(timeoutId);
+              element.classList.remove('walkthrough-highlight');
+          }
+
         } else {
-          onClose();
+          onClose(); // Close if element not found
         }
       } catch (e) {
         console.error("Walkthrough selector error:", e);
         onClose();
       }
+    } else if (targetElement) {
+       targetElement.classList.remove('walkthrough-highlight');
+       setTargetElement(null);
     }
-  }, [isOpen, currentStep, steps, onClose]);
+  }, [isOpen, currentStep, steps, onClose, targetElement]);
   
   useEffect(() => {
       if (isOpen) {
@@ -83,13 +104,23 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
   }
 
   const handleClose = () => {
+    if(targetElement) {
+        targetElement.classList.remove('walkthrough-highlight');
+    }
     setTargetPosition(null);
     setCurrentStep(0);
     onClose();
   };
   
-  const tooltipYPosition = targetPosition && targetPosition.top > window.innerHeight / 2 ? targetPosition.top - 16 : (targetPosition?.top ?? 0) + (targetPosition?.height ?? 0) + 16;
-  const tooltipTransformY = targetPosition && targetPosition.top > window.innerHeight / 2 ? '-100%' : '0%';
+  if (!isOpen || !targetPosition) {
+    return null;
+  }
+  
+  const tooltipYPosition = targetPosition.top > window.innerHeight / 2 
+    ? targetPosition.top - 16 
+    : targetPosition.top + targetPosition.height + 16;
+    
+  const tooltipTransformY = targetPosition.top > window.innerHeight / 2 ? '-100%' : '0%';
 
   return (
     <AnimatePresence>
@@ -100,27 +131,16 @@ export function Walkthrough({ isOpen, steps, onClose }: WalkthroughProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Highlight Box & Overlay */}
-          <motion.div
-            className="absolute rounded-lg"
-            initial={false}
-            animate={{
-              left: targetPosition.left - 8,
-              top: targetPosition.top - 8,
-              width: targetPosition.width + 16,
-              height: targetPosition.height + 16,
-              transition: { type: 'spring', stiffness: 300, damping: 30 }
-            }}
-            style={{
-                boxShadow: '0 0 0 9999px hsla(var(--background) / 0.6)',
-                backdropFilter: 'blur(2px)'
-            }}
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-background/60 backdrop-blur-sm"
+            onClick={handleClose}
           />
 
           {/* Tooltip */}
           <motion.div
             key={currentStep}
-            className="absolute left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm"
+            className="absolute left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-[102]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
                 opacity: 1, 
