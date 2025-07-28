@@ -42,7 +42,7 @@ export default function AdminProductsPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
-  const { user, isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,10 +64,10 @@ export default function AdminProductsPage() {
 
 
   useEffect(() => {
-      if (!isAuthLoading && (isWorker || !isManagementModeEnabled || !isSenior)) {
+      if (!isAuthLoading && (isWorker || !user?.isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, isSenior, isWorker, router]);
+  }, [isAuthLoading, user?.isManagementModeEnabled, isSenior, isWorker, router]);
 
 
   const fetchProducts = useCallback(async () => {
@@ -86,10 +86,10 @@ export default function AdminProductsPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    if (isManagementModeEnabled && isSenior) {
+    if (user?.isManagementModeEnabled && isSenior) {
       fetchProducts();
     }
-  }, [fetchProducts, isManagementModeEnabled, isSenior]);
+  }, [fetchProducts, user?.isManagementModeEnabled, isSenior]);
   
   const filteredProducts = useMemo(() => {
     const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
@@ -267,7 +267,7 @@ export default function AdminProductsPage() {
         )
     }
 
-    if (!isManagementModeEnabled || !isSenior) {
+    if (!user?.isManagementModeEnabled || !isSenior) {
         return null;
     }
 
@@ -337,7 +337,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  if ((!isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
+  if ((!user?.isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
     return null; // Render nothing while redirecting
   }
 

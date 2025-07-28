@@ -136,7 +136,7 @@ function ViewModeSwitcherCard({ viewMode, setViewMode }: { viewMode: ViewMode, s
 
 function ModernSettingsView() {
     const { t } = useLanguage();
-    const { logout, user, isManagementModeEnabled, toggleManagementMode, viewMode, setViewMode } = useAuth();
+    const { logout, user, toggleManagementMode, viewMode, setViewMode } = useAuth();
     const router = useRouter();
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const isSenior = user?.currentSession?.role === 'senior';
@@ -159,7 +159,7 @@ function ModernSettingsView() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <NavButton href="/admin/history" icon={History} title={t('admin_sidebar_history')} />
                 <NavButton href="/admin/stock-history" icon={ListCollapse} title={t('admin_sidebar_stock_history')} />
-                {isManagementModeEnabled && isSenior && (
+                {user?.isManagementModeEnabled && isSenior && (
                     <>
                         <NavButton href="/admin/products" icon={Package} title={t('admin_sidebar_products')} />
                         <NavButton href="/admin/containers" icon={Box} title={t('admin_sidebar_containers')} />
@@ -203,14 +203,14 @@ function ModernSettingsView() {
                                     {t('admin_settings_management_mode_label')}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
+                                    {user?.isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
                                 </p>
                             </div>
                             {isUpdatingMode ? (
                                 <Skeleton className="h-6 w-11 rounded-full" />
                             ) : (
                                 <Switch
-                                    checked={isManagementModeEnabled}
+                                    checked={user?.isManagementModeEnabled}
                                     onCheckedChange={handleToggleManagementMode}
                                     aria-label="Toggle management mode"
                                 />
@@ -233,7 +233,7 @@ function ModernSettingsView() {
 function ProfileTab() {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, isManagementModeEnabled, toggleManagementMode, viewMode, setViewMode } = useAuth();
+    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, toggleManagementMode, viewMode, setViewMode } = useAuth();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -364,14 +364,14 @@ function ProfileTab() {
                                     {t('admin_settings_management_mode_label')}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
+                                    {currentUser?.isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
                                 </p>
                             </div>
                             {isUpdatingMode ? (
                                 <Skeleton className="h-6 w-11 rounded-full" />
                             ) : (
                                 <Switch
-                                    checked={isManagementModeEnabled}
+                                    checked={currentUser?.isManagementModeEnabled}
                                     onCheckedChange={handleToggleManagementMode}
                                     aria-label="Toggle management mode"
                                 />

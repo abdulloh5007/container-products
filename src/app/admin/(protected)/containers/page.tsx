@@ -41,7 +41,7 @@ export default function AdminContainersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
-  const { user, isManagementModeEnabled, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,10 +53,10 @@ export default function AdminContainersPage() {
 
 
   useEffect(() => {
-      if (!isAuthLoading && (isWorker || !isManagementModeEnabled || !isSenior)) {
+      if (!isAuthLoading && (isWorker || !user?.isManagementModeEnabled || !isSenior)) {
           router.replace('/admin/acceptance');
       }
-  }, [isAuthLoading, isManagementModeEnabled, isSenior, isWorker, router]);
+  }, [isAuthLoading, user?.isManagementModeEnabled, isSenior, isWorker, router]);
 
   const fetchContainers = useCallback(async () => {
     setIsLoading(true);
@@ -74,10 +74,10 @@ export default function AdminContainersPage() {
   }, [t, toast]);
 
   useEffect(() => {
-    if (isManagementModeEnabled && isSenior) {
+    if (user?.isManagementModeEnabled && isSenior) {
       fetchContainers();
     }
-  }, [fetchContainers, isManagementModeEnabled, isSenior]);
+  }, [fetchContainers, user?.isManagementModeEnabled, isSenior]);
 
   const handleDelete = async () => {
     if (!containerToDelete) return;
@@ -142,7 +142,7 @@ export default function AdminContainersPage() {
         )
     }
 
-    if (!isManagementModeEnabled || !isSenior) {
+    if (!user?.isManagementModeEnabled || !isSenior) {
         return null; // Redirect is handling this
     }
 
@@ -222,7 +222,7 @@ export default function AdminContainersPage() {
     )
   }
 
-  if ((!isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
+  if ((!user?.isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
     return null; // Render nothing while redirecting
   }
 
