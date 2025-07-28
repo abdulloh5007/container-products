@@ -136,7 +136,7 @@ function ViewModeSwitcherCard({ viewMode, setViewMode }: { viewMode: ViewMode, s
 
 function ModernSettingsView() {
     const { t } = useLanguage();
-    const { logout, user, isManagementModeEnabled, toggleManagementMode, isLoading: isLoadingSettings, viewMode, setViewMode } = useAuth();
+    const { logout, user, isManagementModeEnabled, toggleManagementMode, viewMode, setViewMode } = useAuth();
     const router = useRouter();
     const [isUpdatingMode, setIsUpdatingMode] = useState(false);
     const isSenior = user?.currentSession?.role === 'senior';
@@ -206,7 +206,7 @@ function ModernSettingsView() {
                                     {isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
                                 </p>
                             </div>
-                            {isLoadingSettings || isUpdatingMode ? (
+                            {isUpdatingMode ? (
                                 <Skeleton className="h-6 w-11 rounded-full" />
                             ) : (
                                 <Switch
@@ -233,7 +233,7 @@ function ModernSettingsView() {
 function ProfileTab() {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, isManagementModeEnabled, toggleManagementMode, isLoading: isLoadingSettings, viewMode, setViewMode } = useAuth();
+    const { user: currentUser, isAuthLoading, updateUserProfile, updateUserPassword, isManagementModeEnabled, toggleManagementMode, viewMode, setViewMode } = useAuth();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -367,7 +367,7 @@ function ProfileTab() {
                                     {isManagementModeEnabled ? t('admin_settings_management_mode_status_on') : t('admin_settings_management_mode_status_off')}
                                 </p>
                             </div>
-                            {isLoadingSettings || isUpdatingMode ? (
+                            {isUpdatingMode ? (
                                 <Skeleton className="h-6 w-11 rounded-full" />
                             ) : (
                                 <Switch

@@ -16,7 +16,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher';
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout, user } = useAuth();
+  const { logout, user, isManagementModeEnabled } = useAuth();
   const { t } = useLanguage();
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isSenior = user?.currentSession.role === 'senior';
@@ -28,6 +28,8 @@ export function Sidebar() {
   };
   
   const handleRefresh = () => {
+    // A more modern approach might be to refetch data instead of a full reload,
+    // but for simplicity and to ensure all state is fresh, reload works.
     window.location.reload();
   };
   
@@ -55,7 +57,7 @@ export function Sidebar() {
   const renderNavGrid = () => {
       let navItems = [...mainNavItems];
 
-      if (user?.isManagementModeEnabled && isSenior) {
+      if (isManagementModeEnabled && isSenior) {
         navItems.push(...managementNavItems.map(item => ({ ...item, roles: ['senior'] })));
       }
       
