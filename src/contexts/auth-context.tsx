@@ -316,10 +316,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleManagementMode = async () => {
-    if (user?.currentSession?.role !== 'senior') return;
+    if (!user || user.currentSession?.role !== 'senior') return;
+
     const userDocRef = doc(db, 'users', user.uid);
+    const newModeState = !user.isManagementModeEnabled;
+
     try {
-        await updateDoc(userDocRef, { isManagementModeEnabled: !user.isManagementModeEnabled });
+        await updateDoc(userDocRef, { isManagementModeEnabled: newModeState });
+        setUser(prevUser => prevUser ? { ...prevUser, isManagementModeEnabled: newModeState } : null);
     } catch (error) {
         console.error("Failed to toggle management mode", error);
         throw error;
