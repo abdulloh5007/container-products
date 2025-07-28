@@ -48,12 +48,28 @@ interface FullscreenState {
   startIndex: number;
 }
 
-const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-});
+const uploadToImgBB = async (file: File): Promise<string> => {
+    const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+    if (!apiKey) {
+        throw new Error("ImgBB API key is not configured.");
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+        throw new Error(result.error?.message || "Failed to upload image to ImgBB.");
+    }
+
+    return result.data.url;
+};
 
 
 function ImageUploader({ file, setFile, previewUrl, onPreviewClick }: { file: File | null, setFile: (file: File | null) => void, previewUrl?: string | null, onPreviewClick: (url: string) => void }) {
@@ -268,7 +284,7 @@ export default function NewContainerPage() {
         let finalImageUrl = containerImageUrl || '';
 
         if (containerImage) {
-            finalImageUrl = await fileToDataUri(containerImage);
+            finalImageUrl = await uploadToImgBB(containerImage);
         }
         
         const productsToSave = includedProducts

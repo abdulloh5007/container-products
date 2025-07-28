@@ -402,6 +402,7 @@ export default function AdminAcceptancePage() {
                         alt={container.name}
                         width={64}
                         height={64}
+                        unoptimized
                         className="rounded-md object-cover h-16 w-16 cursor-pointer"
                         onClick={() => openFullscreen(container.imageUrl || 'https://placehold.co/64x64.png')}
                     />
@@ -439,6 +440,7 @@ export default function AdminAcceptancePage() {
                             alt={container.name}
                             width={300}
                             height={200}
+                            unoptimized
                             className="rounded-t-lg object-cover w-full aspect-[3/2]"
                         />
                     </CardHeader>
