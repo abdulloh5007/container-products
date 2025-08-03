@@ -161,15 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (mySession) {
         if (mySession.role !== 'pending') {
-          // Approved! Worker/Junior does not need to sign in.
-          // The session ID is their key.
-          await idb.set('currentSessionId', mySession.id);
-          await idb.set('isAuthenticated', true); 
+          // Approved!
+          await idb.set('isAuthenticated', true);
+          await idb.set('currentSessionId', mySession.id); 
           await idb.del('pendingSessionId');
           setLoginState('approved');
           if (seniorUserUnsubscribe) seniorUserUnsubscribe();
           
-          // Reload to re-trigger the auth flow with the new session.
           window.location.reload();
 
         }
@@ -205,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             setUser(appUser);
                         } else {
                            // This session was deleted remotely, sign out.
-                           logout();
+                           logout(true);
                         }
                     } else {
                        // User doc doesn't exist or no session, sign out.
@@ -525,5 +523,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
