@@ -145,19 +145,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeSession();
 }, []);
 
+  const listenForSeniorUserChanges = useCallback((pendingSessionId: string) => {
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, limit(1));
+    
+    seniorUserUnsubscribe = onSnapshot(q, async (snapshot) => {
+      if (snapshot.empty) return;
+      
+      const seniorUserDoc = snapshot.docs[0];
+      const sessions = seniorUserDoc.data().sessions as Session[];
+      const mySession = sessions.find(s => s.id === pendingSessionId);
+      
+      if (mySession) {
+        if (mySession.role !== 'pending') {
+          // Approved!
+          await idb.set('currentSessionId', mySession.id);
+          setLoginState('approved');
+          await idb.del('pendingSessionId');
+          if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+          
+          window.location.reload();
+
+        }
+      } else {
+        // Declined (session was removed)
+        setLoginState('access_denied');
+        await idb.del('pendingSessionId');
+        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
              const userDocRef = doc(db, "users", firebaseUser.uid);
              const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    if (!currentSessionId) {
+                    const localCurrentSessionId = currentSessionId || (typeof window !== 'undefined' ? localStorage.getItem('currentSessionId') : null);
+                    if (!localCurrentSessionId) {
                         setIsLoading(false);
                         return;
                     }
                     const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
                     const sessions = userData.sessions || [];
-                    const currentSession = sessions.find(s => s.id === currentSessionId) || null;
+                    const currentSession = sessions.find(s => s.id === localCurrentSessionId) || null;
                     
                     if (currentSession) {
                         const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
@@ -181,7 +213,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return () => unsubscribeUser();
         } else {
             // No Firebase user, but we might be a worker waiting for approval.
-            // Check for a pending session ID in IndexedDB.
             idb.get<string>('pendingSessionId').then(pendingId => {
                 if (pendingId) {
                     listenForSeniorUserChanges(pendingId);
@@ -197,43 +228,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    return () => unsubscribeAuth();
-  }, [currentSessionId]);
-  
-  const listenForSeniorUserChanges = useCallback((pendingSessionId: string) => {
-    const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef, limit(1));
-    
-    seniorUserUnsubscribe = onSnapshot(q, async (snapshot) => {
-      if (snapshot.empty) return;
-      
-      const seniorUserDoc = snapshot.docs[0];
-      const sessions = seniorUserDoc.data().sessions as Session[];
-      const mySession = sessions.find(s => s.id === pendingSessionId);
-      
-      if (mySession) {
-        if (mySession.role !== 'pending') {
-          // Approved! Worker doesn't have a firebase user, so we handle it here.
-          setLoginState('approved');
-          await idb.set('currentSessionId', mySession.id);
-          setCurrentSessionId(mySession.id);
-          // Re-sign in as the main user to trigger the onAuthStateChanged listener
-          // This will load the senior user document and find the newly approved session.
-          const senior = await signInWithEmailAndPassword(auth, seniorUserDoc.data().email, "password_placeholder_not_used");
-          // This sign-in is just to trigger the auth state change.
-          // The actual login logic for the worker is now based on finding the session.
-          await idb.del('pendingSessionId');
-          if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-          
-        }
-      } else {
-        // Declined (session was removed)
-        setLoginState('access_denied');
-        idb.del('pendingSessionId');
+    return () => {
+        unsubscribeAuth();
         if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-      }
-    });
-  }, []);
+    };
+  }, [currentSessionId, listenForSeniorUserChanges]);
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
