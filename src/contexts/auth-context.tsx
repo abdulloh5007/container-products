@@ -165,8 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // The session ID is their key.
           await idb.set('currentSessionId', mySession.id);
           await idb.set('isAuthenticated', true); 
-          setLoginState('approved');
           await idb.del('pendingSessionId');
+          setLoginState('approved');
           if (seniorUserUnsubscribe) seniorUserUnsubscribe();
           
           // Reload to re-trigger the auth flow with the new session.
@@ -374,7 +374,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentSession = user.currentSession;
     const userDocRef = doc(db, 'users', user.uid);
   
-    // Find the session to remove from the array
     const sessionToRemove = user.sessions.find(s => s.id === currentSession.id);
     if (sessionToRemove) {
       try {
@@ -384,22 +383,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   
-    // Determine redirect path before clearing local data
     const redirectPath = currentSession.role === 'senior' ? '/admin/login' : '/admin/loginAsWorker';
   
-    // If the logged-out user is the senior (the one with Firebase auth), sign them out
     if (auth.currentUser && auth.currentUser.uid === user.uid) {
       await signOut(auth);
     }
   
-    // Clear all local session data
     await idb.del('currentSessionId');
     await idb.del('isAuthenticated');
     setUser(null);
     setCurrentSessionId(null);
     setLoginState('form');
   
-    // Full reload to the correct login page to ensure a clean state
     window.location.href = redirectPath;
   };
 
