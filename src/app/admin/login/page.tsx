@@ -65,6 +65,9 @@ function LoginForm() {
       if (role === 'worker') {
         redirectTo = '/admin/stock';
       }
+      if (role === 'senior') {
+        redirectTo = '/admin/acceptance';
+      }
       router.replace(searchParams.get('redirectTo') || redirectTo);
     }
   }, [isAuthenticated, isLoading, router, searchParams, user]);
