@@ -53,22 +53,13 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    // This effect is now primarily for redirecting already-logged-in users who land here by mistake.
     if (!isLoading && isAuthenticated && user) {
-      const role = user.currentSession?.role;
-      if (role === 'pending') {
-          // This case should ideally not happen if coming from the senior login page,
-          // but as a fallback, we direct them to the worker page.
-          router.replace('/admin/loginAsWorker');
-          return;
-      }
-      let redirectTo = '/admin/acceptance'; // Default for senior/junior
-      if (role === 'worker') {
-        redirectTo = '/admin/stock';
-      }
-      if (role === 'senior') {
-        redirectTo = '/admin/acceptance';
-      }
-      router.replace(searchParams.get('redirectTo') || redirectTo);
+        let redirectTo = '/admin/acceptance'; // Default for senior/junior
+        if (user.currentSession?.role === 'worker') {
+            redirectTo = '/admin/stock';
+        }
+        router.replace(searchParams.get('redirectTo') || redirectTo);
     }
   }, [isAuthenticated, isLoading, router, searchParams, user]);
 
@@ -77,6 +68,8 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(email, password);
+      // On successful login, immediately redirect.
+      router.replace('/admin/acceptance');
     } catch (error) {
       console.error(error);
       toast({
@@ -89,7 +82,7 @@ function LoginForm() {
     }
   };
 
-  if (isLoading || (isAuthenticated && user?.currentSession?.role !== 'pending')) {
+  if (isLoading || isAuthenticated) {
     return <LoginSkeleton />;
   }
 
