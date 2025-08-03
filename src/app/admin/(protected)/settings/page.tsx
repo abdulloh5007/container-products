@@ -817,28 +817,20 @@ const WALKTHROUGH_SETTINGS_KEY = 'walkthrough-settings-seen';
 export default function SettingsPage() {
     const { t } = useLanguage();
     const { user, viewMode, isAuthLoading } = useAuth();
-    const router = useRouter();
     const [isWalkthroughEnabled, setWalkthroughEnabled] = useState(false);
 
-    const role = user?.currentSession?.role;
-    const isSenior = role === 'senior';
+    const canViewPage = !isAuthLoading && (user?.currentSession?.role === 'senior' || user?.currentSession?.role === 'junior');
     
     useEffect(() => {
-        if (!isAuthLoading && !isSenior) {
-            router.replace('/admin/acceptance');
-        }
-    }, [isAuthLoading, isSenior, router]);
-    
-    useEffect(() => {
-        if (isSenior) {
+        if (user?.currentSession?.role === 'senior') {
             const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_SETTINGS_KEY);
             if (!hasSeenWalkthrough) {
                 setTimeout(() => setWalkthroughEnabled(true), 500);
             }
         }
-    }, [isSenior]);
+    }, [user?.currentSession?.role]);
 
-    if (isAuthLoading || !isSenior) {
+    if (isAuthLoading || !canViewPage) {
          return (
              <div className="max-w-4xl mx-auto space-y-8">
                  <Skeleton className="h-8 w-64" />

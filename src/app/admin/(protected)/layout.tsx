@@ -11,7 +11,6 @@ import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
 import { useLanguage } from '@/hooks/use-language';
 import { Walkthrough } from '@/components/admin/walkthrough';
-import * as idb from '@/lib/indexed-db';
 
 
 function AdminSkeleton() {
@@ -62,17 +61,33 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
     
     if (isAuthenticated) {
         const role = user?.currentSession?.role;
-        
+        const managementMode = user?.isManagementModeEnabled;
+
+        // Redirect pending users to login
         if (role === 'pending') {
             router.replace('/admin/login');
             return;
         }
 
-        if (role === 'worker' && pathname !== '/admin/stock' && pathname !== '/admin/stock-history') {
+        const workerAllowedPaths = ['/admin/stock', '/admin/stock-history'];
+        if (role === 'worker' && !workerAllowedPaths.includes(pathname)) {
             router.replace('/admin/stock');
             return;
         }
         
+        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings'];
+        if (role === 'junior' && juniorRestrictedPaths.some(p => pathname.startsWith(p))) {
+            router.replace('/admin/acceptance');
+            return;
+        }
+
+        // Senior only pages restriction if management mode is off
+        const seniorManagementPaths = ['/admin/products', '/admin/containers'];
+        if (role === 'senior' && !managementMode && seniorManagementPaths.some(p => pathname.startsWith(p))) {
+            router.replace('/admin/acceptance');
+            return;
+        }
+
         // Walkthrough logic for acceptance page
         if (role === 'senior' && pathname === '/admin/acceptance') {
             const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_ACCEPTANCE_KEY);
@@ -112,7 +127,7 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   return (
     <div className="flex min-h-screen flex-col bg-background">
         {viewMode === 'classic' ? <Sidebar /> : null}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24">{children}</main>
         {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
         <Walkthrough
             isOpen={isWalkthroughEnabled}

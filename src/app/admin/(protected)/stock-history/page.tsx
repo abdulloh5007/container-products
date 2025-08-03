@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Crown, User, Archive, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
 import type { SessionRole } from '@/contexts/auth-context';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
@@ -97,13 +96,11 @@ export default function AdminStockHistoryPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const { user, isAuthLoading } = useAuth();
-  const router = useRouter();
 
   const [history, setHistory] = useState<StockHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('stock-history');
   const dateLocale = language === 'uz' ? uz : ru;
-  const isSenior = user?.currentSession?.role === 'senior';
   const isLaptop = useMediaQuery("(min-width: 1024px)");
   
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -115,14 +112,10 @@ export default function AdminStockHistoryPage() {
     to: endOfDay(new Date()),
   });
 
-  useEffect(() => {
-    if (!isAuthLoading && !isSenior) {
-      router.replace('/admin/acceptance');
-    }
-  }, [isAuthLoading, isSenior, router]);
+  const canViewPage = !isAuthLoading && user?.currentSession?.role !== 'pending';
 
   useEffect(() => {
-    if (!isSenior) return;
+    if (!canViewPage) return;
     
     setIsLoading(true);
     const q = query(collection(db, "stock_history"), orderBy("timestamp", "desc"));
@@ -138,7 +131,7 @@ export default function AdminStockHistoryPage() {
     });
 
     return () => unsubscribe();
-  }, [isSenior, t, toast]);
+  }, [canViewPage, t, toast]);
 
   const uniqueUsers = useMemo(() => {
     const users = new Map<string, { name: string; role: SessionRole }>();
@@ -305,7 +298,7 @@ export default function AdminStockHistoryPage() {
     );
   }
 
-  if (!isSenior && !isAuthLoading) {
+  if (!canViewPage) {
     return null;
   }
 

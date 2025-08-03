@@ -20,7 +20,6 @@ import { ru, uz } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +59,6 @@ export default function RentalsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
     const { user, isAuthLoading } = useAuth();
-    const router = useRouter();
 
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [isRemoveModalOpen, setRemoveModalOpen] = useState(false);
@@ -86,16 +84,10 @@ export default function RentalsPage() {
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const dateLocale = language === 'uz' ? uz : ru;
 
-    const isSenior = user?.currentSession?.role === 'senior';
-
-    useEffect(() => {
-        if (!isAuthLoading && !isSenior) {
-            router.replace('/admin/acceptance');
-        }
-    }, [isAuthLoading, isSenior, router]);
+    const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior';
 
     const fetchRentedContainers = useCallback(async () => {
-        if (!isSenior) return;
+        if (!canViewPage) return;
         setIsLoadingRented(true);
         try {
             const q = query(collection(db, "rentals"), where("status", "==", "rented"), orderBy("arrivalDate", "desc"));
@@ -108,10 +100,10 @@ export default function RentalsPage() {
         } finally {
             setIsLoadingRented(false);
         }
-    }, [isSenior, t, toast]);
+    }, [canViewPage, t, toast]);
     
     const fetchHistory = useCallback(async () => {
-        if (!isSenior) return;
+        if (!canViewPage) return;
         setIsLoadingHistory(true);
         try {
             const q = query(collection(db, "rentals"), orderBy("arrivalDate", "desc"));
@@ -124,13 +116,13 @@ export default function RentalsPage() {
         } finally {
             setIsLoadingHistory(false);
         }
-    }, [isSenior, t, toast]);
+    }, [canViewPage, t, toast]);
     
     useEffect(() => {
-        if (isSenior) {
+        if (canViewPage) {
             fetchHistory();
         }
-    }, [fetchHistory, isSenior]);
+    }, [fetchHistory, canViewPage]);
 
     useEffect(() => {
         if (selectedContainer) {
@@ -318,7 +310,7 @@ export default function RentalsPage() {
         );
     }
     
-    if (isAuthLoading || !isSenior) {
+    if (!canViewPage) {
         return (
             <div className="space-y-8">
                 <Skeleton className="h-10 w-1/3" />

@@ -18,7 +18,6 @@ import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
 
 interface IncludedProduct {
   id: string;
@@ -40,25 +39,17 @@ interface FullscreenState {
 export default function AdminContainersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const [containers, setContainers] = useState<Container[]>([]);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { view, setView } = useViewSwitcher('containers');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
-  const role = user?.currentSession?.role;
-  const isSenior = role === 'senior';
-  const isWorker = role === 'worker';
-
-
-  useEffect(() => {
-      if (!isAuthLoading && (isWorker || !user?.isManagementModeEnabled || !isSenior)) {
-          router.replace('/admin/acceptance');
-      }
-  }, [isAuthLoading, user?.isManagementModeEnabled, isSenior, isWorker, router]);
+  
+  const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior' && user?.isManagementModeEnabled;
 
   const fetchContainers = useCallback(async () => {
+    if (!canViewPage) return;
     setIsLoading(true);
     try {
       const q = query(collection(db, "containers"), orderBy("name"));
@@ -71,13 +62,11 @@ export default function AdminContainersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast]);
+  }, [t, toast, canViewPage]);
 
   useEffect(() => {
-    if (user?.isManagementModeEnabled && isSenior) {
-      fetchContainers();
-    }
-  }, [fetchContainers, user?.isManagementModeEnabled, isSenior]);
+    fetchContainers();
+  }, [fetchContainers]);
 
   const handleDelete = async () => {
     if (!containerToDelete) return;
@@ -142,8 +131,8 @@ export default function AdminContainersPage() {
         )
     }
 
-    if (!user?.isManagementModeEnabled || !isSenior) {
-        return null; // Redirect is handling this
+    if (!canViewPage) {
+        return null; 
     }
 
     if (containers.length === 0) {
@@ -222,7 +211,7 @@ export default function AdminContainersPage() {
     )
   }
 
-  if ((!user?.isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
+  if (!canViewPage) {
     return null; // Render nothing while redirecting
   }
 

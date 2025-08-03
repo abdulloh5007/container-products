@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,7 +40,6 @@ const cardVariants = {
 export default function AdminProductsPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -58,19 +56,10 @@ export default function AdminProductsPage() {
   const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
 
-  const role = user?.currentSession?.role;
-  const isSenior = role === 'senior';
-  const isWorker = role === 'worker';
-
-
-  useEffect(() => {
-      if (!isAuthLoading && (isWorker || !user?.isManagementModeEnabled || !isSenior)) {
-          router.replace('/admin/acceptance');
-      }
-  }, [isAuthLoading, user?.isManagementModeEnabled, isSenior, isWorker, router]);
-
+  const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior' && user?.isManagementModeEnabled;
 
   const fetchProducts = useCallback(async () => {
+    if (!canViewPage) return;
     setIsLoading(true);
     try {
       const q = query(collection(db, "products"), orderBy("name"));
@@ -83,13 +72,11 @@ export default function AdminProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast]);
+  }, [t, toast, canViewPage]);
 
   useEffect(() => {
-    if (user?.isManagementModeEnabled && isSenior) {
-      fetchProducts();
-    }
-  }, [fetchProducts, user?.isManagementModeEnabled, isSenior]);
+    fetchProducts();
+  }, [fetchProducts]);
   
   const filteredProducts = useMemo(() => {
     const sortOrder: Record<ProductType, number> = { 'area': 1, 'kit': 2, 'unit': 3 };
@@ -267,7 +254,7 @@ export default function AdminProductsPage() {
         )
     }
 
-    if (!user?.isManagementModeEnabled || !isSenior) {
+    if (!canViewPage) {
         return null;
     }
 
@@ -337,7 +324,7 @@ export default function AdminProductsPage() {
     )
   }
 
-  if ((!user?.isManagementModeEnabled || !isSenior || isWorker) && !isAuthLoading) {
+  if (!canViewPage) {
     return null; // Render nothing while redirecting
   }
 

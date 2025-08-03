@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowUpCircle, ArrowDownCircle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -57,7 +56,6 @@ export default function AdminHistoryPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const { user, isAuthLoading } = useAuth();
-  const router = useRouter();
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,16 +63,10 @@ export default function AdminHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const dateLocale = language === 'uz' ? uz : ru;
 
-  const isWorker = user?.currentSession?.role === 'worker';
-
-  useEffect(() => {
-    if (!isAuthLoading && isWorker) {
-      router.replace('/admin/stock');
-    }
-  }, [isAuthLoading, isWorker, router]);
+  const canViewPage = !isAuthLoading && (user?.currentSession?.role === 'senior' || user?.currentSession?.role === 'junior');
 
   const fetchHistory = useCallback(async () => {
-    if (isWorker) return;
+    if (!canViewPage) return;
     setIsLoading(true);
     try {
       const q = query(collection(db, "history"), orderBy("date", "desc"));
@@ -87,7 +79,7 @@ export default function AdminHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast, isWorker]);
+  }, [t, toast, canViewPage]);
 
   useEffect(() => {
     fetchHistory();
@@ -189,7 +181,7 @@ export default function AdminHistoryPage() {
     );
   }
 
-  if (isWorker && !isAuthLoading) {
+  if (!canViewPage) {
     return null;
   }
 
