@@ -369,30 +369,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    const currentId = user?.currentSession?.id;
-    if (user && currentId) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const sessionToRemove = user.sessions.find(s => s.id === currentId);
-        if (sessionToRemove) {
-            try {
-                await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
-            } catch(e) {
-                console.error("Failed to remove session on logout, maybe document was deleted.", e)
-            }
-        }
+    if (!user || !user.currentSession) return;
+  
+    const currentSession = user.currentSession;
+    const userDocRef = doc(db, 'users', user.uid);
+  
+    // Find the session to remove from the array
+    const sessionToRemove = user.sessions.find(s => s.id === currentSession.id);
+    if (sessionToRemove) {
+      try {
+        await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+      } catch (e) {
+        console.error("Failed to remove session on logout, maybe document was deleted.", e);
+      }
     }
-    
-    if (auth.currentUser) {
-       await signOut(auth);
+  
+    // Determine redirect path before clearing local data
+    const redirectPath = currentSession.role === 'senior' ? '/admin/login' : '/admin/loginAsWorker';
+  
+    // If the logged-out user is the senior (the one with Firebase auth), sign them out
+    if (auth.currentUser && auth.currentUser.uid === user.uid) {
+      await signOut(auth);
     }
-    
+  
+    // Clear all local session data
     await idb.del('currentSessionId');
     await idb.del('isAuthenticated');
     setUser(null);
     setCurrentSessionId(null);
     setLoginState('form');
-    // Full reload to ensure clean state
-    window.location.href = '/admin/login';
+  
+    // Full reload to the correct login page to ensure a clean state
+    window.location.href = redirectPath;
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
