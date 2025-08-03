@@ -277,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
   
-    if (!userDocSnap.exists() || userDocSnap.data().sessions.some((s: Session) => s.role !== 'senior')) {
+    if (!userDocSnap.exists()) {
       await signOut(auth);
       throw new Error(translateFirebaseError('auth/invalid-credential'));
     }
