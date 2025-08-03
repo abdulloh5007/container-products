@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                 });
                             } else {
                                 // Session not found, clear local state
-                                logout();
+                                logout(true); // Pass flag to indicate remote deletion
                             }
                         } else {
                              // No senior user found, can't be authenticated.
@@ -298,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await idb.set('isAuthenticated', true);
     
     // Manually update the state to trigger redirect immediately
-    const updatedSessions = [...userData.sessions, newSession];
+    const updatedSessions = [...(userData.sessions || []), newSession];
     setUser({
       ...userData,
       uid: firebaseUser.uid,
@@ -379,24 +379,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentSessionId(newSessionId);
   };
   
-  const logout = async () => {
+  const logout = async (isRemoteDeletion: boolean = false) => {
     if (!user || !user.currentSession) return;
   
     const currentSession = user.currentSession;
-    const userDocRef = doc(db, 'users', user.uid);
+    const isSeniorUser = currentSession.role === 'senior';
   
-    const sessionToRemove = user.sessions.find(s => s.id === currentSession.id);
-    if (sessionToRemove) {
-      try {
-        await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
-      } catch (e) {
-        console.error("Failed to remove session on logout, maybe document was deleted.", e);
-      }
+    if (!isRemoteDeletion) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const sessionToRemove = user.sessions.find(s => s.id === currentSession.id);
+        if (sessionToRemove) {
+            try {
+                await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+            } catch (e) {
+                console.error("Failed to remove session on logout, maybe document was deleted.", e);
+            }
+        }
     }
   
-    const redirectPath = currentSession.role === 'senior' ? '/admin/login' : '/admin/loginAsWorker';
+    const redirectPath = isSeniorUser ? '/admin/login' : '/admin/loginAsWorker';
   
-    if (auth.currentUser && auth.currentUser.uid === user.uid) {
+    if (auth.currentUser && isSeniorUser) {
       await signOut(auth);
     }
   
@@ -406,6 +409,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentSessionId(null);
     setLoginState('form');
   
+    // Use window.location.href for a full reload redirect
     window.location.href = redirectPath;
   };
 
@@ -521,3 +525,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
