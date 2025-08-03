@@ -42,7 +42,7 @@ function AdminSkeleton() {
 const WALKTHROUGH_ACCEPTANCE_KEY = 'walkthrough-acceptance-seen';
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isLoading, viewMode } = useAuth();
+  const { user, isAuthenticated, isLoading, viewMode, loginState } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -54,18 +54,18 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated && loginState !== 'pending') {
       router.replace('/admin/login');
       return;
     }
     
-    if (isAuthenticated) {
-        const role = user?.currentSession?.role;
-        const managementMode = user?.isManagementModeEnabled;
+    if (isAuthenticated && user?.currentSession) {
+        const role = user.currentSession.role;
+        const managementMode = user.isManagementModeEnabled;
 
-        // Redirect pending users to login
+        // Redirect pending users to worker login page
         if (role === 'pending') {
-            router.replace('/admin/login');
+            router.replace('/admin/loginAsWorker');
             return;
         }
 
@@ -75,7 +75,7 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
             return;
         }
         
-        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings'];
+        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings', '/admin/settings/devices', '/admin/settings/profile', '/admin/rentals'];
         if (role === 'junior' && juniorRestrictedPaths.some(p => pathname.startsWith(p))) {
             router.replace('/admin/acceptance');
             return;
@@ -100,16 +100,21 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
             setWalkthroughEnabled(false);
         }
     }
-  }, [isAuthenticated, isLoading, router, user, pathname]);
+  }, [isAuthenticated, isLoading, router, user, pathname, loginState]);
 
   // While loading auth state, show a full-page loader or skeleton
-  if (isLoading) {
+  if (isLoading || (!isAuthenticated && loginState !== 'pending')) {
     return <AdminSkeleton />;
   }
 
-  // If not authenticated after loading, the redirect is in flight, so render nothing.
-  if (!isAuthenticated) {
+  // If not authenticated after loading (and not pending), the redirect is in flight, so render nothing.
+  if (!isAuthenticated && loginState !== 'pending') {
     return null;
+  }
+
+  // If user is pending, render nothing and let the loginAsWorker page handle UI
+  if (loginState === 'pending') {
+      return null;
   }
   
   const onExitWalkthrough = () => {

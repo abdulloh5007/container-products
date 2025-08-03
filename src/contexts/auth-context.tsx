@@ -91,18 +91,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const setViewMode = (mode: ViewMode) => {
     setViewModeState(mode);
-    idb.set('viewMode', mode);
+    if (typeof window !== 'undefined') {
+      idb.set('viewMode', mode);
+    }
   };
   
   useEffect(() => {
     const loadPersistedData = async () => {
-      const storedViewMode = await idb.get<ViewMode>('viewMode');
-      if (storedViewMode === 'classic' || storedViewMode === 'modern') {
-        setViewModeState(storedViewMode);
-      }
-      const storedLang = await idb.get<any>('language');
-      if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
-          setLanguage(storedLang);
+      if (typeof window !== 'undefined') {
+        const storedViewMode = await idb.get<ViewMode>('viewMode');
+        if (storedViewMode === 'classic' || storedViewMode === 'modern') {
+          setViewModeState(storedViewMode);
+        }
+        const storedLang = await idb.get<any>('language');
+        if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
+            setLanguage(storedLang);
+        }
       }
     }
     loadPersistedData();
@@ -119,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         try {
             const usersCollectionRef = collection(db, 'users');
-            const snapshot = await getDocs(query(usersCollectionRef));
+            const snapshot = await getDocs(query(usersCollectionRef, limit(1)));
             setIsRegistrationAllowed(snapshot.empty);
         } catch (error) {
             console.error("Error checking for users:", error);
@@ -133,19 +137,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeSession = async () => {
-        const sessionId = await idb.get<string>('currentSessionId');
-        setCurrentSessionId(sessionId || null);
-
-        const wasAuthenticated = await idb.get<boolean>('isAuthenticated');
-        if (wasAuthenticated && sessionId) {
-             setUser({ uid: '', sessions: [], currentSession: { role: 'junior', id: sessionId, deviceName: '', createdAt: Timestamp.now() } });
+        if (typeof window !== 'undefined') {
+            const sessionId = await idb.get<string>('currentSessionId');
+            setCurrentSessionId(sessionId || null);
         }
+        // No need to set a placeholder user state here, let the onAuthStateChanged handle it.
     };
-
     initializeSession();
-}, []);
+  }, []);
 
   const listenForSeniorUserChanges = useCallback((pendingSessionId: string) => {
+    if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, limit(1));
     
@@ -158,12 +161,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (mySession) {
         if (mySession.role !== 'pending') {
-          // Approved!
+          // Approved! Worker/Junior does not need to sign in.
+          // The session ID is their key.
           await idb.set('currentSessionId', mySession.id);
+          await idb.set('isAuthenticated', true); 
           setLoginState('approved');
           await idb.del('pendingSessionId');
           if (seniorUserUnsubscribe) seniorUserUnsubscribe();
           
+          // Reload to re-trigger the auth flow with the new session.
           window.location.reload();
 
         }
@@ -173,66 +179,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await idb.del('pendingSessionId');
         if (seniorUserUnsubscribe) seniorUserUnsubscribe();
       }
+    }, (error) => {
+        console.error("Error listening to senior user changes: ", error);
+        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
     });
   }, []);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-             const userDocRef = doc(db, "users", firebaseUser.uid);
-             const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const localCurrentSessionId = currentSessionId || (typeof window !== 'undefined' ? localStorage.getItem('currentSessionId') : null);
-                    if (!localCurrentSessionId) {
-                        setIsLoading(false);
-                        return;
-                    }
-                    const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
-                    const sessions = userData.sessions || [];
-                    const currentSession = sessions.find(s => s.id === localCurrentSessionId) || null;
-                    
-                    if (currentSession) {
-                        const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
-                        setUser(appUser);
+    setIsLoading(true);
+    const mainAuthLogic = async () => {
+        const localIsAuthenticated = await idb.get<boolean>('isAuthenticated');
+        const localCurrentSessionId = await idb.get<string>('currentSessionId');
+
+        onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                 const userDocRef = doc(db, "users", firebaseUser.uid);
+                 const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists() && localCurrentSessionId) {
+                        const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
+                        const sessions = userData.sessions || [];
+                        const currentSession = sessions.find(s => s.id === localCurrentSessionId) || null;
                         
-                        if (currentSession.role === 'pending') {
-                            setLoginState('pending');
-                            idb.set('isAuthenticated', false);
+                        if (currentSession) {
+                            const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
+                            setUser(appUser);
                         } else {
-                            setLoginState('form');
-                            idb.set('isAuthenticated', true);
+                           // This session was deleted remotely, sign out.
+                           logout();
                         }
                     } else {
-                       signOut(auth);
+                       // User doc doesn't exist or no session, sign out.
+                       logout();
                     }
+                    setIsLoading(false);
+                });
+                return () => unsubscribeUser();
+            } else {
+                // No Firebase user. Could be a worker or junior.
+                if (localIsAuthenticated && localCurrentSessionId) {
+                    // This is a worker/junior. We need to fetch the senior user doc to find their session.
+                    const usersQuery = query(collection(db, 'users'), limit(1));
+                    const unsubscribeSenior = onSnapshot(usersQuery, (snapshot) => {
+                         if (!snapshot.empty) {
+                            const seniorUserDoc = snapshot.docs[0];
+                            const seniorUserData = seniorUserDoc.data() as AppUser;
+                            const currentSession = seniorUserData.sessions.find(s => s.id === localCurrentSessionId);
+
+                            if (currentSession) {
+                                setUser({
+                                    ...seniorUserData,
+                                    uid: seniorUserDoc.id, // The UID is the senior's
+                                    currentSession: currentSession,
+                                });
+                            } else {
+                                // Session not found, clear local state
+                                logout();
+                            }
+                        } else {
+                             // No senior user found, can't be authenticated.
+                            logout();
+                        }
+                        setIsLoading(false);
+                    });
+                    return () => unsubscribeSenior();
                 } else {
-                   signOut(auth);
-                }
-                setIsLoading(false);
-            });
-            return () => unsubscribeUser();
-        } else {
-            // No Firebase user, but we might be a worker waiting for approval.
-            idb.get<string>('pendingSessionId').then(pendingId => {
-                if (pendingId) {
-                    listenForSeniorUserChanges(pendingId);
-                } else {
-                    setUser(null);
-                    idb.del('currentSessionId');
-                    idb.del('isAuthenticated');
-                    setCurrentSessionId(null);
-                    setLoginState('form');
+                    const pendingId = await idb.get<string>('pendingSessionId');
+                    if (pendingId) {
+                        setLoginState('pending');
+                        listenForSeniorUserChanges(pendingId);
+                    } else {
+                         setUser(null);
+                         idb.del('currentSessionId');
+                         idb.del('isAuthenticated');
+                         setLoginState('form');
+                    }
                     setIsLoading(false);
                 }
-            });
-        }
-    });
+            }
+        });
+    }
+    
+    if (typeof window !== 'undefined') {
+        mainAuthLogic();
+    }
 
     return () => {
-        unsubscribeAuth();
         if (seniorUserUnsubscribe) seniorUserUnsubscribe();
     };
-  }, [currentSessionId, listenForSeniorUserChanges]);
+  }, [listenForSeniorUserChanges]);
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
@@ -243,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
   
-    if (!userDocSnap.exists()) {
+    if (!userDocSnap.exists() || userDocSnap.data().sessions.some((s: Session) => s.role !== 'senior')) {
       await signOut(auth);
       throw new Error(translateFirebaseError('auth/invalid-credential'));
     }
@@ -260,8 +294,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateDoc(userDocRef, { sessions: arrayUnion(newSession) });
   
     await idb.set('currentSessionId', newSessionId);
-    setCurrentSessionId(newSessionId);
     await idb.set('isAuthenticated', true);
+    setCurrentSessionId(newSessionId);
   };
 
   const requestWorkerAccess = async () => {
@@ -298,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const register = async (name: string, email: string, password: string) => {
     const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef);
+    const q = query(usersCollectionRef, limit(1));
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
@@ -340,10 +374,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, 'users', user.uid);
         const sessionToRemove = user.sessions.find(s => s.id === currentId);
         if (sessionToRemove) {
-            await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+            try {
+                await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+            } catch(e) {
+                console.error("Failed to remove session on logout, maybe document was deleted.", e)
+            }
         }
     }
-    await signOut(auth);
+    
+    if (auth.currentUser) {
+       await signOut(auth);
+    }
+    
+    await idb.del('currentSessionId');
+    await idb.del('isAuthenticated');
+    setUser(null);
+    setCurrentSessionId(null);
+    setLoginState('form');
+    // Full reload to ensure clean state
+    window.location.href = '/admin/login';
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
