@@ -83,8 +83,14 @@ function WorkerLoginForm() {
         // The main AuthProvider context will redirect based on role,
         // we just need to reset the state here.
         setLoginState('form');
+        const role = user?.currentSession?.role;
+        let redirectTo = '/admin/acceptance'; // Default for junior/senior
+        if (role === 'worker') {
+            redirectTo = '/admin/stock';
+        }
+        router.replace(redirectTo);
     }
-  }, [loginState, setLoginState, router])
+  }, [loginState, setLoginState, router, user])
 
   const handleRequestAccess = async () => {
     setIsSubmitting(true);

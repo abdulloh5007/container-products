@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, limit(1));
     
-    seniorUserUnsubscribe = onSnapshot(q, (snapshot) => {
+    seniorUserUnsubscribe = onSnapshot(q, async (snapshot) => {
       if (snapshot.empty) return;
       
       const seniorUserDoc = snapshot.docs[0];
@@ -213,15 +213,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (mySession) {
         if (mySession.role !== 'pending') {
-          // Approved!
-          const userCredential = auth.currentUser;
-          if (userCredential) {
-              setLoginState('approved');
-              idb.set('currentSessionId', mySession.id);
-              setCurrentSessionId(mySession.id);
-              idb.del('pendingSessionId');
-              if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-          }
+          // Approved! Worker doesn't have a firebase user, so we handle it here.
+          setLoginState('approved');
+          await idb.set('currentSessionId', mySession.id);
+          setCurrentSessionId(mySession.id);
+          // Re-sign in as the main user to trigger the onAuthStateChanged listener
+          // This will load the senior user document and find the newly approved session.
+          const senior = await signInWithEmailAndPassword(auth, seniorUserDoc.data().email, "password_placeholder_not_used");
+          // This sign-in is just to trigger the auth state change.
+          // The actual login logic for the worker is now based on finding the session.
+          await idb.del('pendingSessionId');
+          if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+          
         }
       } else {
         // Declined (session was removed)
@@ -241,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
   
-    if (!userDocSnap.exists() || userDocSnap.data().sessions.some((s: Session) => s.role !== 'senior' && s.role !== 'junior')) {
+    if (!userDocSnap.exists()) {
       await signOut(auth);
       throw new Error(translateFirebaseError('auth/invalid-credential'));
     }
@@ -359,7 +362,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updatePassword(firebaseUser, newPassword);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        await updateDoc(userDocRef, { sessions: [user.currentSession] });
+        const batch = writeBatch(db);
+        // Remove all other sessions
+        user.sessions.forEach(session => {
+            if (session.id !== user.currentSession!.id) {
+                batch.update(userDocRef, { sessions: arrayRemove(session) });
+            }
+        });
+        await batch.commit();
         
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
