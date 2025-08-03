@@ -32,7 +32,7 @@ export interface AppUser {
     isManagementModeEnabled?: boolean;
 }
 
-export type LoginState = 'form' | 'pending' | 'failed' | 'no_account' | 'access_denied';
+export type LoginState = 'form' | 'pending' | 'failed' | 'no_account' | 'access_denied' | 'approved';
 
 type AuthContextType = {
   user: AppUser | null;
@@ -76,6 +76,8 @@ const getDeviceName = (): string => {
     
     return "Web Browser";
 }
+
+let seniorUserUnsubscribe: (() => void) | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -134,10 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const sessionId = await idb.get<string>('currentSessionId');
         setCurrentSessionId(sessionId || null);
 
-        // This ensures the app doesn't flash the login page on reload for authenticated users.
         const wasAuthenticated = await idb.get<boolean>('isAuthenticated');
         if (wasAuthenticated && sessionId) {
-            // Optimistically set a loading user state to prevent redirection
              setUser({ uid: '', sessions: [], currentSession: { role: 'junior', id: sessionId, deviceName: '', createdAt: Timestamp.now() } });
         }
     };
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (docSnap.exists()) {
                     if (!currentSessionId) {
                         setIsLoading(false);
-                        return; // Wait for session ID to be loaded from IDB
+                        return;
                     }
                     const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
                     const sessions = userData.sessions || [];
@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     if (currentSession) {
                         const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
                         setUser(appUser);
-
+                        
                         if (currentSession.role === 'pending') {
                             setLoginState('pending');
                             idb.set('isAuthenticated', false);
@@ -180,17 +180,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             return () => unsubscribeUser();
         } else {
-            setUser(null);
-            idb.del('currentSessionId');
-            idb.del('isAuthenticated');
-            setCurrentSessionId(null);
-            setLoginState('form');
-            setIsLoading(false);
+            // No Firebase user, but we might be a worker waiting for approval.
+            // Check for a pending session ID in IndexedDB.
+            idb.get<string>('pendingSessionId').then(pendingId => {
+                if (pendingId) {
+                    listenForSeniorUserChanges(pendingId);
+                } else {
+                    setUser(null);
+                    idb.del('currentSessionId');
+                    idb.del('isAuthenticated');
+                    setCurrentSessionId(null);
+                    setLoginState('form');
+                    setIsLoading(false);
+                }
+            });
         }
     });
 
     return () => unsubscribeAuth();
   }, [currentSessionId]);
+  
+  const listenForSeniorUserChanges = useCallback((pendingSessionId: string) => {
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, limit(1));
+    
+    seniorUserUnsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) return;
+      
+      const seniorUserDoc = snapshot.docs[0];
+      const sessions = seniorUserDoc.data().sessions as Session[];
+      const mySession = sessions.find(s => s.id === pendingSessionId);
+      
+      if (mySession) {
+        if (mySession.role !== 'pending') {
+          // Approved!
+          const userCredential = auth.currentUser;
+          if (userCredential) {
+              setLoginState('approved');
+              idb.set('currentSessionId', mySession.id);
+              setCurrentSessionId(mySession.id);
+              idb.del('pendingSessionId');
+              if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+          }
+        }
+      } else {
+        // Declined (session was removed)
+        setLoginState('access_denied');
+        idb.del('pendingSessionId');
+        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+      }
+    });
+  }, []);
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
@@ -201,18 +241,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
   
-    if (!userDocSnap.exists() || userDocSnap.data().sessions[0].role !== 'senior') {
+    if (!userDocSnap.exists() || userDocSnap.data().sessions.some((s: Session) => s.role !== 'senior' && s.role !== 'junior')) {
       await signOut(auth);
       throw new Error(translateFirebaseError('auth/invalid-credential'));
     }
+
+    const newSessionId = generateSessionId();
+    const newSession: Session = {
+        id: newSessionId,
+        deviceName: getDeviceName(),
+        name: userDocSnap.data().name,
+        role: 'senior',
+        createdAt: Timestamp.now()
+    }
+    
+    await updateDoc(userDocRef, { sessions: arrayUnion(newSession) });
   
-    const seniorSession = userDocSnap.data().sessions[0];
-    await idb.set('currentSessionId', seniorSession.id);
-    setCurrentSessionId(seniorSession.id);
+    await idb.set('currentSessionId', newSessionId);
+    setCurrentSessionId(newSessionId);
     await idb.set('isAuthenticated', true);
   };
 
   const requestWorkerAccess = async () => {
+    if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, limit(1));
     const snapshot = await getDocs(q);
@@ -223,16 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const seniorUserDoc = snapshot.docs[0];
     const seniorUserRef = seniorUserDoc.ref;
     
-    // Check if this device already has a pending request
-    const existingSessions = seniorUserDoc.data().sessions as Session[];
     const deviceName = getDeviceName();
-    const existingPendingSession = existingSessions.find(s => s.deviceName === deviceName && s.role === 'pending');
-
-    if (existingPendingSession) {
-      setLoginState('pending');
-      return;
-    }
-
+    
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
@@ -245,21 +289,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessions: arrayUnion(newSession)
     });
     
-    // Temporarily sign in to get a user object for context, but it won't be "authenticated"
-    if (auth.currentUser) {
-       await updateDoc(doc(db, "users", auth.currentUser.uid), { sessions: arrayUnion(newSession) });
-       await idb.set('currentSessionId', newSessionId);
-       setCurrentSessionId(newSessionId);
-    } else {
-       // This case is tricky. The simplest way is to associate the session with the senior user.
-       // The worker doesn't need their own Firebase auth user object until approved.
-       // The onSnapshot listener on the senior's doc will handle updates.
-       // For the local state, we can simulate a user object.
-       const seniorData = seniorUserDoc.data() as AppUser;
-       setUser({ ...seniorData, uid: seniorUserDoc.id, currentSession: newSession });
-    }
-    
+    await idb.set('pendingSessionId', newSessionId);
     setLoginState('pending');
+    listenForSeniorUserChanges(newSessionId);
   };
   
   const register = async (name: string, email: string, password: string) => {
@@ -301,7 +333,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    await signOut(auth); // This will trigger the onAuthStateChanged listener to clean up state
+    const currentId = user?.currentSession?.id;
+    if (user && currentId) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const sessionToRemove = user.sessions.find(s => s.id === currentId);
+        if (sessionToRemove) {
+            await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+        }
+    }
+    await signOut(auth);
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -318,8 +358,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         await updatePassword(firebaseUser, newPassword);
         
-        // This is a major security action. We should probably log out all other sessions.
-        // For simplicity here, we assume the user stays logged in on the current device.
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         await updateDoc(userDocRef, { sessions: [user.currentSession] });
         
@@ -395,7 +433,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     translateFirebaseError,
     viewMode,
     setViewMode,
-  }), [user, isLoading, isRegistrationAllowed, loginState, viewMode, translateFirebaseError]);
+  }), [user, isLoading, isRegistrationAllowed, loginState, viewMode, translateFirebaseError, listenForSeniorUserChanges]);
 
   return (
     <AuthContext.Provider value={value}>

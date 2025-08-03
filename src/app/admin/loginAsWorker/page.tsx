@@ -66,17 +66,25 @@ function WorkerLoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // This effect handles redirection for authenticated users
     if (!isLoading && isAuthenticated && user?.currentSession?.role !== 'pending') {
       const role = user.currentSession?.role;
-      let redirectTo = '/admin/acceptance'; // Default for junior
+      let redirectTo = '/admin/acceptance'; // Default for junior/senior
       if (role === 'worker') {
         redirectTo = '/admin/stock';
-      } else if (role === 'senior') {
-        redirectTo = '/admin/acceptance';
       }
       router.replace(redirectTo);
     }
   }, [isAuthenticated, isLoading, user, router]);
+  
+  // This effect handles redirection for workers whose status changes in real-time
+  useEffect(() => {
+    if (loginState === 'approved') {
+        // The main AuthProvider context will redirect based on role,
+        // we just need to reset the state here.
+        setLoginState('form');
+    }
+  }, [loginState, setLoginState, router])
 
   const handleRequestAccess = async () => {
     setIsSubmitting(true);

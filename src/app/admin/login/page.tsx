@@ -56,7 +56,9 @@ function LoginForm() {
     if (!isLoading && isAuthenticated && user) {
       const role = user.currentSession?.role;
       if (role === 'pending') {
-          router.replace('/admin/loginAsWorker'); // Redirect to worker login if pending
+          // This case should ideally not happen if coming from the senior login page,
+          // but as a fallback, we direct them to the worker page.
+          router.replace('/admin/loginAsWorker');
           return;
       }
       let redirectTo = '/admin/acceptance'; // Default for senior/junior
@@ -84,12 +86,8 @@ function LoginForm() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && user?.currentSession?.role !== 'pending')) {
     return <LoginSkeleton />;
-  }
-  
-  if (isAuthenticated && user?.currentSession?.role !== 'pending') {
-     return <LoginSkeleton />;
   }
 
   return (
