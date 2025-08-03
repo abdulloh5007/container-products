@@ -17,7 +17,7 @@ import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isAuthLoading, isRegistrationAllowed, translateFirebaseError } = useAuth();
+  const { register, isAuthLoading, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   
@@ -158,5 +158,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-    

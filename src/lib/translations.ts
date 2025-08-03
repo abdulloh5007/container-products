@@ -42,7 +42,7 @@ export const translations = {
     mobile_menu_desc: "Навигационные ссылки для перемещения по сайту.",
 
     admin_title: "Панель администратора",
-    admin_login_title: "Вход в панель администратора",
+    admin_login_title: "Вход для Главы",
     admin_login_subtitle: "Для доступа используйте ваш email и пароль.",
     admin_login_refresh_prompt: "Если страница не отображает статус ожидания подтверждения входа, то закройте приложение и зайдите обратно или обновите сайт.",
     admin_login_google_button: "Войти через Google",
@@ -253,7 +253,7 @@ export const translations = {
     admin_settings_management_mode_status_off: "Выключен. Разделы Продукты и Контейнеры скрыты.",
     admin_settings_management_mode_on_desc: "Режим управления включен.",
     admin_settings_management_mode_off_desc: "Режим управления выключен.",
-    admin_register_title: "Регистрация аккаунта",
+    admin_register_title: "Регистрация аккаунта Главы",
     admin_register_subtitle: "Создайте аккаунт для доступа к панели.",
     admin_register_button: "Зарегистрироваться",
     admin_register_submitting: "Регистрация...",
@@ -366,7 +366,11 @@ export const translations = {
     'firebase_error_auth_weak-password': "Пароль слишком слабый. Используйте не менее 6 символов.",
     'firebase_error_auth_requires-recent-login': "Эта операция требует недавней аутентификации. Пожалуйста, выйдите из системы и войдите снова.",
     'firebase_error_auth_operation-not-allowed': "Эта операция не разрешена. Обратитесь в поддержку.",
-    'firebase_error_unknown': "Произошла неизвестная ошибка. Пожалуйста, попробуйте позже."
+    'firebase_error_unknown': "Произошла неизвестная ошибка. Пожалуйста, попробуйте позже.",
+
+    'admin_worker_login_title': "Вход для Сотрудников",
+    'admin_worker_login_desc': "Нажмите кнопку ниже, чтобы отправить запрос на доступ Главе.",
+    'admin_worker_login_button': "Отправить запрос на вход",
   },
   uz: {
     app_name: "Konteyner Mahsulotlari",
@@ -410,7 +414,7 @@ export const translations = {
     mobile_menu_desc: "Sayt bo'ylab harakatlanish uchun navigatsiya havolalari.",
     
     admin_title: "Administrator paneli",
-    admin_login_title: "Administrator paneliga kirish",
+    admin_login_title: "Rahbar uchun kirish",
     admin_login_subtitle: "Kirish uchun email va parolingizdan foydalaning.",
     admin_login_refresh_prompt: "Agar sahifa kirishni tasdiqlashni kutish holatini ko'rsatmasa, ilovani yopib, qaytadan kiring yoki saytni yangilang.",
     admin_login_google_button: "Google orqali kirish",
@@ -626,7 +630,7 @@ export const translations = {
     admin_settings_management_mode_on_desc: "Boshqaruv rejimi yoqildi.",
     admin_settings_management_mode_off_desc: "Boshqaruv rejimi o'chirildi.",
     
-    admin_register_title: "Hisobni ro'yxatdan o'tkazish",
+    admin_register_title: "Rahbar hisobini ro'yxatdan o'tkazish",
     admin_register_subtitle: "Panelga kirish uchun hisob yarating.",
     admin_register_button: "Ro'yxatdan o'tish",
     admin_register_submitting: "Ro'yxatdan o'tilmoqda...",
@@ -739,7 +743,11 @@ export const translations = {
     'firebase_error_auth_weak-password': "Parol juda oddiy. Kamida 6 ta belgidan foydalaning.",
     'firebase_error_auth_requires-recent-login': "Ushbu operatsiya yaqinda tasdiqlashni talab qiladi. Iltimos, tizimdan chiqib, qayta kiring.",
     'firebase_error_auth_operation-not-allowed': "Ushbu operatsiyaga ruxsat berilmagan. Yordam xizmatiga murojaat qiling.",
-    'firebase_error_unknown': "Noma'lum xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
+    'firebase_error_unknown': "Noma'lum xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
+    
+    'admin_worker_login_title': "Xodimlar uchun kirish",
+    'admin_worker_login_desc': "Rahbarga kirish so'rovini yuborish uchun quyidagi tugmani bosing.",
+    'admin_worker_login_button': "Kirish so'rovini yuborish",
   },
 };
 

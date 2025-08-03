@@ -3,19 +3,17 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, LoginState } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { Container, Hourglass, ShieldAlert, Eye, EyeOff, XCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Container, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
-import * as idb from '@/lib/indexed-db';
 
 function LoginSkeleton() {
     return (
@@ -43,54 +41,10 @@ function LoginSkeleton() {
     )
 }
 
-function PendingAlert() {
-    const { t } = useLanguage();
-    return (
-        <Alert>
-            <Hourglass className="h-4 w-4" />
-            <AlertTitle>{t('admin_login_pending_title')}</AlertTitle>
-            <AlertDescription>{t('admin_login_pending_desc')}</AlertDescription>
-        </Alert>
-    );
-}
-
-function AccessDeniedAlert({ onBackClick }: { onBackClick: () => void }) {
-    const { t } = useLanguage();
-    return (
-        <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertTitle>{t('admin_login_denied_title')}</AlertTitle>
-            <AlertDescription>
-                 {t('admin_login_denied_desc')}
-                 <button onClick={onBackClick} className="font-bold underline hover:text-destructive-foreground mt-2 block">
-                    {t('admin_back_to_login_button')}
-                </button>
-            </AlertDescription>
-        </Alert>
-    );
-}
-
-
-function NoAccountAlert({ onRegisterClick }: { onRegisterClick: () => void }) {
-    const { t } = useLanguage();
-    return (
-        <Alert variant="destructive">
-            <ShieldAlert className="h-4 w-4" />
-            <AlertTitle>{t('admin_login_no_account_title')}</AlertTitle>
-            <AlertDescription>
-                {t('admin_login_no_account_desc')}{' '}
-                <button onClick={onRegisterClick} className="font-bold underline hover:text-destructive-foreground">
-                    {t('admin_register_link')}
-                </button>
-            </AlertDescription>
-        </Alert>
-    );
-}
-
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isLoading, loginState, setLoginState, user, isRegistrationAllowed } = useAuth();
+  const { login, isAuthenticated, isLoading, user, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -102,7 +56,7 @@ function LoginForm() {
     if (!isLoading && isAuthenticated && user) {
       const role = user.currentSession?.role;
       if (role === 'pending') {
-          setLoginState('pending');
+          router.replace('/admin/loginAsWorker'); // Redirect to worker login if pending
           return;
       }
       let redirectTo = '/admin/acceptance'; // Default for senior/junior
@@ -111,7 +65,7 @@ function LoginForm() {
       }
       router.replace(searchParams.get('redirectTo') || redirectTo);
     }
-  }, [isAuthenticated, isLoading, router, searchParams, user, setLoginState]);
+  }, [isAuthenticated, isLoading, router, searchParams, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,74 +92,6 @@ function LoginForm() {
      return <LoginSkeleton />;
   }
 
-  const renderStateContent = () => {
-    switch (loginState) {
-        case 'pending':
-            return <PendingAlert />;
-        case 'no_account':
-            return <NoAccountAlert onRegisterClick={() => router.push('/admin/register')} />;
-        case 'access_denied':
-            return <AccessDeniedAlert onBackClick={() => setLoginState('form')} />
-        default:
-            return (
-                <>
-                <CardDescription className="!mt-0 text-center">{t('admin_login_subtitle')}</CardDescription>
-                <p className="text-xs text-muted-foreground text-center mt-2 mb-4">{t('admin_login_refresh_prompt')}</p>
-                <form onSubmit={handleLogin} className="space-y-4">
-                   <div className="space-y-2">
-                     <Label htmlFor="email">{t('admin_email')}</Label>
-                     <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={isSubmitting}
-                     />
-                   </div>
-                   <div className="space-y-2">
-                     <Label htmlFor="password">{t('admin_password')}</Label>
-                      <div className="relative">
-                       <Input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                          disabled={isSubmitting}
-                          className="pr-10"
-                       />
-                       <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                        >
-                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </button>
-                      </div>
-                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? t('admin_login_submitting') : t('admin_login_button')}
-                  </Button>
-                  {isRegistrationAllowed && (
-                    <p className="text-center text-sm text-muted-foreground">
-                      {t('admin_register_prompt')}{' '}
-                      <Link href="/admin/register" className="underline hover:text-primary">
-                          {t('admin_register_link')}
-                      </Link>
-                    </p>
-                  )}
-                </form>
-                </>
-            )
-    }
-  }
-
-
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
@@ -213,9 +99,58 @@ function LoginForm() {
           <Container className="h-8 w-8 text-primary" />
         </div>
         <CardTitle className="text-2xl font-bold">{t('admin_login_title')}</CardTitle>
+        <CardDescription className="!mt-0 text-center">{t('admin_login_subtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
-          {renderStateContent()}
+          <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t('admin_email')}</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t('admin_password')}</Label>
+                  <div className="relative">
+                  <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                      className="pr-10"
+                  />
+                  <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t('admin_login_submitting') : t('admin_login_button')}
+              </Button>
+              {isRegistrationAllowed && (
+                <p className="text-center text-sm text-muted-foreground">
+                  {t('admin_register_prompt')}{' '}
+                  <Link href="/admin/register" className="underline hover:text-primary">
+                      {t('admin_register_link')}
+                  </Link>
+                </p>
+              )}
+          </form>
       </CardContent>
     </Card>
   );
