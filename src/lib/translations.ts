@@ -367,6 +367,8 @@ export const translations = {
     'firebase_error_auth_requires-recent-login': "Эта операция требует недавней аутентификации. Пожалуйста, выйдите из системы и войдите снова.",
     'firebase_error_auth_operation-not-allowed': "Эта операция не разрешена. Обратитесь в поддержку.",
     'firebase_error_unknown': "Произошла неизвестная ошибка. Пожалуйста, попробуйте позже.",
+    'admin_login_success_title': "Вход выполнен успешно",
+    'admin_login_success_desc': "Перенаправление...",
 
     'admin_worker_login_title': "Вход для Сотрудников",
     'admin_worker_login_desc': "Нажмите кнопку ниже, чтобы отправить запрос на доступ Главе.",
@@ -561,8 +563,8 @@ export const translations = {
     admin_product_save_type_kit: "Komplekt + M²",
     admin_product_save_type_area: "Faqat m²",
     admin_kit_unit: "komplekt",
-    admin_m2_per_kit: "m² komplektda",
-    admin_m2_unit: "m²",
+    m2_per_kit: "m² komplektda",
+    m2_unit: "m²",
     
     admin_login_pending_title: "Tasdiqlash kutilmoqda",
     admin_login_pending_desc: "Sizning kirish so'rovingiz administratorga ko'rib chiqish uchun yuborildi.",
@@ -744,6 +746,8 @@ export const translations = {
     'firebase_error_auth_requires-recent-login': "Ushbu operatsiya yaqinda tasdiqlashni talab qiladi. Iltimos, tizimdan chiqib, qayta kiring.",
     'firebase_error_auth_operation-not-allowed': "Ushbu operatsiyaga ruxsat berilmagan. Yordam xizmatiga murojaat qiling.",
     'firebase_error_unknown': "Noma'lum xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
+    'admin_login_success_title': "Muvaffaqiyatli kirildi",
+    'admin_login_success_desc': "Yo'naltirilmoqda...",
     
     'admin_worker_login_title': "Xodimlar uchun kirish",
     'admin_worker_login_desc': "Rahbarga kirish so'rovini yuborish uchun quyidagi tugmani bosing.",

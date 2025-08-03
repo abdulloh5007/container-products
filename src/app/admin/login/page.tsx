@@ -68,8 +68,12 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      // On successful login, immediately redirect.
-      router.replace('/admin/acceptance');
+      // On successful login, the useEffect will catch the state change and redirect.
+      // This is more reliable than redirecting here immediately.
+      toast({
+          title: t('admin_login_success_title', {defaultValue: "Login Successful"}),
+          description: t('admin_login_success_desc', {defaultValue: "Redirecting..."}),
+      });
     } catch (error) {
       console.error(error);
       toast({
@@ -82,7 +86,7 @@ function LoginForm() {
     }
   };
 
-  if (isLoading || isAuthenticated) {
+  if (isLoading || (isAuthenticated && user)) {
     return <LoginSkeleton />;
   }
 

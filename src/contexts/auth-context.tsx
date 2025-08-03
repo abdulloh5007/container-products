@@ -282,11 +282,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(translateFirebaseError('auth/invalid-credential'));
     }
 
+    const userData = userDocSnap.data();
     const newSessionId = generateSessionId();
     const newSession: Session = {
         id: newSessionId,
         deviceName: getDeviceName(),
-        name: userDocSnap.data().name,
+        name: userData.name,
         role: 'senior',
         createdAt: Timestamp.now()
     }
@@ -295,6 +296,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
     await idb.set('currentSessionId', newSessionId);
     await idb.set('isAuthenticated', true);
+    
+    // Manually update the state to trigger redirect immediately
+    const updatedSessions = [...userData.sessions, newSession];
+    setUser({
+      ...userData,
+      uid: firebaseUser.uid,
+      sessions: updatedSessions,
+      currentSession: newSession,
+    } as AppUser);
+    
     setCurrentSessionId(newSessionId);
   };
 
