@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const sessionId = await idb.get<string>('currentSessionId');
             setCurrentSessionId(sessionId || null);
         }
-        // No need to set a placeholder user state here, let the onAuthStateChanged handle it.
     };
     initializeSession();
   }, []);
@@ -161,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (mySession) {
         if (mySession.role !== 'pending') {
-          // Approved!
           await idb.set('isAuthenticated', true);
           await idb.set('currentSessionId', mySession.id); 
           await idb.del('pendingSessionId');
@@ -172,7 +170,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         }
       } else {
-        // Declined (session was removed)
         setLoginState('access_denied');
         await idb.del('pendingSessionId');
         if (seniorUserUnsubscribe) seniorUserUnsubscribe();
@@ -202,20 +199,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
                             setUser(appUser);
                         } else {
-                           // This session was deleted remotely, sign out.
                            logout(true);
                         }
                     } else {
-                       // User doc doesn't exist or no session, sign out.
                        logout();
                     }
                     setIsLoading(false);
                 });
                 return () => unsubscribeUser();
             } else {
-                // No Firebase user. Could be a worker or junior.
                 if (localIsAuthenticated && localCurrentSessionId) {
-                    // This is a worker/junior. We need to fetch the senior user doc to find their session.
                     const usersQuery = query(collection(db, 'users'), limit(1));
                     const unsubscribeSenior = onSnapshot(usersQuery, (snapshot) => {
                          if (!snapshot.empty) {
@@ -226,15 +219,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             if (currentSession) {
                                 setUser({
                                     ...seniorUserData,
-                                    uid: seniorUserDoc.id, // The UID is the senior's
+                                    uid: seniorUserDoc.id,
                                     currentSession: currentSession,
                                 });
                             } else {
-                                // Session not found, clear local state
-                                logout(true); // Pass flag to indicate remote deletion
+                                logout(true);
                             }
                         } else {
-                             // No senior user found, can't be authenticated.
                             logout();
                         }
                         setIsLoading(false);
@@ -295,7 +286,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await idb.set('currentSessionId', newSessionId);
     await idb.set('isAuthenticated', true);
     
-    // Manually update the state to trigger redirect immediately
     const updatedSessions = [...(userData.sessions || []), newSession];
     setUser({
       ...userData,
@@ -395,7 +385,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
   
-    const redirectPath = isSeniorUser ? '/admin/login' : '/admin/loginAsWorker';
+    const redirectPath = '/admin/login';
   
     if (auth.currentUser && isSeniorUser) {
       await signOut(auth);
@@ -407,7 +397,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentSessionId(null);
     setLoginState('form');
   
-    // Use window.location.href for a full reload redirect
     window.location.href = redirectPath;
   };
 
@@ -427,7 +416,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const batch = writeBatch(db);
-        // Remove all other sessions
         user.sessions.forEach(session => {
             if (session.id !== user.currentSession!.id) {
                 batch.update(userDocRef, { sessions: arrayRemove(session) });

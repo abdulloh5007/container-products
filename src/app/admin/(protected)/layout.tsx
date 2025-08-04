@@ -65,7 +65,7 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
 
         // Redirect pending users to worker login page
         if (role === 'pending') {
-            router.replace('/admin/loginAsWorker');
+            router.replace('/admin/login');
             return;
         }
 
@@ -102,17 +102,14 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
     }
   }, [isAuthenticated, isLoading, router, user, pathname, loginState]);
 
-  // While loading auth state, show a full-page loader or skeleton
   if (isLoading || (!isAuthenticated && loginState !== 'pending')) {
     return <AdminSkeleton />;
   }
 
-  // If not authenticated after loading (and not pending), the redirect is in flight, so render nothing.
   if (!isAuthenticated && loginState !== 'pending') {
     return null;
   }
 
-  // If user is pending, render nothing and let the loginAsWorker page handle UI
   if (loginState === 'pending') {
       return null;
   }
