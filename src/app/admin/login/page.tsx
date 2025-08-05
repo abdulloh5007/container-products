@@ -36,25 +36,13 @@ function LoginSkeleton() {
 }
 
 function SeniorLoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { login, isAuthenticated, isLoading, user, isRegistrationAllowed } = useAuth();
+  const { login, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user) {
-        let redirectTo = '/admin/acceptance'; 
-        if (user.currentSession?.role === 'worker') {
-            redirectTo = '/admin/stock';
-        }
-        router.replace(searchParams.get('redirectTo') || redirectTo);
-    }
-  }, [isAuthenticated, isLoading, router, searchParams, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,22 +121,10 @@ function SeniorLoginForm() {
 }
 
 function WorkerLoginForm() {
-    const router = useRouter();
     const { requestWorkerAccess, loginState, setLoginState, isLoading, isAuthenticated, user } = useAuth();
     const { toast } = useToast();
     const { t } = useLanguage();
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (!isLoading && isAuthenticated && user?.currentSession?.role !== 'pending') {
-            const role = user.currentSession?.role;
-            let redirectTo = '/admin/acceptance'; // Default for junior/senior
-            if (role === 'worker') {
-                redirectTo = '/admin/stock';
-            }
-            router.replace(redirectTo);
-        }
-    }, [isAuthenticated, isLoading, user, router]);
 
     const handleRequestAccess = async () => {
         setIsSubmitting(true);
@@ -214,8 +190,20 @@ function WorkerLoginForm() {
 function CombinedLoginForm() {
   const { t } = useLanguage();
   const { isLoading, isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  if (isLoading || (isAuthenticated && user)) {
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.currentSession?.role !== 'pending') {
+        let redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
+        if (user.currentSession?.role === 'worker') {
+            redirectTo = '/admin/stock';
+        }
+        router.replace(redirectTo);
+    }
+  }, [isAuthenticated, isLoading, user, router, searchParams]);
+  
+  if (isLoading) {
     return <LoginSkeleton />;
   }
 
