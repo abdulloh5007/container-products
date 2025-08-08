@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/browser';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 
 function LoginSkeleton() {
     return (
@@ -129,7 +129,7 @@ function WorkerLoginForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
-    const codeReader = new BrowserMultiFormatReader();
+    const codeReader = useRef(new BrowserMultiFormatReader());
 
     const startScan = async () => {
         setScanError(null);
@@ -138,11 +138,11 @@ function WorkerLoginForm() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                codeReader.decodeFromVideoDevice(undefined, videoRef.current, async (result, error) => {
+                codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, async (result, error) => {
                     if (result) {
                         setIsScanning(false);
                         setIsSubmitting(true);
-                        codeReader.reset();
+                        codeReader.current.reset();
                         stream.getTracks().forEach(track => track.stop());
                         try {
                             await loginWithQrToken(result.getText());
@@ -165,7 +165,7 @@ function WorkerLoginForm() {
     };
     
     const stopScan = () => {
-        codeReader.reset();
+        codeReader.current.reset();
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
@@ -180,6 +180,7 @@ function WorkerLoginForm() {
             stopScan();
         }
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScanning])
 
     if (isScanning) {
