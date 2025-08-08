@@ -173,6 +173,15 @@ function WorkerLoginForm() {
         setIsScanning(false);
     };
 
+    useEffect(() => {
+      // Clean up on component unmount
+      return () => {
+        if(isScanning) {
+            stopScan();
+        }
+      }
+    }, [isScanning])
+
     if (isScanning) {
         return (
              <div className="flex flex-col items-center gap-4">
