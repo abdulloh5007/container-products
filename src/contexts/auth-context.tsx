@@ -268,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const batch = writeBatch(db);
     batch.update(seniorUserDocRef, { sessions: arrayUnion(newSession) });
-    batch.update(tokenDocRef, { used: true, usedAt: serverTimestamp(), usedByDevice: deviceName });
+    batch.update(tokenDocRef, { used: true, usedAt: Timestamp.now(), usedByDevice: deviceName });
     await batch.commit();
     
     await idb.set('currentSession', newSession);
@@ -321,7 +321,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (isRemoteDeletion: boolean = false) => {
     const localSession = await idb.get<Session>('currentSession');
     if (!localSession) {
-         if (typeof window !== 'undefined') window.location.href = '/admin/login';
+         if (typeof window !== 'undefined' && window.location.pathname !== '/admin/login') {
+            window.location.href = '/admin/login';
+         }
         return;
     }
   
@@ -353,7 +355,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setLoginState('form');
   
-    if (typeof window !== 'undefined') window.location.href = '/admin/login';
+    if (typeof window !== 'undefined' && window.location.pathname !== '/admin/login') {
+      window.location.href = '/admin/login';
+    }
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
