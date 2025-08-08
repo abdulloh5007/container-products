@@ -3,7 +3,7 @@
 
 import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, LoginState } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { BrowserMultiFormatReader, NotFoundException, FormatException } from '@zxing/browser';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/browser';
 
 function LoginSkeleton() {
     return (
@@ -151,8 +151,8 @@ function WorkerLoginForm() {
                             setIsSubmitting(false);
                         }
                     }
-                    if (error && !(error instanceof NotFoundException) && !(error instanceof FormatException)) {
-                       setScanError('Не удалось распознать QR-код.');
+                    if (error && !(error instanceof NotFoundException)) {
+                       setScanError('Не удалось распознать QR-код. Попробуйте еще раз.');
                        console.error(error);
                     }
                 });
