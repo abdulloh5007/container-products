@@ -138,28 +138,27 @@ function WorkerLoginForm() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, async (result, error) => {
+                codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, error) => {
                     if (result) {
                         setIsScanning(false);
                         setIsSubmitting(true);
                         codeReader.current.reset();
                         stream.getTracks().forEach(track => track.stop());
-                        try {
-                            await loginWithQrToken(result.getText());
-                        } catch(authError) {
+                        
+                        loginWithQrToken(result.getText()).catch(authError => {
                             toast({ variant: 'destructive', title: t('admin_login_failure_title'), description: (authError as Error).message });
                             setIsSubmitting(false);
-                        }
+                        });
                     }
                     if (error && !(error instanceof NotFoundException)) {
-                       setScanError('Не удалось распознать QR-код. Попробуйте еще раз.');
+                       setScanError(t('admin_qr_scan_error'));
                        console.error(error);
                     }
                 });
             }
         } catch (error) {
             console.error('Camera access error:', error);
-            setScanError('Камера недоступна. Пожалуйста, предоставьте доступ к камере.');
+            setScanError(t('admin_qr_scan_error_permission'));
             setIsScanning(false);
         }
     };
@@ -174,7 +173,6 @@ function WorkerLoginForm() {
     };
 
     useEffect(() => {
-      // Clean up on component unmount
       return () => {
         if(isScanning) {
             stopScan();
@@ -192,7 +190,7 @@ function WorkerLoginForm() {
                 </div>
                 {scanError && <Alert variant="destructive"><CameraOff className="h-4 w-4" /><AlertDescription>{scanError}</AlertDescription></Alert>}
                 <Button variant="outline" onClick={stopScan} className="w-full">
-                   Отмена
+                   {t('admin_cancel_button')}
                 </Button>
             </div>
         )
@@ -205,7 +203,7 @@ function WorkerLoginForm() {
             disabled={isSubmitting}
         >
             <QrCode className="mr-2 h-4 w-4" />
-            {isSubmitting ? 'Проверка...' : 'Войти по QR-коду'}
+            {isSubmitting ? t('admin_qr_login_verifying') : t('admin_qr_login_button')}
         </Button>
     );
 }
@@ -245,7 +243,7 @@ function CombinedLoginForm() {
                 <TabsTrigger value="senior">{t('admin_role_senior')}</TabsTrigger>
             </TabsList>
             <TabsContent value="worker" className="space-y-4 pt-4">
-                 <CardDescription className="text-center">Войдите, отсканировав QR-код, предоставленный руководителем.</CardDescription>
+                 <CardDescription className="text-center">{t('admin_qr_login_prompt')}</CardDescription>
                  <WorkerLoginForm />
             </TabsContent>
             <TabsContent value="senior" className="space-y-4 pt-4">

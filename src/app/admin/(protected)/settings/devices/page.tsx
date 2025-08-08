@@ -134,7 +134,7 @@ export default function DevicesSettingsPage() {
             setQrDialogState(prev => ({...prev, isGenerating: false, qrCodeUrl: qrDataUrl}));
         } catch (error) {
             console.error("Error generating QR code:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: 'Could not generate QR code.' });
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_qr_error_generate') });
             setQrDialogState(prev => ({...prev, isGenerating: false }));
         }
     };
@@ -202,6 +202,15 @@ export default function DevicesSettingsPage() {
                         <Skeleton className="h-20 w-full" />
                         <Skeleton className="h-20 w-full" />
                         <Skeleton className="h-20 w-full" />
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                         <Skeleton className="h-10 w-full" />
                     </CardContent>
                 </Card>
             </div>
@@ -272,22 +281,14 @@ export default function DevicesSettingsPage() {
     return (
       <>
         <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">{t('admin_back_button')}</span>
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('admin_settings_tab_users')}</h1>
-                    </div>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">{t('admin_back_button')}</span>
+                </Button>
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('admin_settings_tab_users')}</h1>
                 </div>
-                {isSenior && (
-                     <Button onClick={openQrDialog}>
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Сгенерировать QR
-                    </Button>
-                )}
             </div>
 
             <Card>
@@ -321,6 +322,20 @@ export default function DevicesSettingsPage() {
                 </CardContent>
             </Card>
 
+            {isSenior && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>{t('admin_qr_dialog_title')}</CardTitle>
+                        <CardDescription>{t('admin_qr_dialog_desc')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={openQrDialog} className="w-full">
+                            <QrCode className="mr-2 h-4 w-4" />
+                            {t('admin_qr_generate_button')}
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
         
         {renderAlertDialog()}
@@ -328,9 +343,9 @@ export default function DevicesSettingsPage() {
         <Dialog open={qrDialogState.isOpen} onOpenChange={closeQrDialog}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Сгенерировать QR-код для входа</DialogTitle>
+                    <DialogTitle>{t('admin_qr_dialog_title')}</DialogTitle>
                     <DialogDescription>
-                        Выберите роль, и сгенерируйте одноразовый QR-код. Код действителен 5 минут.
+                        {t('admin_qr_dialog_desc')}
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">
@@ -354,7 +369,7 @@ export default function DevicesSettingsPage() {
                                 </RadioGroup>
                             </div>
                             <Button onClick={handleGenerateQrCode} disabled={qrDialogState.isGenerating} className="w-full">
-                                {qrDialogState.isGenerating ? "Генерация..." : "Сгенерировать"}
+                                {qrDialogState.isGenerating ? t('admin_qr_generating') : t('admin_qr_generate_button')}
                             </Button>
                         </>
                     )}
@@ -365,10 +380,10 @@ export default function DevicesSettingsPage() {
                         <div className="flex flex-col items-center gap-4">
                             <img src={qrDialogState.qrCodeUrl} alt="QR Code" className="rounded-lg" />
                             <p className="text-sm text-muted-foreground text-center">
-                                Пользователь должен отсканировать этот QR-код для входа.
+                                {t('admin_qr_scan_prompt')}
                             </p>
                             <Button onClick={() => setQrDialogState(prev => ({...prev, qrCodeUrl: null}))}>
-                                Создать новый
+                                {t('admin_qr_generate_new')}
                             </Button>
                         </div>
                     )}
