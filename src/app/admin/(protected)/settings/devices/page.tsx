@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, SessionRole, Session } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Monitor, Smartphone, Archive, Edit } from 'lucide-react';
+import { ArrowLeft, Crown, Hourglass, Trash2, User, UserCheck, Monitor, Smartphone, Archive, Edit, QrCode } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -18,17 +18,13 @@ import { format } from 'date-fns';
 import { ru, uz } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import QRCode from 'qrcode';
 
 interface AlertDialogState {
   type: 'deleteSession';
   targetSession?: Session;
-}
-
-interface ConfirmAccessDialogState {
-    isOpen: boolean;
-    session: Session | null;
-    name: string;
-    role: 'junior' | 'worker';
 }
 
 interface EditSessionDialogState {
@@ -37,6 +33,14 @@ interface EditSessionDialogState {
     name: string;
     role: 'junior' | 'worker';
 }
+
+interface QrDialogState {
+    isOpen: boolean;
+    isGenerating: boolean;
+    qrCodeUrl: string | null;
+    roleToGenerate: 'junior' | 'worker';
+}
+
 
 const getDeviceIcon = (deviceName: string) => {
     if (!deviceName) return <Monitor className="h-6 w-6 text-muted-foreground" />;
@@ -55,50 +59,17 @@ const getDeviceIcon = (deviceName: string) => {
 export default function DevicesSettingsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user: currentUser, isAuthLoading, approveSession, deleteSession, updateUserRole } = useAuth();
+    const { user: currentUser, isAuthLoading, deleteSession, updateUserRole } = useAuth();
     const router = useRouter();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alertDialogState, setAlertDialogState] = useState<AlertDialogState | null>(null);
-    const [confirmAccessDialogState, setConfirmAccessDialogState] = useState<ConfirmAccessDialogState>({ isOpen: false, session: null, name: '', role: 'junior' });
     const [editSessionDialogState, setEditSessionDialogState] = useState<EditSessionDialogState>({ isOpen: false, session: null, name: '', role: 'junior' });
+    const [qrDialogState, setQrDialogState] = useState<QrDialogState>({ isOpen: false, isGenerating: false, qrCodeUrl: null, roleToGenerate: 'junior' });
     
     const role = currentUser?.currentSession?.role;
     const isSenior = role === 'senior';
     const dateLocale = language === 'uz' ? uz : ru;
-
-    const openConfirmAccessDialog = (session: Session) => {
-        setConfirmAccessDialogState({
-            isOpen: true,
-            session: session,
-            name: session.deviceName, // Pre-fill with device name
-            role: 'junior'
-        });
-    };
-    
-    const closeConfirmAccessDialog = () => {
-        setConfirmAccessDialogState({ isOpen: false, session: null, name: '', role: 'junior' });
-    };
-
-    const handleConfirmAccess = async () => {
-        const { session, name, role } = confirmAccessDialogState;
-        if (!session || !name) {
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_dialog_name_required') });
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            await approveSession(session, name, role);
-            toast({ title: t('admin_session_confirm_success_title'), description: t('admin_session_confirm_success_desc', { deviceName: name }) });
-        } catch (error) {
-            console.error("Error confirming access:", error);
-            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_session_confirm_error_desc') });
-        } finally {
-            setIsSubmitting(false);
-            closeConfirmAccessDialog();
-        }
-    };
 
     const openEditSessionDialog = (session: Session) => {
         if (session.role === 'junior' || session.role === 'worker') {
@@ -149,7 +120,33 @@ export default function DevicesSettingsPage() {
             closeEditSessionDialog();
         }
     };
+
+    const handleGenerateQrCode = async () => {
+        setQrDialogState(prev => ({ ...prev, isGenerating: true, qrCodeUrl: null }));
+        try {
+            const docRef = await addDoc(collection(db, 'qr_login_tokens'), {
+                role: qrDialogState.roleToGenerate,
+                used: false,
+                createdAt: serverTimestamp(),
+                expiresAt: new Timestamp(Date.now() / 1000 + 300, 0), // 5-minute expiry
+            });
+            const qrDataUrl = await QRCode.toDataURL(docRef.id, { errorCorrectionLevel: 'H', width: 256 });
+            setQrDialogState(prev => ({...prev, isGenerating: false, qrCodeUrl: qrDataUrl}));
+        } catch (error) {
+            console.error("Error generating QR code:", error);
+            toast({ variant: 'destructive', title: t('admin_form_error_title'), description: 'Could not generate QR code.' });
+            setQrDialogState(prev => ({...prev, isGenerating: false }));
+        }
+    };
+
+    const openQrDialog = () => {
+        setQrDialogState({ isOpen: true, isGenerating: false, qrCodeUrl: null, roleToGenerate: 'junior' });
+    };
     
+    const closeQrDialog = () => {
+        setQrDialogState({ isOpen: false, isGenerating: false, qrCodeUrl: null, roleToGenerate: 'junior' });
+    };
+
     const renderAlertDialog = () => {
         if (!alertDialogState) return null;
         const { type, targetSession } = alertDialogState;
@@ -245,39 +242,19 @@ export default function DevicesSettingsPage() {
                     <div className="flex-shrink-0 self-start sm:self-center">{renderRoleIcon(role)}</div>
                      {isSenior && !isCurrentSession && (
                         <>
-                             {role === 'pending' ? (
-                                <>
-                                    <Button onClick={() => openConfirmAccessDialog(session)} disabled={isSubmitting} className="h-9">
-                                        <UserCheck className="mr-2 h-4 w-4" />
-                                        <span>{t('admin_session_confirm_button')}</span>
-                                    </Button>
-                                    <Button 
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-9 w-9 text-destructive"
-                                        onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} 
-                                        disabled={isSubmitting}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </>
-                             ) : (
-                                <>
-                                    <Button variant="outline" onClick={() => openEditSessionDialog(session)} disabled={isSubmitting} className="h-9">
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        {t('admin_edit_button')}
-                                    </Button>
-                                    <Button 
-                                        variant="destructive"
-                                        size="icon"
-                                        className="h-9 w-9"
-                                        onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} 
-                                        disabled={isSubmitting}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </>
-                             )}
+                            <Button variant="outline" onClick={() => openEditSessionDialog(session)} disabled={isSubmitting} className="h-9">
+                                <Edit className="mr-2 h-4 w-4" />
+                                {t('admin_edit_button')}
+                            </Button>
+                            <Button 
+                                variant="destructive"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => setAlertDialogState({ type: 'deleteSession', targetSession: session })} 
+                                disabled={isSubmitting}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         </>
                     )}
                 </div>
@@ -288,22 +265,29 @@ export default function DevicesSettingsPage() {
     const sessions = currentUser?.sessions || [];
     const currentActiveSession = sessions.find(s => s.id === currentUser?.currentSession?.id);
     const otherActiveSessions = sessions
-        .filter(s => s.role !== 'pending' && s.id !== currentUser?.currentSession?.id)
+        .filter(s => s.id !== currentUser?.currentSession?.id)
         .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
         
-    const pendingSessions = sessions.filter(s => s.role === 'pending');
 
     return (
       <>
         <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="sr-only">{t('admin_back_button')}</span>
-                </Button>
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('admin_settings_tab_users')}</h1>
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">{t('admin_back_button')}</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('admin_settings_tab_users')}</h1>
+                    </div>
                 </div>
+                {isSenior && (
+                     <Button onClick={openQrDialog}>
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Сгенерировать QR
+                    </Button>
+                )}
             </div>
 
             <Card>
@@ -337,67 +321,58 @@ export default function DevicesSettingsPage() {
                 </CardContent>
             </Card>
 
-            {isSenior && pendingSessions.length > 0 && (
-                <Card className="mt-8">
-                    <CardHeader>
-                        <CardTitle>{t('admin_session_pending_title')}</CardTitle>
-                        <CardDescription>{t('admin_session_pending_desc')}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isAuthLoading ? (
-                            <Skeleton className="h-20 w-full" />
-                            ) : (
-                            pendingSessions.map(renderSessionCard)
-                            )}
-                    </CardContent>
-                </Card>
-            )}
-
         </div>
         
         {renderAlertDialog()}
 
-        <Dialog open={confirmAccessDialogState.isOpen} onOpenChange={(isOpen) => !isOpen && closeConfirmAccessDialog()}>
+        <Dialog open={qrDialogState.isOpen} onOpenChange={closeQrDialog}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{t('admin_session_dialog_confirm_title')}</DialogTitle>
-                    <DialogDescription>{t('admin_session_dialog_confirm_setup_desc', { deviceName: confirmAccessDialogState.session?.deviceName || '' })}</DialogDescription>
+                    <DialogTitle>Сгенерировать QR-код для входа</DialogTitle>
+                    <DialogDescription>
+                        Выберите роль, и сгенерируйте одноразовый QR-код. Код действителен 5 минут.
+                    </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="session-name">{t('admin_session_dialog_name_label')}</Label>
-                        <Input
-                            id="session-name"
-                            value={confirmAccessDialogState.name}
-                            onChange={(e) => setConfirmAccessDialogState(s => ({ ...s, name: e.target.value }))}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>{t('admin_session_dialog_role_label')}</Label>
-                        <RadioGroup 
-                            value={confirmAccessDialogState.role} 
-                            onValueChange={(value) => setConfirmAccessDialogState(s => ({ ...s, role: value as 'junior' | 'worker' }))} 
-                            className="flex gap-4"
-                            disabled={isSubmitting}
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="junior" id="role-junior" />
-                                <Label htmlFor="role-junior">{t('admin_role_junior')}</Label>
+                 <div className="py-4 space-y-4">
+                    {!qrDialogState.qrCodeUrl && (
+                        <>
+                            <div className="space-y-2">
+                                <Label>{t('admin_session_dialog_role_label')}</Label>
+                                <RadioGroup 
+                                    value={qrDialogState.roleToGenerate} 
+                                    onValueChange={(value) => setQrDialogState(s => ({ ...s, roleToGenerate: value as 'junior' | 'worker' }))} 
+                                    className="flex gap-4"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="junior" id="qr-role-junior" />
+                                        <Label htmlFor="qr-role-junior">{t('admin_role_junior')}</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="worker" id="qr-role-worker" />
+                                        <Label htmlFor="qr-role-worker">{t('admin_role_worker')}</Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="worker" id="role-worker" />
-                                <Label htmlFor="role-worker">{t('admin_role_worker')}</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
+                            <Button onClick={handleGenerateQrCode} disabled={qrDialogState.isGenerating} className="w-full">
+                                {qrDialogState.isGenerating ? "Генерация..." : "Сгенерировать"}
+                            </Button>
+                        </>
+                    )}
+
+                    {qrDialogState.isGenerating && <Skeleton className="w-64 h-64 mx-auto" />}
+
+                    {qrDialogState.qrCodeUrl && (
+                        <div className="flex flex-col items-center gap-4">
+                            <img src={qrDialogState.qrCodeUrl} alt="QR Code" className="rounded-lg" />
+                            <p className="text-sm text-muted-foreground text-center">
+                                Пользователь должен отсканировать этот QR-код для входа.
+                            </p>
+                            <Button onClick={() => setQrDialogState(prev => ({...prev, qrCodeUrl: null}))}>
+                                Создать новый
+                            </Button>
+                        </div>
+                    )}
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={closeConfirmAccessDialog} disabled={isSubmitting}>{t('admin_cancel_button')}</Button>
-                    <Button onClick={handleConfirmAccess} disabled={isSubmitting}>
-                         {isSubmitting ? t('admin_saving_text') : t('admin_confirm_button')}
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
         
@@ -405,7 +380,7 @@ export default function DevicesSettingsPage() {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('admin_edit_user_title')}</DialogTitle>
-                    <DialogDescription>{t('admin_edit_user_desc', { deviceName: editSessionDialogState.session?.deviceName || '' })}</DialogDescription>
+                    <DialogDescription>{t('admin_edit_user_desc', { deviceName: editSessionDialogState.session?.name || editSessionDialogState.session?.deviceName || '' })}</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">

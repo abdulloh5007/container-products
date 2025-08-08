@@ -10,12 +10,12 @@ import { useRouter } from 'next/navigation';
 import * as idb from '@/lib/indexed-db';
 
 
-export type SessionRole = 'senior' | 'junior' | 'worker' | 'pending';
+export type SessionRole = 'senior' | 'junior' | 'worker';
 export type ViewMode = 'classic' | 'modern';
 
 export interface Session {
     id: string; 
-    name?: string;
+    name: string;
     role: SessionRole;
     deviceName: string;
     createdAt: Timestamp;
@@ -32,7 +32,7 @@ export interface AppUser {
     isManagementModeEnabled?: boolean;
 }
 
-export type LoginState = 'form' | 'pending' | 'failed' | 'no_account' | 'access_denied' | 'approved';
+export type LoginState = 'form' | 'approved';
 
 type AuthContextType = {
   user: AppUser | null;
@@ -45,12 +45,11 @@ type AuthContextType = {
   setViewMode: (mode: ViewMode) => void;
   setLoginState: (state: LoginState) => void;
   login: (email: string, password: string) => Promise<void>;
+  loginWithQrToken: (token: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  requestWorkerAccess: () => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
-  approveSession: (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => Promise<void>;
   deleteSession: (session: Session) => Promise<void>;
   updateUserRole: (session: Session, name: string, role: 'junior' | 'worker') => Promise<void>;
   translateFirebaseError: (errorCode: string) => string;
@@ -77,14 +76,11 @@ const getDeviceName = (): string => {
     return "Web Browser";
 }
 
-let seniorUserUnsubscribe: (() => void) | null = null;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(false);
   const [loginState, setLoginState] = useState<LoginState>('form');
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
   const [viewMode, setViewModeState] = useState<ViewMode>('classic');
   const router = useRouter();
@@ -135,127 +131,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkUsers();
   }, [])
 
-  useEffect(() => {
-    const initializeSession = async () => {
-        if (typeof window !== 'undefined') {
-            const sessionId = await idb.get<string>('currentSessionId');
-            setCurrentSessionId(sessionId || null);
-        }
-    };
-    initializeSession();
-  }, []);
+    useEffect(() => {
+        setIsLoading(true);
+        const handleAuth = async () => {
+            const localSession = await idb.get<Session>('currentSession');
 
-  const listenForSeniorUserChanges = useCallback((pendingSessionId: string) => {
-    if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+            const unsubs: (()=>void)[] = [];
 
-    const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef, limit(1));
-    
-    seniorUserUnsubscribe = onSnapshot(q, async (snapshot) => {
-      if (snapshot.empty) return;
-      
-      const seniorUserDoc = snapshot.docs[0];
-      const sessions = seniorUserDoc.data().sessions as Session[];
-      const mySession = sessions.find(s => s.id === pendingSessionId);
-      
-      if (mySession) {
-        if (mySession.role !== 'pending') {
-          await idb.set('isAuthenticated', true);
-          await idb.set('currentSessionId', mySession.id); 
-          await idb.del('pendingSessionId');
-          setLoginState('approved');
-          if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-          
-          window.location.reload();
-
-        }
-      } else {
-        setLoginState('access_denied');
-        await idb.del('pendingSessionId');
-        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-      }
-    }, (error) => {
-        console.error("Error listening to senior user changes: ", error);
-        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-    });
-  }, []);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const mainAuthLogic = async () => {
-        const localIsAuthenticated = await idb.get<boolean>('isAuthenticated');
-        const localCurrentSessionId = await idb.get<string>('currentSessionId');
-
-        onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                 const userDocRef = doc(db, "users", firebaseUser.uid);
-                 const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-                    if (docSnap.exists() && localCurrentSessionId) {
-                        const userData = docSnap.data() as Omit<AppUser, 'currentSession'>;
-                        const sessions = userData.sessions || [];
-                        const currentSession = sessions.find(s => s.id === localCurrentSessionId) || null;
-                        
-                        if (currentSession) {
-                            const appUser = { ...userData, uid: firebaseUser.uid, currentSession };
-                            setUser(appUser);
-                        } else {
-                           logout(true);
-                        }
+            if (localSession?.role === 'senior') {
+                const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+                    if (firebaseUser) {
+                        const userDocRef = doc(db, 'users', firebaseUser.uid);
+                        const unsubUser = onSnapshot(userDocRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const userData = docSnap.data() as Omit<AppUser, 'uid'|'currentSession'>;
+                                const sessions = userData.sessions || [];
+                                const currentSession = sessions.find(s => s.id === localSession.id) || null;
+                                if (currentSession) {
+                                    setUser({ ...userData, uid: firebaseUser.uid, currentSession });
+                                } else {
+                                    logout(true);
+                                }
+                            } else {
+                                logout();
+                            }
+                        });
+                        unsubs.push(unsubUser);
                     } else {
-                       logout();
+                        logout();
                     }
                     setIsLoading(false);
                 });
-                return () => unsubscribeUser();
-            } else {
-                if (localIsAuthenticated && localCurrentSessionId) {
-                    const usersQuery = query(collection(db, 'users'), limit(1));
-                    const unsubscribeSenior = onSnapshot(usersQuery, (snapshot) => {
-                         if (!snapshot.empty) {
-                            const seniorUserDoc = snapshot.docs[0];
-                            const seniorUserData = seniorUserDoc.data() as AppUser;
-                            const currentSession = seniorUserData.sessions.find(s => s.id === localCurrentSessionId);
+                unsubs.push(unsubscribe);
+            } else if (localSession && (localSession.role === 'junior' || localSession.role === 'worker')) {
+                const usersQuery = query(collection(db, 'users'), limit(1));
+                const unsubscribeSenior = onSnapshot(usersQuery, (snapshot) => {
+                    if (!snapshot.empty) {
+                        const seniorUserDoc = snapshot.docs[0];
+                        const seniorUserData = seniorUserDoc.data() as AppUser;
+                        const currentSession = seniorUserData.sessions.find(s => s.id === localSession.id);
 
-                            if (currentSession) {
-                                setUser({
-                                    ...seniorUserData,
-                                    uid: seniorUserDoc.id,
-                                    currentSession: currentSession,
-                                });
-                            } else {
-                                logout(true);
-                            }
+                        if (currentSession) {
+                            setUser({ ...seniorUserData, uid: seniorUserDoc.id, currentSession });
                         } else {
-                            logout();
+                            logout(true);
                         }
-                        setIsLoading(false);
-                    });
-                    return () => unsubscribeSenior();
-                } else {
-                    const pendingId = await idb.get<string>('pendingSessionId');
-                    if (pendingId) {
-                        setLoginState('pending');
-                        listenForSeniorUserChanges(pendingId);
                     } else {
-                         setUser(null);
-                         idb.del('currentSessionId');
-                         idb.del('isAuthenticated');
-                         setLoginState('form');
+                        logout();
                     }
-                    setIsLoading(false);
-                }
+                     setIsLoading(false);
+                });
+                unsubs.push(unsubscribeSenior);
+            } else {
+                setUser(null);
+                await idb.del('currentSession');
+                setLoginState('form');
+                setIsLoading(false);
             }
-        });
-    }
-    
-    if (typeof window !== 'undefined') {
-        mainAuthLogic();
-    }
 
-    return () => {
-        if (seniorUserUnsubscribe) seniorUserUnsubscribe();
-    };
-  }, [listenForSeniorUserChanges]);
+            return () => {
+                unsubs.forEach(unsub => unsub());
+            }
+        };
+
+        handleAuth();
+
+    }, [router]);
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
@@ -283,8 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await updateDoc(userDocRef, { sessions: arrayUnion(newSession) });
   
-    await idb.set('currentSessionId', newSessionId);
-    await idb.set('isAuthenticated', true);
+    await idb.set('currentSession', newSession);
     
     const updatedSessions = [...(userData.sessions || []), newSession];
     setUser({
@@ -293,41 +233,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessions: updatedSessions,
       currentSession: newSession,
     } as AppUser);
-    
-    setCurrentSessionId(newSessionId);
   };
 
-  const requestWorkerAccess = async () => {
-    if (seniorUserUnsubscribe) seniorUserUnsubscribe();
+  const loginWithQrToken = async (tokenId: string) => {
+    const tokenDocRef = doc(db, 'qr_login_tokens', tokenId);
+    const tokenDocSnap = await getDoc(tokenDocRef);
 
-    const usersCollectionRef = collection(db, 'users');
-    const q = query(usersCollectionRef, limit(1));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-        throw new Error("No senior user found to send request to.");
+    if (!tokenDocSnap.exists()) {
+        throw new Error("Недействительный или неверный QR-код.");
     }
-    const seniorUserDoc = snapshot.docs[0];
-    const seniorUserRef = seniorUserDoc.ref;
-    
+    const tokenData = tokenDocSnap.data();
+    if (tokenData.used) {
+        throw new Error("Этот QR-код уже был использован.");
+    }
+    if (tokenData.expiresAt.toMillis() < Date.now()) {
+        throw new Error("Срок действия этого QR-кода истек.");
+    }
+
+    const usersQuery = query(collection(db, 'users'), limit(1));
+    const seniorUserSnapshot = await getDocs(usersQuery);
+    if (seniorUserSnapshot.empty) {
+        throw new Error("Не найден аккаунт администратора для входа.");
+    }
+    const seniorUserDocRef = seniorUserSnapshot.docs[0].ref;
     const deviceName = getDeviceName();
-    
-    const newSessionId = generateSessionId();
-    const newSession: Session = {
-        id: newSessionId,
-        deviceName: deviceName,
-        role: 'pending',
-        createdAt: Timestamp.now()
-    }
 
-    await updateDoc(seniorUserRef, {
-        sessions: arrayUnion(newSession)
-    });
+    const newSession: Session = {
+        id: generateSessionId(),
+        deviceName: deviceName,
+        name: `${tokenData.role === 'junior' ? 'Помощник' : 'Работник'} - ${deviceName.split(' ')[0]}`,
+        role: tokenData.role,
+        createdAt: Timestamp.now(),
+    }
     
-    await idb.set('pendingSessionId', newSessionId);
-    setLoginState('pending');
-    listenForSeniorUserChanges(newSessionId);
-  };
+    const batch = writeBatch(db);
+    batch.update(seniorUserDocRef, { sessions: arrayUnion(newSession) });
+    batch.update(tokenDocRef, { used: true, usedAt: serverTimestamp(), usedByDevice: deviceName });
+    await batch.commit();
+    
+    await idb.set('currentSession', newSession);
+    
+    // Manually set user state to trigger redirect
+    const seniorData = seniorUserSnapshot.docs[0].data() as AppUser;
+    setUser({
+        ...seniorData,
+        uid: seniorUserDocRef.id,
+        currentSession: newSession
+    });
+  }
   
   const register = async (name: string, email: string, password: string) => {
     const usersCollectionRef = collection(db, 'users');
@@ -362,42 +315,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     await setDoc(doc(db, "users", firebaseUser.uid), newUserDoc);
     
-    await idb.set('currentSessionId', newSessionId);
-    await idb.set('isAuthenticated', true);
-    setCurrentSessionId(newSessionId);
+    await idb.set('currentSession', newSession);
   };
   
   const logout = async (isRemoteDeletion: boolean = false) => {
-    if (!user || !user.currentSession) return;
-  
-    const currentSession = user.currentSession;
-    const isSeniorUser = currentSession.role === 'senior';
+    const localSession = await idb.get<Session>('currentSession');
+    if (!localSession) {
+         if (typeof window !== 'undefined') window.location.href = '/admin/login';
+        return;
+    }
   
     if (!isRemoteDeletion) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const sessionToRemove = user.sessions.find(s => s.id === currentSession.id);
-        if (sessionToRemove) {
+        const isSeniorUser = localSession.role === 'senior';
+        if (isSeniorUser && auth.currentUser) {
+            const userDocRef = doc(db, 'users', auth.currentUser.uid);
             try {
-                await updateDoc(userDocRef, { sessions: arrayRemove(sessionToRemove) });
+                await updateDoc(userDocRef, { sessions: arrayRemove(localSession) });
             } catch (e) {
                 console.error("Failed to remove session on logout, maybe document was deleted.", e);
             }
+            await signOut(auth);
+        } else if (!isSeniorUser) {
+            const usersQuery = query(collection(db, 'users'), limit(1));
+            const seniorUserSnapshot = await getDocs(usersQuery);
+            if (!seniorUserSnapshot.empty) {
+                const seniorUserDocRef = seniorUserSnapshot.docs[0].ref;
+                 try {
+                    await updateDoc(seniorUserDocRef, { sessions: arrayRemove(localSession) });
+                } catch (e) {
+                    console.error("Failed to remove session on logout.", e);
+                }
+            }
         }
     }
-  
-    const redirectPath = '/admin/login';
-  
-    if (auth.currentUser && isSeniorUser) {
-      await signOut(auth);
-    }
-  
-    await idb.del('currentSessionId');
-    await idb.del('isAuthenticated');
+    
+    await idb.del('currentSession');
     setUser(null);
-    setCurrentSessionId(null);
     setLoginState('form');
   
-    window.location.href = redirectPath;
+    if (typeof window !== 'undefined') window.location.href = '/admin/login';
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -443,17 +399,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const approveSession = async (session: Session, name: string, role: Exclude<SessionRole, 'pending' | 'senior'>) => {
-    if (!user) throw new Error("User not authenticated");
-    const userDocRef = doc(db, 'users', user.uid);
-    
-    const newSessions = user.sessions.map(s => 
-        s.id === session.id ? { ...s, role, name } : s
-    );
-    
-    await updateDoc(userDocRef, { sessions: newSessions });
-  }
-
   const deleteSession = async (session: Session) => {
     if (!user) throw new Error("User not authenticated");
     const userDocRef = doc(db, 'users', user.uid);
@@ -477,25 +422,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     user,
-    isAuthenticated: !!user && user.currentSession?.role !== 'pending',
+    isAuthenticated: !!user,
     isLoading,
     isRegistrationAllowed,
     login,
+    loginWithQrToken,
     register,
-    requestWorkerAccess,
     logout,
     updateUserProfile,
     updateUserPassword,
     toggleManagementMode,
     loginState,
     setLoginState,
-    approveSession,
     deleteSession,
     updateUserRole,
     translateFirebaseError,
     viewMode,
     setViewMode,
-  }), [user, isLoading, isRegistrationAllowed, loginState, viewMode, translateFirebaseError, listenForSeniorUserChanges]);
+  }), [user, isLoading, isRegistrationAllowed, loginState, viewMode, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>

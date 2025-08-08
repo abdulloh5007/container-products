@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, LoginState } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { Container, Eye, EyeOff, Hourglass, XCircle, LogIn } from 'lucide-react';
+import { Container, Eye, EyeOff, QrCode, XCircle, LogIn, CameraOff } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/browser';
 
 function LoginSkeleton() {
     return (
@@ -121,71 +122,83 @@ function SeniorLoginForm() {
 }
 
 function WorkerLoginForm() {
-    const { requestWorkerAccess, loginState, setLoginState, isLoading, isAuthenticated, user } = useAuth();
+    const { loginWithQrToken } = useAuth();
     const { toast } = useToast();
     const { t } = useLanguage();
+    const [isScanning, setIsScanning] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const codeReader = new BrowserMultiFormatReader();
 
-    const handleRequestAccess = async () => {
-        setIsSubmitting(true);
+    const startScan = async () => {
+        setScanError(null);
+        setIsScanning(true);
         try {
-            await requestWorkerAccess();
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                codeReader.decodeFromVideoDevice(undefined, videoRef.current, async (result, error) => {
+                    if (result) {
+                        setIsScanning(false);
+                        setIsSubmitting(true);
+                        codeReader.reset();
+                        stream.getTracks().forEach(track => track.stop());
+                        try {
+                            await loginWithQrToken(result.getText());
+                        } catch(authError) {
+                            toast({ variant: 'destructive', title: t('admin_login_failure_title'), description: (authError as Error).message });
+                            setIsSubmitting(false);
+                        }
+                    }
+                    if (error && !(error instanceof NotFoundException) && !(error instanceof ChecksumException) && !(error instanceof FormatException)) {
+                       setScanError('Не удалось распознать QR-код.');
+                       console.error(error);
+                    }
+                });
+            }
         } catch (error) {
-            console.error(error);
-            toast({
-                variant: 'destructive',
-                title: t('admin_form_error_title'),
-                description: (error as Error).message,
-            });
-        } finally {
-            setIsSubmitting(false);
+            console.error('Camera access error:', error);
+            setScanError('Камера недоступна. Пожалуйста, предоставьте доступ к камере.');
+            setIsScanning(false);
         }
     };
     
-    function PendingAlert() {
-        return (
-            <Alert>
-                <Hourglass className="h-4 w-4" />
-                <AlertTitle>{t('admin_login_pending_title')}</AlertTitle>
-                <AlertDescription>{t('admin_login_pending_desc')}</AlertDescription>
-            </Alert>
-        );
-    }
+    const stopScan = () => {
+        codeReader.reset();
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+        setIsScanning(false);
+    };
 
-    function AccessDeniedAlert() {
+    if (isScanning) {
         return (
-            <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertTitle>{t('admin_login_denied_title')}</AlertTitle>
-                <AlertDescription>
-                     {t('admin_login_denied_desc')}
-                     <button onClick={() => setLoginState('form')} className="font-bold underline hover:text-destructive-foreground mt-2 block">
-                        {t('admin_worker_login_button')}
-                    </button>
-                </AlertDescription>
-            </Alert>
-        );
-    }
-    
-    switch (loginState) {
-        case 'pending':
-            return <PendingAlert />;
-        case 'access_denied':
-            return <AccessDeniedAlert />;
-        default:
-            return (
-                <Button
-                    onClick={handleRequestAccess}
-                    className="w-full"
-                    disabled={isSubmitting}
-                >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {isSubmitting ? t('admin_login_submitting') : t('admin_worker_login_button')}
+             <div className="flex flex-col items-center gap-4">
+                <div className="relative w-full max-w-xs aspect-square rounded-lg overflow-hidden border">
+                    <video ref={videoRef} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 border-8 border-primary/50 rounded-lg animate-pulse" />
+                </div>
+                {scanError && <Alert variant="destructive"><CameraOff className="h-4 w-4" /><AlertDescription>{scanError}</AlertDescription></Alert>}
+                <Button variant="outline" onClick={stopScan} className="w-full">
+                   Отмена
                 </Button>
-            );
+            </div>
+        )
     }
-}
 
+    return (
+        <Button
+            onClick={startScan}
+            className="w-full"
+            disabled={isSubmitting}
+        >
+            <QrCode className="mr-2 h-4 w-4" />
+            {isSubmitting ? 'Проверка...' : 'Войти по QR-коду'}
+        </Button>
+    );
+}
 
 function CombinedLoginForm() {
   const { t } = useLanguage();
@@ -194,9 +207,9 @@ function CombinedLoginForm() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
-    if (!isLoading && isAuthenticated && user?.currentSession?.role !== 'pending') {
+    if (!isLoading && isAuthenticated) {
         let redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
-        if (user.currentSession?.role === 'worker') {
+        if (user?.currentSession?.role === 'worker') {
             redirectTo = '/admin/stock';
         }
         router.replace(redirectTo);
@@ -218,11 +231,11 @@ function CombinedLoginForm() {
       <CardContent>
         <Tabs defaultValue="worker" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="worker">{t('admin_role_worker')}</TabsTrigger>
+                <TabsTrigger value="worker">{t('admin_role_worker')}/{t('admin_role_junior')}</TabsTrigger>
                 <TabsTrigger value="senior">{t('admin_role_senior')}</TabsTrigger>
             </TabsList>
             <TabsContent value="worker" className="space-y-4 pt-4">
-                 <CardDescription className="text-center">{t('admin_worker_login_desc')}</CardDescription>
+                 <CardDescription className="text-center">Войдите, отсканировав QR-код, предоставленный руководителем.</CardDescription>
                  <WorkerLoginForm />
             </TabsContent>
             <TabsContent value="senior" className="space-y-4 pt-4">
