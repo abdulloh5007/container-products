@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/browser';
+import { BrowserMultiFormatReader, NotFoundException, FormatException } from '@zxing/browser';
 
 function LoginSkeleton() {
     return (
@@ -151,7 +151,7 @@ function WorkerLoginForm() {
                             setIsSubmitting(false);
                         }
                     }
-                    if (error && !(error instanceof NotFoundException) && !(error instanceof ChecksumException) && !(error instanceof FormatException)) {
+                    if (error && !(error instanceof NotFoundException) && !(error instanceof FormatException)) {
                        setScanError('Не удалось распознать QR-код.');
                        console.error(error);
                     }
