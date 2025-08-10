@@ -84,7 +84,7 @@ export default function RentalsPage() {
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const dateLocale = language === 'uz' ? uz : ru;
 
-    const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior';
+    const canViewPage = !isAuthLoading;
 
     const fetchRentedContainers = useCallback(async () => {
         if (!canViewPage) return;

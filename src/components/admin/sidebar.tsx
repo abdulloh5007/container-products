@@ -42,7 +42,7 @@ export function Sidebar() {
   
   const historyNavItem = { href: '/admin/history', label: t('admin_sidebar_history'), icon: History };
   const stockHistoryNavItem = { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: ListCollapse };
-  const rentalsNavItem = { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior'] };
+  const rentalsNavItem = { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior', 'junior', 'worker'] };
   
   const mainNavItems = [
       { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },

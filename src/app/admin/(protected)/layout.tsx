@@ -69,13 +69,13 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
             return;
         }
 
-        const workerAllowedPaths = ['/admin/stock', '/admin/stock-history'];
+        const workerAllowedPaths = ['/admin/stock', '/admin/stock-history', '/admin/rentals'];
         if (role === 'worker' && !workerAllowedPaths.includes(pathname)) {
             router.replace('/admin/stock');
             return;
         }
         
-        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings', '/admin/settings/devices', '/admin/settings/profile', '/admin/rentals'];
+        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings', '/admin/settings/devices', '/admin/settings/profile'];
         if (role === 'junior' && juniorRestrictedPaths.some(p => pathname.startsWith(p))) {
             router.replace('/admin/acceptance');
             return;
