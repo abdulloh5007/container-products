@@ -22,7 +22,7 @@ export default function ProfilePage() {
     const { t } = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
-    const { user, isLoading: isAuthLoading, updateUserProfile, updateUserPassword, toggleManagementMode } = useAuth();
+    const { user, isLoading: isAuthLoading, updateUserProfile, updateUserPassword } = useAuth();
     
     // --- State for Dialogs and Forms ---
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,8 +37,8 @@ export default function ProfilePage() {
     
     useEffect(() => {
         if (isAuthLoading) return;
-        if (!isSenior) {
-            router.replace('/admin/acceptance');
+        if (!user) {
+            router.replace('/admin/login');
             return;
         }
 
@@ -49,7 +49,11 @@ export default function ProfilePage() {
                 setPhone(formatPhoneNumber(settingsDoc.data().phone || ''));
             }
         }
-        fetchSettings();
+        if (isSenior) {
+            fetchSettings();
+        } else if (user) {
+            setName(user.name);
+        }
     }, [user, isSenior, isAuthLoading, router]);
 
     const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -77,7 +81,7 @@ export default function ProfilePage() {
         }
     };
     
-    if (isAuthLoading || !isSenior) {
+    if (isAuthLoading) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
                  <div className="flex items-center gap-4">
@@ -120,48 +124,32 @@ export default function ProfilePage() {
                     <form onSubmit={handleProfileUpdate} className="space-y-6">
                         <div className="space-y-2">
                             <Label htmlFor="name">{t('admin_settings_name')}</Label>
-                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting} />
+                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={isSubmitting || !isSenior} />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">{t('admin_phone')}</Label>
-                            <Input id="phone" value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} disabled={isSubmitting} placeholder="+998 (XX) XXX-XX-XX" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
-                            <div className="relative">
-                                <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} placeholder={t('admin_settings_password_placeholder')} className="pr-10" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
-                        </div>
+                        {isSenior && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">{t('admin_phone')}</Label>
+                                    <Input id="phone" value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} disabled={isSubmitting} placeholder="+998 (XX) XXX-XX-XX" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
+                                    <div className="relative">
+                                        <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} placeholder={t('admin_settings_password_placeholder')} className="pr-10" />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
+                                </div>
+                            </>
+                        )}
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
-                            </Button>
+                            {isSenior && (
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting ? t('admin_saving_text') : t('admin_save_changes_button')}
+                                </Button>
+                            )}
                         </div>
                     </form>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t('admin_settings_management_mode_title')}</CardTitle>
-                    <CardDescription>{t('admin_settings_management_mode_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between rounded-lg border p-4">
-                    <Label htmlFor="management-mode" className="flex flex-col space-y-1">
-                        <span>{t('admin_settings_management_mode_label')}</span>
-                        <span className="font-normal leading-snug text-muted-foreground">
-                            {user?.isManagementModeEnabled
-                                ? t('admin_settings_management_mode_status_on')
-                                : t('admin_settings_management_mode_status_off')}
-                        </span>
-                    </Label>
-                    <Switch
-                        id="management-mode"
-                        checked={user?.isManagementModeEnabled}
-                        onCheckedChange={toggleManagementMode}
-                    />
                 </CardContent>
             </Card>
 

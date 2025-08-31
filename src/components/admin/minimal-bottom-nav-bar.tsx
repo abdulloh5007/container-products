@@ -14,37 +14,21 @@ export function MinimalBottomNavBar() {
   const { user } = useAuth();
   const role = user?.userRole;
 
-  const baseNavItems = [
+  const navItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
-    { href: '/admin/stock-history', label: t('admin_sidebar_stock_history'), icon: Warehouse, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Box, roles: ['senior', 'junior', 'worker'] },
+    { href: '/admin/settings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['senior', 'junior', 'worker'] },
   ];
 
-  const managementNavItems = [
-    { href: '/admin/products', label: t('admin_sidebar_products'), icon: Package, roles: ['senior'] },
-    { href: '/admin/containers', label: t('admin_sidebar_containers'), icon: Box, roles: ['senior'] },
-  ]
-  
-  const settingsNavItem = { href: '/admin/settings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['senior'] };
+  const visibleItems = navItems.filter(item => role && item.roles.includes(role));
 
-  let navItems = baseNavItems.filter(item => role && item.roles.includes(role));
-
-  if (user?.isManagementModeEnabled) {
-    const seniorManagementItems = managementNavItems.filter(item => role && item.roles.includes(role));
-    navItems.splice(1, 0, ...seniorManagementItems);
-  }
-  
-  if (role === 'senior') {
-    navItems.push(settingsNavItem);
-  }
-
-  if (navItems.length === 0) return null;
+  if (visibleItems.length === 0) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/80 backdrop-blur-md p-2 shadow-2xl">
       <div className="grid grid-flow-col auto-cols-fr gap-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
           return (

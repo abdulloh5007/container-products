@@ -7,9 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut, ChevronRight, UserCircle, Users } from 'lucide-react';
+import { LogOut, ChevronRight, UserCircle, Users, Package, Box, Warehouse, History, Settings2, SwitchCamera } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 function SettingsItem({ icon: Icon, title, description, onClick, children }: { icon: React.ElementType, title: string, description?: string, onClick?: () => void, children?: React.ReactNode }) {
     const content = (
@@ -40,10 +44,22 @@ function SettingsItem({ icon: Icon, title, description, onClick, children }: { i
     )
 }
 
+function NavButton({ href, icon: Icon, label }: { href: string, icon: React.ElementType, label: string }) {
+    return (
+        <Button variant="outline" className="h-20 w-full flex-col justify-center gap-2" asChild>
+            <Link href={href}>
+                <Icon className="h-6 w-6" />
+                <span>{label}</span>
+            </Link>
+        </Button>
+    )
+}
+
+
 export default function SettingsPage() {
     const { t } = useLanguage();
     const router = useRouter();
-    const { user, isLoading: isAuthLoading, logout } = useAuth();
+    const { user, isLoading: isAuthLoading, logout, toggleManagementMode } = useAuth();
 
     const isSenior = user?.userRole === 'senior';
 
@@ -54,7 +70,24 @@ export default function SettingsPage() {
     return (
          <div className="max-w-4xl mx-auto space-y-8">
             <h1 className="text-3xl font-bold tracking-tight">{t('admin_settings_title')}</h1>
-            
+
+            {isSenior && (
+                <Card>
+                     <CardContent className="p-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                           <NavButton href="/admin/history" icon={History} label={t('admin_sidebar_history')} />
+                           <NavButton href="/admin/stock-history" icon={Warehouse} label={t('admin_sidebar_stock_history')} />
+                           {user?.isManagementModeEnabled && (
+                            <>
+                                <NavButton href="/admin/products" icon={Package} label={t('admin_sidebar_products')} />
+                                <NavButton href="/admin/containers" icon={Box} label={t('admin_sidebar_containers')} />
+                            </>
+                           )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>{t('admin_settings_appearance_title')}</CardTitle>
@@ -78,6 +111,31 @@ export default function SettingsPage() {
                     {isSenior && <SettingsItem title={t('admin_users_title')} icon={Users} onClick={() => router.push('/admin/settings/devices')} />}
                 </CardContent>
             </Card>
+            
+            {isSenior && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('admin_settings_management_mode_title')}</CardTitle>
+                        <CardDescription>{t('admin_settings_management_mode_desc')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between rounded-lg border p-4">
+                        <Label htmlFor="management-mode" className="flex flex-col space-y-1">
+                            <span>{t('admin_settings_management_mode_label')}</span>
+                            <span className="font-normal leading-snug text-muted-foreground">
+                                {user?.isManagementModeEnabled
+                                    ? t('admin_settings_management_mode_status_on')
+                                    : t('admin_settings_management_mode_status_off')}
+                            </span>
+                        </Label>
+                        <Switch
+                            id="management-mode"
+                            checked={user?.isManagementModeEnabled}
+                            onCheckedChange={toggleManagementMode}
+                        />
+                    </CardContent>
+                </Card>
+            )}
+
 
             <Button variant="outline" className="w-full justify-center gap-3 text-base text-destructive hover:text-destructive" onClick={logout}>
                 <LogOut className="h-5 w-5" />

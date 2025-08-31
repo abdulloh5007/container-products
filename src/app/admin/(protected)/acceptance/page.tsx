@@ -19,6 +19,8 @@ import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 import { useViewSwitcher } from '@/hooks/use-view-switcher';
 import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+
 
 interface IncludedProduct {
   id: string;
@@ -275,23 +277,27 @@ export default function AdminAcceptancePage() {
         );
       }
       return (
-         Array.from({ length: 3 }).map((_, i) => (
-          <TableRow key={i}>
-            <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-32" /></TableCell>
-            <TableCell><Skeleton className="h-6 w-10 mx-auto" /></TableCell>
-            <TableCell className="w-[150px]"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full mt-2" /></TableCell>
-          </TableRow>
-         ))
+        <TableBody>
+            {Array.from({ length: 3 }).map((_, i) => (
+            <TableRow key={i}>
+                <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-10 mx-auto" /></TableCell>
+                <TableCell className="w-[150px]"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full mt-2" /></TableCell>
+            </TableRow>
+            ))}
+        </TableBody>
       );
     }
     
     if (containers.length === 0) {
       return (
         view === 'table' ? (
+        <TableBody>
           <TableRow>
             <TableCell colSpan={4} className="h-24 text-center">{t('admin_container_no_containers')}</TableCell>
           </TableRow>
+        </TableBody>
         ) : (
           <p className="text-muted-foreground text-center col-span-full py-10">{t('admin_container_no_containers')}</p>
         )
@@ -299,35 +305,37 @@ export default function AdminAcceptancePage() {
     }
 
     if (view === 'table') {
-        return containers.map(container => (
-            <TableRow key={container.id}>
-                <TableCell>
-                    <Image
-                        src={container.imageUrl || 'https://placehold.co/64x64.png'}
-                        alt={container.name}
-                        width={64}
-                        height={64}
-                        unoptimized
-                        className="rounded-md object-cover h-16 w-16 cursor-pointer"
-                        onClick={() => openFullscreen(container.imageUrl || 'https://placehold.co/64x64.png')}
-                    />
-                </TableCell>
-                <TableCell className="font-medium">{container.name}</TableCell>
-                <TableCell className="text-center">{container.products?.length || 0}</TableCell>
-                <TableCell className="w-[150px]">
-                    <div className="flex flex-col gap-2">
-                        <Button onClick={() => handleOpenDialog(container.id, 'acceptance')} disabled={isSubmitting} size="sm">
-                            <ArrowDownCircle className="mr-2 h-4 w-4" />
-                            {t('admin_acceptance_button')}
-                        </Button>
-                        <Button variant="destructive" onClick={() => handleOpenDialog(container.id, 'dispatch')} disabled={isSubmitting} size="sm">
-                            <ArrowUpCircle className="mr-2 h-4 w-4" />
-                            {t('admin_dispatch_button')}
-                        </Button>
-                    </div>
-                </TableCell>
-            </TableRow>
-        ));
+        return (
+            <TableBody>
+            {containers.map(container => (
+                <TableRow key={container.id}>
+                    <TableCell>
+                        <Image
+                            src={container.imageUrl || 'https://placehold.co/64x64.png'}
+                            alt={container.name}
+                            width={64}
+                            height={64}
+                            unoptimized
+                            className="rounded-md object-cover h-16 w-16 cursor-pointer"
+                            onClick={() => openFullscreen(container.imageUrl || 'https://placehold.co/64x64.png')}
+                        />
+                    </TableCell>
+                    <TableCell className="font-medium">{container.name}</TableCell>
+                    <TableCell className="text-center">{container.products?.length || 0}</TableCell>
+                    <TableCell className="w-[150px]">
+                        <div className="flex flex-row gap-2">
+                            <Button onClick={() => handleOpenDialog(container.id, 'acceptance')} disabled={isSubmitting} size="sm" className="flex-1">
+                                {t('admin_acceptance_button')}
+                            </Button>
+                            <Button variant="destructive" onClick={() => handleOpenDialog(container.id, 'dispatch')} disabled={isSubmitting} size="sm" className="flex-1">
+                                {t('admin_dispatch_button')}
+                            </Button>
+                        </div>
+                    </TableCell>
+                </TableRow>
+            ))}
+            </TableBody>
+        );
     }
 
     return (
@@ -362,18 +370,16 @@ export default function AdminAcceptancePage() {
 
           {view === 'table' ? (
             <Card>
-              <Table>
+              <Table className="min-w-[768px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">{t('admin_products_table_image')}</TableHead>
                     <TableHead>{t('admin_containers_table_name')}</TableHead>
                     <TableHead className="text-center">{t('admin_containers_table_products')}</TableHead>
-                    <TableHead className="text-center w-[150px]">{t('admin_containers_table_actions')}</TableHead>
+                    <TableHead className="text-center w-[250px]">{t('admin_containers_table_actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {renderContent()}
-                </TableBody>
+                {renderContent()}
               </Table>
             </Card>
           ) : (
