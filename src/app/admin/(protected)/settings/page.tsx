@@ -143,10 +143,10 @@ export default function SettingsPage() {
             )}
 
 
-            {/* <Button variant="outline" className="w-full justify-center gap-3 text-base text-destructive hover:text-destructive" onClick={logout}>
+            <Button variant="outline" className="w-full justify-center gap-3 text-base text-destructive hover:text-destructive" onClick={logout}>
                 <LogOut className="h-5 w-5" />
                 {t('admin_logout')}
-            </Button> */}
+            </Button>
         </div>
     );
 }

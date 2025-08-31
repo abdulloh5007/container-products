@@ -11,13 +11,11 @@ import { useLanguage } from '@/hooks/use-language';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatPhoneNumber, deformatPhoneNumber } from '@/lib/utils';
-import { ArrowLeft, Eye, EyeOff, Settings } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function ProfilePage() {
     const { t } = useLanguage();
@@ -28,12 +26,13 @@ export default function ProfilePage() {
     // --- State for Dialogs and Forms ---
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [isConfirmLogoutDialogOpen, setConfirmLogoutDialogOpen] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     
     // Profile form state
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [password, setPassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
 
     const isSenior = user?.userRole === 'senior';
     
@@ -62,27 +61,26 @@ export default function ProfilePage() {
         e.preventDefault();
         if (!user) return;
         
-        if (password) {
-            if (password.length < 6) {
-                toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('firebase_error_auth_weak-password') });
-                return;
-            }
-            // Show confirmation dialog only if password is being changed
-            setConfirmLogoutDialogOpen(true);
-        } else {
-            // If only name/phone is changed, save directly
-            await performUpdate();
-        }
-    };
-
-    const performUpdate = async () => {
-         setIsSubmitting(true);
+        setIsSubmitting(true);
         try {
-            await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
-            
-            if (password) {
-                await updateUserPassword(password);
-                setPassword('');
+            // Update name and phone first, as it doesn't require re-authentication
+            if (isSenior) {
+                await updateUserProfile({ name, phone: deformatPhoneNumber(phone) });
+            }
+
+            // If a new password is provided, handle password update
+            if (newPassword) {
+                if (newPassword.length < 6) {
+                    toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('firebase_error_auth_weak-password') });
+                    return;
+                }
+                if (!currentPassword) {
+                    toast({ variant: 'destructive', title: t('admin_form_error_title'), description: t('admin_current_password_required') });
+                    return;
+                }
+                await updateUserPassword(currentPassword, newPassword);
+                setNewPassword('');
+                setCurrentPassword('');
             }
             toast({ title: t('admin_settings_update_success_title'), description: t('admin_settings_update_success_desc') });
         } catch (error) {
@@ -90,14 +88,9 @@ export default function ProfilePage() {
         } finally {
             setIsSubmitting(false);
         }
-    }
-
-    const handleConfirmLogout = async () => {
-        setConfirmLogoutDialogOpen(false);
-        await performUpdate();
-    }
+    };
     
-    if (isAuthLoading) {
+    if (isAuthLoading || !user) {
         return (
             <div className="max-w-4xl mx-auto space-y-8">
                  <div className="flex items-center gap-4">
@@ -150,13 +143,32 @@ export default function ProfilePage() {
                                         <Input id="phone" value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} disabled={isSubmitting} placeholder="+998 (XX) XXX-XX-XX" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
+                                        <Label htmlFor="new-password">{t('admin_settings_new_password')}</Label>
                                         <div className="relative">
-                                            <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} placeholder={t('admin_settings_password_placeholder')} className="pr-10" />
+                                            <Input id="new-password" type={showPassword ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={isSubmitting} placeholder={t('admin_settings_password_placeholder')} className="pr-10" />
                                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
                                     </div>
+                                    <AnimatePresence>
+                                        {newPassword && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto', marginTop: '1.5rem' }}
+                                                exit={{ opacity: 0, height: 0, marginTop: '0' }}
+                                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="current-password">{t('admin_current_password_label')}</Label>
+                                                    <div className="relative">
+                                                        <Input id="current-password" type={showCurrentPassword ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} disabled={isSubmitting} required className="pr-10" />
+                                                        <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+                                                    </div>
+                                                     <p className="text-xs text-muted-foreground">{t('admin_password_change_confirm_desc')}</p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </>
                             )}
                             <div className="flex justify-end">
@@ -170,23 +182,7 @@ export default function ProfilePage() {
                     </CardContent>
                 </Card>
             </div>
-
-            <AlertDialog open={isConfirmLogoutDialogOpen} onOpenChange={setConfirmLogoutDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('admin_password_change_confirm_title')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                           {t('admin_password_change_confirm_desc')}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t('admin_cancel_button')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmLogout} className="bg-destructive hover:bg-destructive/90">
-                           {t('admin_confirm_button')}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 }
+

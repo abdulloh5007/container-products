@@ -3,7 +3,7 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from "firebase/auth";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { doc, getDoc, updateDoc, setDoc, getDocs, collection, query, onSnapshot, Timestamp, writeBatch, limit, deleteDoc, where } from 'firebase/firestore';
 import { translations } from '@/lib/translations';
 import { useRouter } from 'next/navigation';
@@ -33,7 +33,7 @@ type AuthContextType = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
-  updateUserPassword: (password: string) => Promise<void>;
+  updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   updateUser: (userId: string, data: { name: string, userRole: UserRole }) => Promise<void>;
   toggleManagementMode: () => Promise<void>;
@@ -195,10 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const register = async (name: string, email: string, password: string) => {
-    if (!isRegistrationAllowed) {
-        throw new Error("Registration is not allowed. A senior user already exists.");
-    }
-    
     const seniorQuery = query(collection(db, 'users'), where('userRole', '==', 'senior'), limit(1));
     const snapshot = await getDocs(seniorQuery);
 
@@ -246,14 +242,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setDoc(settingsDocRef, { name: data.name, phone: data.phone }, { merge: true });
   };
 
-  const updateUserPassword = async (newPassword: string) => {
+  const updateUserPassword = async (currentPassword: string, newPassword: string) => {
     const firebaseUser = auth.currentUser;
-    if (!firebaseUser || user?.userRole !== 'senior') {
+    if (!firebaseUser || !firebaseUser.email || user?.userRole !== 'senior') {
         throw new Error(translateFirebaseError('auth/user-not-found'));
     }
     try {
+        const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+        await reauthenticateWithCredential(firebaseUser, credential);
         await updatePassword(firebaseUser, newPassword);
-        await logOutAllOtherUsers(); // Log out everyone else
+        await logOutAllOtherUsers();
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
     }
