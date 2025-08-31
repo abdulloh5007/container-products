@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { Truck, Archive } from 'lucide-react';
+import { Truck, Archive, UserRole } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 export function BottomNavBar() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { user } = useAuth();
-  const role = user?.currentSession?.role;
+  const role = user?.userRole;
 
   const allNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },

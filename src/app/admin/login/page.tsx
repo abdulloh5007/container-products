@@ -37,7 +37,7 @@ function LoginSkeleton() {
 }
 
 function SeniorLoginForm() {
-  const { login, isRegistrationAllowed } = useAuth();
+  const { login, isRegistrationAllowed, translateFirebaseError } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -189,7 +189,6 @@ function WorkerLoginForm() {
         } finally {
             setIsSubmitting(false);
             URL.revokeObjectURL(imageUrl);
-            // Reset file input to allow selecting the same file again
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -251,11 +250,11 @@ function CombinedLoginForm() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && user) {
         let redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
-        if (user?.currentSession?.role === 'worker') {
+        if (user.userRole === 'worker') {
             redirectTo = '/admin/stock';
-        } else if (user?.currentSession?.role === 'junior') {
+        } else if (user.userRole === 'junior') {
             redirectTo = '/admin/acceptance';
         }
         router.replace(redirectTo);

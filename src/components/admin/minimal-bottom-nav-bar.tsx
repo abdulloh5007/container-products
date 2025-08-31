@@ -12,13 +12,12 @@ export function MinimalBottomNavBar() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { user } = useAuth();
-  const role = user?.currentSession?.role;
-  const isSenior = role === 'senior';
+  const role = user?.userRole;
 
   const allNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
-    { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior'] },
+    { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/settings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['senior', 'junior'] },
   ];
   
@@ -31,7 +30,7 @@ export function MinimalBottomNavBar() {
       <div className={cn("grid gap-2", `grid-cols-${navItems.length}`)}>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

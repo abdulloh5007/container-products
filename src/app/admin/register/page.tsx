@@ -17,7 +17,7 @@ import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isAuthLoading, isRegistrationAllowed } = useAuth();
+  const { register, isLoading, isRegistrationAllowed } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
   
@@ -30,10 +30,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (!isAuthLoading && !isRegistrationAllowed) {
+    if (!isLoading && !isRegistrationAllowed) {
       router.replace('/admin/login');
     }
-  }, [isAuthLoading, isRegistrationAllowed, router]);
+  }, [isLoading, isRegistrationAllowed, router]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +57,7 @@ export default function RegisterPage() {
     }
   };
   
-  if (isAuthLoading || !isRegistrationAllowed) {
+  if (isLoading || !isRegistrationAllowed) {
       return (
          <div className="flex min-h-screen items-center justify-center bg-background p-4">
           <Card className="w-full max-w-sm">

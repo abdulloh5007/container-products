@@ -102,7 +102,7 @@ export default function AdminStockPage() {
     const amount = parseFloat(amountStr) || 1;
     const changeAmount = direction === 'increment' ? amount : -amount;
     
-    if (!user || !user.currentSession) return;
+    if (!user) return;
 
     if (product.quantity + changeAmount < -EPSILON) return;
 
@@ -129,8 +129,8 @@ export default function AdminStockPage() {
             newQuantity: newQuantity,
             changeAmount: changeAmount,
             changedByUserId: user.uid,
-            changedByUserName: user.currentSession.name || user.currentSession.deviceName,
-            changedByUserRole: user.currentSession.role,
+            changedByUserName: user.name,
+            changedByUserRole: user.userRole,
             timestamp: serverTimestamp(),
         });
 

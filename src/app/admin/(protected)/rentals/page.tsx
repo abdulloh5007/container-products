@@ -58,7 +58,7 @@ const parseFormattedNumber = (value: string): number => {
 export default function RentalsPage() {
     const { t, language } = useLanguage();
     const { toast } = useToast();
-    const { user, isAuthLoading } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
 
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [isRemoveModalOpen, setRemoveModalOpen] = useState(false);
@@ -84,7 +84,7 @@ export default function RentalsPage() {
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const dateLocale = language === 'uz' ? uz : ru;
 
-    const canViewPage = !isAuthLoading;
+    const canViewPage = !isAuthLoading && user;
 
     const fetchRentedContainers = useCallback(async () => {
         if (!canViewPage) return;
@@ -263,7 +263,7 @@ export default function RentalsPage() {
                                                 <p className="font-semibold text-foreground mb-2">{t('admin_rental_arrival_info')}</p>
                                                 <div className="flex items-center gap-2">
                                                     <CalendarClock className="h-4 w-4" />
-                                                    <span>{format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</span>
+                                                    <span>{item.arrivalDate ? format(item.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale }) : 'N/A'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Truck className="h-4 w-4" />
@@ -468,7 +468,7 @@ export default function RentalsPage() {
                            <CardContent className="text-sm space-y-2">
                                <p>{t('admin_rental_total_amount_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.rentAmount)}</span></p>
                                <p>{t('admin_rental_down_payment_label')}: <span className="font-bold">{formatNumberWithSpaces(selectedContainer.downPayment)}</span></p>
-                               <p className="text-muted-foreground">{t('admin_rental_arrival_date')}: {format(selectedContainer.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale })}</p>
+                               <p className="text-muted-foreground">{t('admin_rental_arrival_date')}: {selectedContainer.arrivalDate ? format(selectedContainer.arrivalDate.toDate(), 'PPP, HH:mm', { locale: dateLocale }) : 'N/A'}</p>
                            </CardContent>
                        </Card>
 

@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Crown, User, Archive, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import type { SessionRole } from '@/contexts/auth-context';
+import type { UserRole } from '@/contexts/auth-context';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ interface StockHistoryItem {
   changeAmount: number;
   changedByUserId: string;
   changedByUserName: string;
-  changedByUserRole: SessionRole;
+  changedByUserRole: UserRole;
   timestamp: Timestamp;
 }
 
@@ -67,7 +67,7 @@ const useMediaQuery = (query: string) => {
     return matches;
 }
 
-const RoleIcon = ({ role }: { role: SessionRole }) => {
+const RoleIcon = ({ role }: { role: UserRole }) => {
     switch (role) {
         case 'senior': return <Crown className="h-4 w-4 text-amber-500" />;
         case 'junior': return <User className="h-4 w-4 text-blue-500" />;
@@ -95,7 +95,7 @@ const formatQuantitySimple = (quantity: number, type: ProductType) => {
 export default function AdminStockHistoryPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const { user, isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const [history, setHistory] = useState<StockHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,13 +106,13 @@ export default function AdminStockHistoryPage() {
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedRoles, setSelectedRoles] = useState<SessionRole[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfDay(new Date()),
     to: endOfDay(new Date()),
   });
 
-  const canViewPage = !isAuthLoading && user?.currentSession?.role !== 'pending';
+  const canViewPage = !isAuthLoading && user;
 
   useEffect(() => {
     if (!canViewPage) return;
@@ -134,7 +134,7 @@ export default function AdminStockHistoryPage() {
   }, [canViewPage, t, toast]);
 
   const uniqueUsers = useMemo(() => {
-    const users = new Map<string, { name: string; role: SessionRole }>();
+    const users = new Map<string, { name: string; role: UserRole }>();
     history.forEach(item => {
         if (!users.has(item.changedByUserId)) {
             users.set(item.changedByUserId, { name: item.changedByUserName, role: item.changedByUserRole });
@@ -167,7 +167,7 @@ export default function AdminStockHistoryPage() {
     setSelectedUsers(prev => checked ? [...prev, userId] : prev.filter(id => id !== userId));
   }
   
-  const handleRoleCheckedChange = (role: SessionRole, checked: boolean | 'indeterminate') => {
+  const handleRoleCheckedChange = (role: UserRole, checked: boolean | 'indeterminate') => {
     setSelectedRoles(prev => checked ? [...prev, role] : prev.filter(r => r !== role));
   }
   
@@ -252,7 +252,7 @@ export default function AdminStockHistoryPage() {
                     <TableCell>
                         <div className="flex items-center gap-2">
                             <RoleIcon role={item.changedByUserRole} />
-                            <span>{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
+                            <span>{item.changedByUserName}</span>
                         </div>
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">{item.timestamp ? format(item.timestamp.toDate(), "PPP HH:mm", { locale: dateLocale }) : 'N/A'}</TableCell>
@@ -284,7 +284,7 @@ export default function AdminStockHistoryPage() {
                         <CardFooter className="flex justify-between items-center text-sm pt-4">
                              <div className="flex items-center gap-2 text-muted-foreground">
                                 <RoleIcon role={item.changedByUserRole} />
-                                <span className="font-medium">{item.changedByUserRole === 'senior' ? t('admin_role_senior') : item.changedByUserName}</span>
+                                <span className="font-medium">{item.changedByUserName}</span>
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 {item.timestamp ? format(item.timestamp.toDate(), "PPP, HH:mm", { locale: dateLocale }) : 'N/A'}
@@ -384,7 +384,7 @@ export default function AdminStockHistoryPage() {
                                 />
                                 <Label htmlFor={`user-${userItem.id}`} className="flex items-center gap-2 font-normal cursor-pointer">
                                     <RoleIcon role={userItem.role} />
-                                    {userItem.role === 'senior' ? t('admin_role_senior') : userItem.name}
+                                    {userItem.name}
                                 </Label>
                             </div>
                           ))}
@@ -394,7 +394,7 @@ export default function AdminStockHistoryPage() {
                      <div className="space-y-3">
                         <Label>{t('admin_filter_by_role')}</Label>
                         <div className="space-y-2">
-                            {(['senior', 'junior', 'worker'] as SessionRole[]).map(role => (
+                            {(['senior', 'junior', 'worker'] as UserRole[]).map(role => (
                                 <div key={role} className="flex items-center gap-2">
                                     <Checkbox
                                         id={`role-${role}`}

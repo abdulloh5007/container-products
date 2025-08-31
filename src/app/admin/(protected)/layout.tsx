@@ -42,7 +42,7 @@ function AdminSkeleton() {
 const WALKTHROUGH_ACCEPTANCE_KEY = 'walkthrough-acceptance-seen';
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isLoading, viewMode, loginState } = useAuth();
+  const { user, isAuthenticated, isLoading, viewMode } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -54,28 +54,22 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isAuthenticated && loginState !== 'pending') {
+    if (!isAuthenticated) {
       router.replace('/admin/login');
       return;
     }
     
-    if (isAuthenticated && user?.currentSession) {
-        const role = user.currentSession.role;
+    if (isAuthenticated && user) {
+        const role = user.userRole;
         const managementMode = user.isManagementModeEnabled;
 
-        // Redirect pending users to worker login page
-        if (role === 'pending') {
-            router.replace('/admin/login');
-            return;
-        }
-
         const workerAllowedPaths = ['/admin/stock', '/admin/stock-history', '/admin/rentals'];
-        if (role === 'worker' && !workerAllowedPaths.includes(pathname)) {
+        if (role === 'worker' && !workerAllowedPaths.some(p => pathname.startsWith(p))) {
             router.replace('/admin/stock');
             return;
         }
         
-        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings', '/admin/settings/devices', '/admin/settings/profile'];
+        const juniorRestrictedPaths = ['/admin/products', '/admin/containers', '/admin/settings'];
         if (role === 'junior' && juniorRestrictedPaths.some(p => pathname.startsWith(p))) {
             router.replace('/admin/acceptance');
             return;
@@ -88,30 +82,11 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
             return;
         }
 
-        // Walkthrough logic for acceptance page
-        if (role === 'senior' && pathname === '/admin/acceptance') {
-            const hasSeenWalkthrough = localStorage.getItem(WALKTHROUGH_ACCEPTANCE_KEY);
-            // Only show if there are pending requests to point to
-            if (!hasSeenWalkthrough && user?.sessions.some(s => s.role === 'pending')) {
-                // Short delay to ensure the element is rendered
-                setTimeout(() => setWalkthroughEnabled(true), 500);
-            }
-        } else {
-            setWalkthroughEnabled(false);
-        }
     }
-  }, [isAuthenticated, isLoading, router, user, pathname, loginState]);
+  }, [isAuthenticated, isLoading, router, user, pathname]);
 
-  if (isLoading || (!isAuthenticated && loginState !== 'pending')) {
+  if (isLoading || !isAuthenticated) {
     return <AdminSkeleton />;
-  }
-
-  if (!isAuthenticated && loginState !== 'pending') {
-    return null;
-  }
-
-  if (loginState === 'pending') {
-      return null;
   }
   
   const onExitWalkthrough = () => {
