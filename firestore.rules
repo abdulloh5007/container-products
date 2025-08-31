@@ -2,45 +2,81 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // Helper function to get the user's role from the 'users' collection
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.userRole;
+    }
 
-    // Allow public read for products
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the user is a specific role
+    function isRole(role) {
+      return isSignedIn() && getUserRole(request.auth.uid) == role;
+    }
+
+    // Helper function to check if the user is one of multiple roles
+    function isOneOfRoles(roles) {
+      return isSignedIn() && getUserRole(request.auth.uid) in roles;
+    }
+
+    // Users collection
+    // senior: Can manage all users.
+    // users: Can update their own data.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isRole('senior'); // New users are created via QR tokens or senior registration
+      allow update: if isRole('senior') || request.auth.uid == userId;
+      allow delete: if isRole('senior');
+    }
+    
+    // Products collection
+    // Read: Publicly readable for the home page.
+    // Write: senior, junior, worker can update stock.
     match /products/{productId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isOneOfRoles(['senior', 'junior', 'worker']);
     }
-
-    // Allow authenticated users to manage containers and history
+    
+    // Containers collection
+    // Only senior and junior can create/manage containers.
     match /containers/{containerId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+        allow read, write: if isOneOfRoles(['senior', 'junior']);
     }
 
+    // History of acceptance/dispatch operations
+    // Only senior and junior perform these operations.
     match /history/{historyId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+        allow read, write: if isOneOfRoles(['senior', 'junior']);
     }
     
-    // Rules for stock modification history
+    // History of manual stock changes
+    // senior, junior, and worker can all adjust stock.
     match /stock_history/{historyId} {
-      allow create: if request.auth != null;
-      allow read, list, update, delete: if request.auth != null;
-    }
-
-    // Users can list the collection to check if any users exist.
-    // However, they can only read/write their own document.
-    match /users/{userId} {
-      allow list: if true;
-      allow read, write: if true;
+      allow read, write: if isOneOfRoles(['senior', 'junior', 'worker']);
     }
     
-    // Settings can be read/written by any authenticated user
-    match /settings/global {
-      allow read, write: if true;
+    // Rentals collection
+    // senior, junior, and worker can all manage rentals.
+    match /rentals/{rentalId} {
+       allow read, write: if isOneOfRoles(['senior', 'junior', 'worker']);
     }
 
-    // Allow authenticated users to manage rentals
-    match /rentals/{rentalId} {
-      allow read, write: if request.auth != null;
+    // QR Login Tokens
+    // Create: Only senior can generate tokens.
+    // Read/Update: Anyone (unauthenticated) can use a token once to log in.
+    match /qr_login_tokens/{tokenId} {
+      allow create: if isRole('senior');
+      allow read, update: if !resource.data.used; // Allow using a token only if it's not used yet
+    }
+    
+    // Settings collection (for senior user profile)
+    // Only senior can read/write settings.
+    match /settings/{settingId} {
+        allow read, write: if isRole('senior');
     }
   }
 }
