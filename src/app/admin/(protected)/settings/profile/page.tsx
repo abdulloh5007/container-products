@@ -11,17 +11,18 @@ import { useLanguage } from '@/hooks/use-language';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatPhoneNumber, deformatPhoneNumber } from '@/lib/utils';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Settings } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 
 
 export default function ProfilePage() {
     const { t } = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
-    const { user, isLoading: isAuthLoading, updateUserProfile, updateUserPassword } = useAuth();
+    const { user, isLoading: isAuthLoading, updateUserProfile, updateUserPassword, toggleManagementMode } = useAuth();
     
     // --- State for Dialogs and Forms ---
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,7 +142,29 @@ export default function ProfilePage() {
                     </form>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>{t('admin_settings_management_mode_title')}</CardTitle>
+                    <CardDescription>{t('admin_settings_management_mode_desc')}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between rounded-lg border p-4">
+                    <Label htmlFor="management-mode" className="flex flex-col space-y-1">
+                        <span>{t('admin_settings_management_mode_label')}</span>
+                        <span className="font-normal leading-snug text-muted-foreground">
+                            {user?.isManagementModeEnabled
+                                ? t('admin_settings_management_mode_status_on')
+                                : t('admin_settings_management_mode_status_off')}
+                        </span>
+                    </Label>
+                    <Switch
+                        id="management-mode"
+                        checked={user?.isManagementModeEnabled}
+                        onCheckedChange={toggleManagementMode}
+                    />
+                </CardContent>
+            </Card>
+
         </div>
     );
 }
-

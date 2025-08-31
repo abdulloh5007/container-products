@@ -92,7 +92,12 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   const acceptanceSteps = [
     {
       element: '[data-intro="pending-requests"]',
+      intro: t('admin_walkthrough_acceptance_step1')
     },
+    {
+      element: '[data-intro="dispatch-requests"]',
+      intro: t('admin_walkthrough_acceptance_step2')
+    }
   ];
 
   return (

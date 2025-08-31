@@ -36,6 +36,7 @@ type AuthContextType = {
   updateUserPassword: (password: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   updateUser: (userId: string, data: { name: string, userRole: 'junior' | 'worker' }) => Promise<void>;
+  toggleManagementMode: () => Promise<void>;
   translateFirebaseError: (errorCode: string) => string;
 };
 
@@ -249,6 +250,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateDoc(userDocRef, data);
   };
 
+  const toggleManagementMode = async () => {
+    if (!user || user.userRole !== 'senior') throw new Error("Permission denied.");
+    const userDocRef = doc(db, 'users', user.uid);
+    await updateDoc(userDocRef, { isManagementModeEnabled: !user.isManagementModeEnabled });
+  }
+
   const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
@@ -262,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUserPassword,
     deleteUser,
     updateUser,
+    toggleManagementMode,
     translateFirebaseError,
   }), [user, isLoading, isRegistrationAllowed, translateFirebaseError]);
 
