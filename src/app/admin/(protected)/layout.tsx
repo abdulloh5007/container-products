@@ -4,9 +4,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Sidebar } from '@/components/admin/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BottomNavBar } from '@/components/admin/bottom-nav-bar';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
 import { MinimalBottomNavBar } from '@/components/admin/minimal-bottom-nav-bar';
 import { useLanguage } from '@/hooks/use-language';
@@ -40,7 +38,7 @@ function AdminSkeleton() {
 }
 
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, isLoading, viewMode } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -94,15 +92,13 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   const acceptanceSteps = [
     {
       element: '[data-intro="pending-requests"]',
-      intro: t('admin_walkthrough_pending_requests'),
     },
   ];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-        {viewMode === 'classic' ? <Sidebar /> : null}
         <main className="flex-1 p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>{children}</main>
-        {viewMode === 'classic' ? <BottomNavBar /> : <MinimalBottomNavBar />}
+        <MinimalBottomNavBar />
         <Walkthrough
             isOpen={isWalkthroughEnabled}
             steps={acceptanceSteps}

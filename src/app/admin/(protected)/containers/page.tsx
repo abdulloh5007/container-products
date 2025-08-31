@@ -46,7 +46,7 @@ export default function AdminContainersPage() {
   const { view, setView } = useViewSwitcher('containers');
   const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
   
-  const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior' && user?.isManagementModeEnabled;
+  const canViewPage = !isAuthLoading && user?.userRole === 'senior' && user?.isManagementModeEnabled;
 
   const fetchContainers = useCallback(async () => {
     if (!canViewPage) return;

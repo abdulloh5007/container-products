@@ -63,7 +63,7 @@ export default function AdminHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const dateLocale = language === 'uz' ? uz : ru;
 
-  const canViewPage = !isAuthLoading && (user?.currentSession?.role === 'senior' || user?.currentSession?.role === 'junior');
+  const canViewPage = !isAuthLoading && (user?.userRole === 'senior' || user?.userRole === 'junior');
 
   const fetchHistory = useCallback(async () => {
     if (!canViewPage) return;

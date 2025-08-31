@@ -439,7 +439,7 @@ export default function RentalsPage() {
               {!selectedContainer ? (
                 <>
                   <DialogDescription>{t('admin_rental_remove_dialog_desc')}</DialogDescription>
-                  <ScrollArea className="flex-grow my-4">
+                  <ScrollArea className="flex-grow my-4 overflow-y-auto">
                       <div className="space-y-2 pr-4">
                           {isLoadingRented ? (
                               Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)

@@ -15,11 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useViewSwitcher } from '@/hooks/use-view-switcher';
-import { ViewSwitcher } from '@/components/admin/view-switcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/auth-context';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
 
 type ProductType = 'kit' | 'unit' | 'area';
 
@@ -56,7 +56,7 @@ export default function AdminProductsPage() {
   const [newProductQuantity, setNewProductQuantity] = useState<string>('');
   const [m2PerKit, setM2PerKit] = useState<string>('');
 
-  const canViewPage = !isAuthLoading && user?.currentSession?.role === 'senior' && user?.isManagementModeEnabled;
+  const canViewPage = !isAuthLoading && user?.userRole === 'senior' && user?.isManagementModeEnabled;
 
   const fetchProducts = useCallback(async () => {
     if (!canViewPage) return;
