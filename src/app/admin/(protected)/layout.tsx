@@ -14,19 +14,6 @@ import { Walkthrough } from '@/components/admin/walkthrough';
 function AdminSkeleton() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-40 w-full border-b bg-card">
-         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-8 w-8" />
-              <Skeleton className="h-6 w-32 hidden sm:inline-block" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-10 w-10" />
-              <Skeleton className="h-10 w-10" />
-              <Skeleton className="h-10 w-10" />
-            </div>
-         </div>
-      </header>
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
         <div className="space-y-4">
           <Skeleton className="h-10 w-1/4" />
