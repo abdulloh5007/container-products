@@ -372,6 +372,8 @@ export const translations = {
     admin_qr_login_prompt: "Войдите, отсканировав QR-код, предоставленный руководителем.",
     admin_qr_scan_error: "Не удалось распознать QR-код. Попробуйте еще раз.",
     admin_qr_scan_error_permission: "Камера недоступна. Пожалуйста, предоставьте доступ к камере.",
+    admin_qr_login_from_gallery_button: "Выбрать из галереи",
+    admin_qr_scan_from_image_error: "Не удалось прочитать QR-код с изображения.",
 
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
@@ -764,6 +766,8 @@ export const translations = {
     admin_qr_login_prompt: "Rahbar tomonidan taqdim etilgan QR-kodni skanerlab tizimga kiring.",
     admin_qr_scan_error: "QR-kodni aniqlab bo'lmadi. Qayta urinib ko'ring.",
     admin_qr_scan_error_permission: "Kamera mavjud emas. Iltimos, kameraga ruxsat bering.",
+    admin_qr_login_from_gallery_button: "Galereyadan tanlash",
+    admin_qr_scan_from_image_error: "Rasmdan QR-kodni o'qib bo'lmadi.",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",

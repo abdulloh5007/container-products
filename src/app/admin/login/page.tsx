@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { Container, Eye, EyeOff, QrCode, XCircle, LogIn, CameraOff } from 'lucide-react';
+import { Container, Eye, EyeOff, QrCode, XCircle, LogIn, CameraOff, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInputScrollFix } from '@/hooks/use-input-scroll-fix';
@@ -129,6 +129,7 @@ function WorkerLoginForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const codeReader = useRef(new BrowserMultiFormatReader());
 
     const startScan = async () => {
@@ -172,6 +173,29 @@ function WorkerLoginForm() {
         setIsScanning(false);
     };
 
+    const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsSubmitting(true);
+        const imageUrl = URL.createObjectURL(file);
+
+        try {
+            const result = await codeReader.current.decodeFromImageUrl(imageUrl);
+            await loginWithQrToken(result.getText());
+        } catch (error) {
+            console.error("Error decoding QR from image:", error);
+            toast({ variant: 'destructive', title: t('admin_login_failure_title'), description: t('admin_qr_scan_from_image_error') });
+        } finally {
+            setIsSubmitting(false);
+            URL.revokeObjectURL(imageUrl);
+            // Reset file input to allow selecting the same file again
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
     useEffect(() => {
       return () => {
         if(isScanning) {
@@ -197,14 +221,26 @@ function WorkerLoginForm() {
     }
 
     return (
-        <Button
-            onClick={startScan}
-            className="w-full"
-            disabled={isSubmitting}
-        >
-            <QrCode className="mr-2 h-4 w-4" />
-            {isSubmitting ? t('admin_qr_login_verifying') : t('admin_qr_login_button')}
-        </Button>
+        <div className="space-y-2">
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" style={{ display: 'none' }} />
+            <Button
+                onClick={startScan}
+                className="w-full"
+                disabled={isSubmitting}
+            >
+                <QrCode className="mr-2 h-4 w-4" />
+                {isSubmitting ? t('admin_qr_login_verifying') : t('admin_qr_login_button')}
+            </Button>
+             <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full"
+                variant="outline"
+                disabled={isSubmitting}
+            >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                {t('admin_qr_login_from_gallery_button')}
+            </Button>
+        </div>
     );
 }
 
@@ -219,6 +255,8 @@ function CombinedLoginForm() {
         let redirectTo = searchParams.get('redirectTo') || '/admin/acceptance';
         if (user?.currentSession?.role === 'worker') {
             redirectTo = '/admin/stock';
+        } else if (user?.currentSession?.role === 'junior') {
+            redirectTo = '/admin/acceptance';
         }
         router.replace(redirectTo);
     }
