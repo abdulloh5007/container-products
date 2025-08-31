@@ -192,7 +192,9 @@ export const translations = {
     admin_register_success_title: "Регистрация успешна",
     admin_register_success_desc: "Теперь вы можете войти в систему.",
     admin_register_failure_title: "Ошибка регистрации",
-    admin_register_link: "Зарегистрироваться",
+    admin_register_prompt: "Нет аккаунта?",
+    admin_no_account_prompt: "Нет аккаунта или забыли пароль?",
+    admin_contact_admin: "Свяжитесь с администратором",
     admin_login_prompt: "Уже есть аккаунт?",
     admin_login_link: "Войти",
 
@@ -488,7 +490,9 @@ export const translations = {
     admin_register_success_title: "Muvaffaqiyatli ro'yxatdan o'tildi",
     admin_register_success_desc: "Endi tizimga kirishingiz mumkin.",
     admin_register_failure_title: "Ro'yxatdan o'tishda xatolik",
-    admin_register_link: "Ro'yxatdan o'tish",
+    admin_register_prompt: "Hisobingiz yo'qmi?",
+    admin_no_account_prompt: "Hisobingiz yo'qmi yoki parolni unutdingizmi?",
+    admin_contact_admin: "Administrator bilan bog'laning",
     admin_login_prompt: "Hisobingiz bormi?",
     admin_login_link: "Kirish",
     

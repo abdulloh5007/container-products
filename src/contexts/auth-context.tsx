@@ -19,7 +19,7 @@ export interface AppUser {
     phone?: string;
     userRole: UserRole;
     deviceName: string;
-    createdAt: Timestamp;
+    createdAt?: Timestamp;
     isManagementModeEnabled?: boolean;
 }
 
@@ -60,7 +60,7 @@ const getDeviceName = (): string => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(false);
+  const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(true);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
   const router = useRouter();
   
@@ -182,10 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const register = async (name: string, email: string, password: string) => {
+    if (!isRegistrationAllowed) {
+        throw new Error("Registration is not allowed. A senior user already exists.");
+    }
+    
     const seniorQuery = query(collection(db, 'users'), where('userRole', '==', 'senior'), limit(1));
     const snapshot = await getDocs(seniorQuery);
 
     if (!snapshot.empty) {
+        setIsRegistrationAllowed(false);
         throw new Error("Registration is not allowed. A senior user already exists.");
     }
 
@@ -210,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const settingsDocRef = doc(db, 'settings', 'main');
     await setDoc(settingsDocRef, { name, phone: '' }, { merge: true });
+    setIsRegistrationAllowed(false);
   };
   
   const logout = async () => {

@@ -57,7 +57,7 @@ export default function RegisterPage() {
     }
   };
   
-  if (isLoading || !isRegistrationAllowed) {
+  if (isLoading || isRegistrationAllowed === false) {
       return (
          <div className="flex min-h-screen items-center justify-center bg-background p-4">
           <Card className="w-full max-w-sm">

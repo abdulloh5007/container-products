@@ -245,7 +245,7 @@ function WorkerLoginForm() {
 
 function CombinedLoginForm() {
   const { t } = useLanguage();
-  const { isLoading, isAuthenticated, user } = useAuth();
+  const { isLoading, isAuthenticated, user, isRegistrationAllowed } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -286,6 +286,12 @@ function CombinedLoginForm() {
             <TabsContent value="senior" className="space-y-4 pt-4">
                  <CardDescription className="text-center">{t('admin_login_subtitle')}</CardDescription>
                  <SeniorLoginForm />
+                 {isRegistrationAllowed === false && (
+                    <p className="text-center text-sm text-muted-foreground pt-2">
+                        {t('admin_no_account_prompt')}{' '}
+                        <a href={`tel:${user?.phone || ''}`} className="underline hover:text-primary">{t('admin_contact_admin')}</a>
+                    </p>
+                 )}
             </TabsContent>
         </Tabs>
       </CardContent>
