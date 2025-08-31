@@ -121,6 +121,7 @@ export default function AdminStockPage() {
 
         batch.update(productDocRef, { quantity: newQuantity });
         
+        // The Cloud Function will populate changedByUserName and changedByUserRole
         batch.set(doc(stockHistoryCollectionRef), {
             productId: product.id,
             productName: product.name,
@@ -129,8 +130,6 @@ export default function AdminStockPage() {
             newQuantity: newQuantity,
             changeAmount: changeAmount,
             changedByUserId: user.uid,
-            changedByUserName: user.name,
-            changedByUserRole: user.userRole,
             timestamp: serverTimestamp(),
         });
 
