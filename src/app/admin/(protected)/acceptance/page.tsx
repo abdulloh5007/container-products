@@ -1,19 +1,21 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, writeBatch, serverTimestamp, query, orderBy, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Truck } from 'lucide-react';
+import { Truck, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ImageFullscreenViewer } from '@/components/image-fullscreen-viewer';
 
 interface IncludedProduct {
   id: string;
@@ -32,58 +34,110 @@ interface Product {
     quantity: number;
 }
 
+interface FullscreenState {
+  imageUrls: string[];
+  startIndex: number;
+}
+
+type OperationType = 'acceptance' | 'dispatch';
+
 const EPSILON = 1e-9;
 
-function PendingAcceptanceCard({ container, onAction, isSubmitting }: { container: Container, onAction: (containerId: string, containerNumber: string) => void, isSubmitting: boolean }) {
+function OperationDialog({ 
+    isOpen, 
+    onOpenChange, 
+    operationType, 
+    containerName, 
+    onConfirm,
+    isSubmitting 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void;
+    operationType: OperationType | null;
+    containerName: string;
+    onConfirm: (containerNumber: string) => void;
+    isSubmitting: boolean;
+}) {
     const { t } = useLanguage();
     const [containerNumber, setContainerNumber] = useState('');
-    const [isConfirmOpen, setConfirmOpen] = useState(false);
+
+    const title = operationType === 'acceptance' ? t('admin_acceptance_confirm_title') : t('admin_dispatch_confirm_title');
+    const description = operationType === 'acceptance' ? t('admin_acceptance_confirm_desc', { containerName }) : t('admin_dispatch_confirm_desc', { containerName });
+    const buttonText = operationType === 'acceptance' ? t('admin_acceptance_button') : t('admin_dispatch_button');
 
     const handleConfirm = () => {
-        onAction(container.id, containerNumber);
-        setConfirmOpen(false);
+        onConfirm(containerNumber);
     }
     
+    useEffect(() => {
+        if (!isOpen) {
+            setContainerNumber('');
+        }
+    }, [isOpen]);
+
     return (
-        <>
-            <Card>
-                <CardHeader>
-                    <CardTitle>{container.name}</CardTitle>
-                    <CardDescription>{t('admin_acceptance_table_products')}: {container.products?.length || 0}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor={`container-number-${container.id}`}>{t('admin_history_container_number')}</Label>
-                        <Input
-                            id={`container-number-${container.id}`}
-                            value={containerNumber}
-                            onChange={(e) => setContainerNumber(e.target.value.toUpperCase())}
-                            placeholder={t('admin_history_container_number_placeholder')}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={() => setConfirmOpen(true)} disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? t('admin_dispatching_text') : t('admin_acceptance_button')}
-                    </Button>
-                </CardFooter>
-            </Card>
-            <AlertDialog open={isConfirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('admin_acceptance_confirm_title')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t('admin_acceptance_confirm_desc', { containerName: container.name })}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t('admin_cancel_button')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirm}>{t('admin_confirm_button')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
+         <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>{description}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="dialog-container-number">{t('admin_history_container_number')}</Label>
+                    <Input
+                        id="dialog-container-number"
+                        value={containerNumber}
+                        onChange={(e) => setContainerNumber(e.target.value.toUpperCase())}
+                        placeholder={t('admin_history_container_number_placeholder')}
+                        disabled={isSubmitting}
+                        className="mt-2"
+                    />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isSubmitting}>{t('admin_cancel_button')}</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={handleConfirm} 
+                        disabled={isSubmitting}
+                        className={operationType === 'dispatch' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                    >
+                        {isSubmitting ? t('admin_saving_text') : buttonText}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
+}
+
+function OperationCard({ container, onAction, isSubmitting, onImageClick }: { container: Container, onAction: (containerId: string, type: OperationType) => void, isSubmitting: boolean, onImageClick: (url: string) => void }) {
+    const { t } = useLanguage();
+    
+    return (
+        <Card>
+            <CardHeader className="p-0 relative cursor-pointer" onClick={() => onImageClick(container.imageUrl || 'https://placehold.co/300x200.png')}>
+                <Image
+                    src={container.imageUrl || 'https://placehold.co/300x200.png'}
+                    alt={container.name}
+                    width={300}
+                    height={200}
+                    unoptimized
+                    className="rounded-t-lg object-cover w-full aspect-[3/2]"
+                />
+            </CardHeader>
+            <CardContent className="pt-4">
+                <CardTitle>{container.name}</CardTitle>
+                <CardDescription>{t('admin_acceptance_table_products')}: {container.products?.length || 0}</CardDescription>
+            </CardContent>
+            <CardFooter className="grid grid-cols-2 gap-2">
+                <Button onClick={() => onAction(container.id, 'acceptance')} disabled={isSubmitting} className="w-full">
+                    <ArrowDownCircle className="mr-2 h-4 w-4" />
+                    {t('admin_acceptance_button')}
+                </Button>
+                <Button variant="destructive" onClick={() => onAction(container.id, 'dispatch')} disabled={isSubmitting} className="w-full">
+                    <ArrowUpCircle className="mr-2 h-4 w-4" />
+                    {t('admin_dispatch_button')}
+                </Button>
+            </CardFooter>
+        </Card>
     )
 }
 
@@ -95,6 +149,10 @@ export default function AdminAcceptancePage() {
   const [containers, setContainers] = useState<Container[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [dialogState, setDialogState] = useState<{isOpen: boolean, containerId: string | null, operationType: OperationType | null}>({isOpen: false, containerId: null, operationType: null });
+
+  const [fullscreenState, setFullscreenState] = useState<FullscreenState | null>(null);
 
   const canViewPage = !isAuthLoading && (user?.userRole === 'senior' || user?.userRole === 'junior');
 
@@ -118,7 +176,10 @@ export default function AdminAcceptancePage() {
     fetchContainers();
   }, [fetchContainers]);
   
-  const handleAcceptance = async (containerId: string, containerNumber: string) => {
+  const handleOperation = async (containerNumber: string) => {
+    const { containerId, operationType } = dialogState;
+    if (!containerId || !operationType) return;
+    
     setIsSubmitting(true);
     
     const container = containers.find(c => c.id === containerId);
@@ -129,13 +190,20 @@ export default function AdminAcceptancePage() {
 
     try {
         const batch = writeBatch(db);
-        const productsToUpdate: {ref: any, change: number}[] = [];
-        
-        for (const p of container.products) {
-            const productRef = doc(db, 'products', p.id);
-            productsToUpdate.push({ ref: productRef, change: p.quantity });
-        }
+        const changeMultiplier = operationType === 'acceptance' ? 1 : -1;
 
+        if (operationType === 'dispatch') {
+             for (const p of container.products) {
+                const productRef = doc(db, 'products', p.id);
+                const productDoc = await getDoc(productRef);
+                if (!productDoc.exists() || productDoc.data().quantity < p.quantity - EPSILON) {
+                     toast({ variant: 'destructive', title: t('admin_dispatch_error_title'), description: t('admin_dispatch_error_insufficient_stock', { productName: p.name || 'product' }) });
+                     setIsSubmitting(false);
+                     return;
+                }
+            }
+        }
+        
         // Add to history
         const historyRef = doc(collection(db, 'history'));
         batch.set(historyRef, {
@@ -143,34 +211,66 @@ export default function AdminAcceptancePage() {
             containerName: container.name,
             containerNumber: containerNumber || '',
             date: serverTimestamp(),
-            type: 'acceptance',
+            type: operationType,
         });
         
         // Update product quantities
-        for (const p of productsToUpdate) {
-             const productDoc = await getDoc(p.ref);
+        for (const p of container.products) {
+             const productRef = doc(db, 'products', p.id);
+             const productDoc = await getDoc(productRef);
              if (productDoc.exists()) {
                 const currentQuantity = productDoc.data().quantity || 0;
-                batch.update(p.ref, { quantity: currentQuantity + p.change });
+                batch.update(productRef, { quantity: currentQuantity + (p.quantity * changeMultiplier) });
              }
         }
         
         await batch.commit();
 
-        toast({ title: t('admin_acceptance_success_title'), description: t('admin_acceptance_success_desc', { containerName: container.name }) });
+        const successTitle = operationType === 'acceptance' ? t('admin_acceptance_success_title') : t('admin_dispatch_success_title');
+        const successDesc = operationType === 'acceptance' 
+            ? t('admin_acceptance_success_desc', { containerName: container.name }) 
+            : t('admin_dispatch_success_desc', { containerName: container.name });
+
+        toast({ title: successTitle, description: successDesc });
+        setDialogState({ isOpen: false, containerId: null, operationType: null });
     } catch (error) {
-        console.error("Error during acceptance: ", error);
-        toast({ variant: 'destructive', title: t('admin_acceptance_error_title'), description: t('admin_acceptance_error_desc') });
+        console.error("Error during operation: ", error);
+        const errorTitle = operationType === 'acceptance' ? t('admin_acceptance_error_title') : t('admin_dispatch_error_title');
+        const errorDesc = operationType === 'acceptance' ? t('admin_acceptance_error_desc') : t('admin_dispatch_error_desc');
+        toast({ variant: 'destructive', title: errorTitle, description: errorDesc });
     } finally {
         setIsSubmitting(false);
     }
+  };
+
+  const handleOpenDialog = (containerId: string, operationType: OperationType) => {
+    setDialogState({ isOpen: true, containerId, operationType });
+  };
+  
+  const openFullscreen = (imageUrl: string) => {
+    if (imageUrl) {
+      setFullscreenState({ imageUrls: [imageUrl], startIndex: 0 });
+    }
+  };
+  
+  const closeFullscreen = () => {
+    setFullscreenState(null);
   };
 
   const renderContent = () => {
     if (isLoading || isAuthLoading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader className="p-0"><Skeleton className="w-full aspect-[3/2] rounded-t-lg" /></CardHeader>
+                        <CardContent className="pt-4"><Skeleton className="h-6 w-3/4" /></CardContent>
+                        <CardFooter className="grid grid-cols-2 gap-2">
+                           <Skeleton className="h-10 w-full" />
+                           <Skeleton className="h-10 w-full" />
+                        </CardFooter>
+                    </Card>
+                ))}
             </div>
         );
     }
@@ -182,11 +282,12 @@ export default function AdminAcceptancePage() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {containers.map(container => (
-                <PendingAcceptanceCard
+                <OperationCard
                     key={container.id}
                     container={container}
-                    onAction={handleAcceptance}
+                    onAction={handleOpenDialog}
                     isSubmitting={isSubmitting}
+                    onImageClick={openFullscreen}
                 />
             ))}
         </div>
@@ -195,13 +296,34 @@ export default function AdminAcceptancePage() {
 
   if (!canViewPage) return null;
 
+  const selectedContainer = containers.find(c => c.id === dialogState.containerId);
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-4">
-        <Truck className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_sidebar_acceptance')}</h1>
-      </div>
-      {renderContent()}
-    </div>
+    <>
+        <div className="space-y-8">
+          <div className="flex items-center gap-4">
+            <Truck className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight">{t('admin_sidebar_acceptance')}</h1>
+          </div>
+          {renderContent()}
+        </div>
+        
+        {selectedContainer && (
+            <OperationDialog 
+                isOpen={dialogState.isOpen}
+                onOpenChange={(open) => !open && setDialogState({ isOpen: false, containerId: null, operationType: null })}
+                operationType={dialogState.operationType}
+                containerName={selectedContainer.name}
+                onConfirm={handleOperation}
+                isSubmitting={isSubmitting}
+            />
+        )}
+        <ImageFullscreenViewer 
+            isOpen={!!fullscreenState}
+            onClose={closeFullscreen}
+            imageUrls={fullscreenState?.imageUrls}
+            startIndex={fullscreenState?.startIndex}
+        />
+    </>
   );
 }

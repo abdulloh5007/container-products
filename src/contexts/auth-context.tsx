@@ -3,7 +3,7 @@
 
 import { createContext, useState, ReactNode, useContext, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser, updatePassword } from "firebase/auth";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updatePassword } from "firebase/auth";
 import { doc, getDoc, updateDoc, setDoc, getDocs, collection, query, onSnapshot, Timestamp, writeBatch, limit, deleteDoc, where } from 'firebase/firestore';
 import { translations } from '@/lib/translations';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,6 @@ import * as idb from '@/lib/indexed-db';
 
 
 export type UserRole = 'senior' | 'junior' | 'worker';
-export type ViewMode = 'classic' | 'modern';
 
 export interface AppUser {
     uid: string;
@@ -29,9 +28,6 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   isRegistrationAllowed: boolean;
-  toggleManagementMode: () => Promise<void>;
-  viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   login: (email: string, password: string) => Promise<void>;
   loginWithQrToken: (token: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -65,23 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistrationAllowed, setIsRegistrationAllowed] = useState(false);
   const [language, setLanguage] = useState<keyof typeof translations>('ru');
-  const [viewMode, setViewModeState] = useState<ViewMode>('classic');
   const router = useRouter();
-  
-  const setViewMode = useCallback((mode: ViewMode) => {
-    setViewModeState(mode);
-    if (typeof window !== 'undefined') {
-      idb.set('viewMode', mode);
-    }
-  }, []);
   
   useEffect(() => {
     const loadPersistedData = async () => {
       if (typeof window !== 'undefined') {
-        const storedViewMode = await idb.get<ViewMode>('viewMode');
-        if (storedViewMode === 'classic' || storedViewMode === 'modern') {
-          setViewModeState(storedViewMode);
-        }
         const storedLang = await idb.get<any>('language');
         if (storedLang && (storedLang === 'ru' || storedLang === 'uz')) {
             setLanguage(storedLang);
@@ -130,7 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (docSnap.exists()) {
                     setUser({ uid: docSnap.id, ...docSnap.data() } as AppUser);
                 } else {
-                    // Document was deleted by admin
                     logout();
                 }
                 setIsLoading(false);
@@ -144,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         handleAuth();
-    }, [router]);
+    }, []);
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
@@ -168,13 +151,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const tokenDocRef = doc(db, 'qr_login_tokens', tokenId);
     const tokenDocSnap = await getDoc(tokenDocRef);
 
-    if (!tokenDocSnap.exists() || tokenData.used || tokenData.expiresAt.toMillis() < Date.now()) {
+    if (!tokenDocSnap.exists()) {
         throw new Error(translations[language].admin_qr_invalid_code);
     }
+    
     const tokenData = tokenDocSnap.data();
 
+    if (tokenData.used || tokenData.expiresAt.toMillis() < Date.now()) {
+        throw new Error(translations[language].admin_qr_invalid_code);
+    }
+
     const deviceName = getDeviceName();
-    
     const newUserDocRef = doc(collection(db, 'users'));
 
     const newUser: Omit<AppUser, 'uid'> = {
@@ -190,11 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await batch.commit();
     
     await idb.set('userId', newUserDocRef.id);
-    
-    if (tokenData.role === 'junior' || tokenData.role === 'worker') {
-        setViewMode('modern');
-    }
-    
     setUser({ uid: newUserDocRef.id, ...newUser } as AppUser);
   }
   
@@ -230,26 +212,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const logout = async () => {
-    const localUserId = await idb.get<string>('userId');
-    if (!localUserId) {
-        if (typeof window !== 'undefined' && window.location.pathname !== '/admin/login') {
-            router.push('/admin/login');
-        }
-        return;
-    }
-
-    const userDoc = user ? user : (await getDoc(doc(db, 'users', localUserId))).data();
-
-    if (userDoc?.userRole === 'senior' && auth.currentUser) {
+    if (auth.currentUser) {
         await signOut(auth);
     }
-    
     await idb.del('userId');
     setUser(null);
-  
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-      router.push('/admin/login');
-    }
+    router.push('/admin/login');
   };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
@@ -267,21 +235,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updatePassword(firebaseUser, newPassword);
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
-    }
-  };
-
-  const toggleManagementMode = async () => {
-    if (!user || user.userRole !== 'senior') return;
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const newModeState = !user.isManagementModeEnabled;
-
-    try {
-        await updateDoc(userDocRef, { isManagementModeEnabled: newModeState });
-        setUser(prevUser => prevUser ? { ...prevUser, isManagementModeEnabled: newModeState } : null);
-    } catch (error) {
-        console.error("Failed to toggle management mode", error);
-        throw error;
     }
   };
   
@@ -307,13 +260,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUserProfile,
     updateUserPassword,
-    toggleManagementMode,
     deleteUser,
     updateUser,
     translateFirebaseError,
-    viewMode,
-    setViewMode,
-  }), [user, isLoading, isRegistrationAllowed, viewMode, translateFirebaseError, setViewMode]);
+  }), [user, isLoading, isRegistrationAllowed, translateFirebaseError]);
 
   return (
     <AuthContext.Provider value={value}>
