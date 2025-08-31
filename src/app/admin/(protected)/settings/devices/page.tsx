@@ -25,7 +25,7 @@ interface EditUserDialogState {
     isOpen: boolean;
     user: AppUser | null;
     name: string;
-    role: 'junior' | 'worker';
+    role: UserRole;
 }
 
 export default function DevicesPage() {
@@ -169,16 +169,14 @@ export default function DevicesPage() {
                                     {getDeviceIcon(u.deviceName)}
                                     <div>
                                         <p className="font-semibold">{u.name} {u.uid === user?.uid && `(${t('admin_session_current_text')})`}</p>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            {t('admin_session_login_time')}: {u.createdAt ? format(u.createdAt.toDate(), 'd MMM, yyyy, HH:mm', { locale: dateLocale }) : 'N/A'}
-                                        </p>
+                                        {u.createdAt && <p className="text-sm text-muted-foreground mt-1">{t('admin_session_login_time')}: {format(u.createdAt.toDate(), 'd MMM, yyyy, HH:mm', { locale: dateLocale })}</p>}
                                     </div>
                                 </div>
                                 <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
                                     {renderRoleIcon(u.userRole)}
-                                    {u.userRole !== 'senior' && (
+                                    {u.uid !== user?.uid && (
                                         <>
-                                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setEditUserState({ isOpen: true, user: u, name: u.name, role: u.userRole as 'junior' | 'worker' })}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setEditUserState({ isOpen: true, user: u, name: u.name, role: u.userRole })}><Edit className="h-4 w-4" /></Button>
                                             <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => setUserToDelete(u)}><Trash2 className="h-4 w-4" /></Button>
                                         </>
                                     )}
@@ -221,13 +219,15 @@ export default function DevicesPage() {
                         <Label htmlFor="edit-user-name">{t('admin_session_dialog_name_label')}</Label>
                         <Input id="edit-user-name" value={editUserState.name} onChange={(e) => setEditUserState(s => ({ ...s, name: e.target.value }))} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>{t('admin_session_dialog_role_label')}</Label>
-                        <RadioGroup value={editUserState.role} onValueChange={(value) => setEditUserState(s => ({ ...s, role: value as 'junior' | 'worker' }))} className="flex gap-4">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="junior" id="edit-role-junior" /><Label htmlFor="edit-role-junior">{t('admin_role_junior')}</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="worker" id="edit-role-worker" /><Label htmlFor="edit-role-worker">{t('admin_role_worker')}</Label></div>
-                        </RadioGroup>
-                    </div>
+                    {editUserState.user?.userRole !== 'senior' && (
+                        <div className="space-y-2">
+                            <Label>{t('admin_session_dialog_role_label')}</Label>
+                            <RadioGroup value={editUserState.role} onValueChange={(value) => setEditUserState(s => ({ ...s, role: value as UserRole }))} className="flex gap-4">
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="junior" id="edit-role-junior" /><Label htmlFor="edit-role-junior">{t('admin_role_junior')}</Label></div>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="worker" id="edit-role-worker" /><Label htmlFor="edit-role-worker">{t('admin_role_worker')}</Label></div>
+                            </RadioGroup>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setEditUserState({isOpen: false, user: null, name: '', role: 'junior'})}>{t('admin_cancel_button')}</Button>

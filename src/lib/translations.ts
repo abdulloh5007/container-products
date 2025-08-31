@@ -286,6 +286,8 @@ export const translations = {
     admin_qr_login_from_gallery_button: "Выбрать из галереи",
     admin_qr_scan_from_image_error: "Не удалось прочитать QR-код с изображения.",
     admin_qr_invalid_code: "Недействительный, просроченный или уже использованный QR-код.",
+    admin_password_change_confirm_title: "Подтвердите смену пароля",
+    admin_password_change_confirm_desc: "Вы уверены? Это действие немедленно завершит сессии всех остальных пользователей на всех устройствах.",
 
     'firebase_error_auth_invalid-credential': "Неверный email или пароль. Пожалуйста, попробуйте еще раз.",
     'firebase_error_auth_user-not-found': "Пользователь с таким email не найден.",
@@ -494,8 +496,8 @@ export const translations = {
     admin_no_account_prompt: "Hisobingiz yo'qmi yoki parolni unutdingizmi?",
     admin_contact_admin: "Administrator bilan bog'laning",
     admin_login_prompt: "Hisobingiz bormi?",
-    admin_login_link: "Kirish",
-    
+    admin_login_link: "Yaratish",
+
     admin_users_title: "Foydalanuvchilarni Boshqarish",
     admin_users_list_title: "Foydalanuvchilar Ro'yxati",
     admin_users_desc: "Foydalanuvchilarni ko'rish, tahrirlash va o'chirish.",
@@ -584,6 +586,9 @@ export const translations = {
     admin_qr_login_from_gallery_button: "Galereyadan tanlash",
     admin_qr_scan_from_image_error: "Rasmdan QR-kodni o'qib bo'lmadi.",
     admin_qr_invalid_code: "Yaroqsiz, muddati o'tgan yoki allaqachon ishlatilgan QR-kod.",
+    admin_register_link: "Yaratish",
+    admin_password_change_confirm_title: "Parol o'zgarishini tasdiqlang",
+    admin_password_change_confirm_desc: "Ishonchingiz komilmi? Bu harakat boshqa barcha foydalanuvchilarning sessiyalarini darhol tugatadi.",
 
     'firebase_error_auth_invalid-credential': "Noto'g'ri email yoki parol. Iltimos, qayta urinib ko'ring.",
     'firebase_error_auth_user-not-found': "Bunday email bilan foydalanuvchi topilmadi.",

@@ -35,7 +35,7 @@ type AuthContextType = {
   updateUserProfile: (data: { name: string, phone: string }) => Promise<void>;
   updateUserPassword: (password: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
-  updateUser: (userId: string, data: { name: string, userRole: 'junior' | 'worker' }) => Promise<void>;
+  updateUser: (userId: string, data: { name: string, userRole: UserRole }) => Promise<void>;
   toggleManagementMode: () => Promise<void>;
   translateFirebaseError: (errorCode: string) => string;
 };
@@ -129,6 +129,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         handleAuth();
     }, []);
+
+  const logOutAllOtherUsers = async () => {
+    if (!user || user.userRole !== 'senior') return;
+    const usersQuery = query(collection(db, 'users'));
+    const usersSnapshot = await getDocs(usersQuery);
+    const batch = writeBatch(db);
+    usersSnapshot.forEach(doc => {
+        if (doc.id !== user.uid) { // Do not delete the current user
+            batch.delete(doc.ref);
+        }
+    });
+    await batch.commit();
+  }
   
   const login = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password).catch(error => {
@@ -240,18 +253,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
         await updatePassword(firebaseUser, newPassword);
+        await logOutAllOtherUsers(); // Log out everyone else
     } catch (error: any) {
         throw new Error(translateFirebaseError(error.code));
     }
   };
   
   const deleteUser = async (userId: string) => {
-    if (!user || user.userRole !== 'senior') throw new Error("Permission denied.");
+    if (!user || user.userRole !== 'senior' || user.uid === userId) throw new Error("Permission denied.");
     await deleteDoc(doc(db, "users", userId));
   }
   
-  const updateUser = async (userId: string, data: { name: string, userRole: 'junior' | 'worker' }) => {
-    if (!user || user.userRole !== 'senior') throw new Error("Permission denied.");
+  const updateUser = async (userId: string, data: { name: string, userRole: UserRole }) => {
+    if (!user || user.userRole !== 'senior' || user.uid === userId) throw new Error("Permission denied.");
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, data);
   };
