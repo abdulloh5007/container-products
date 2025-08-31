@@ -26,7 +26,7 @@ export function MinimalBottomNavBar() {
   if (navItems.length === 0) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/80 backdrop-blur-md p-2 shadow-2xl md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/80 backdrop-blur-md p-2 shadow-2xl">
       <div className="grid grid-flow-col auto-cols-fr gap-1">
         {navItems.map((item) => {
           const Icon = item.icon;
