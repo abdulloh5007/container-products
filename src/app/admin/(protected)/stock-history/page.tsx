@@ -372,7 +372,7 @@ export default function AdminStockHistoryPage() {
                         </Popover>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3"> 
                         <Label>{t('admin_filter_by_user')}</Label>
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                           {uniqueUsers.map(userItem => (
