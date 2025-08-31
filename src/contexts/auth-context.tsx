@@ -98,6 +98,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     checkUsers();
   }, [])
+  
+  const logout = useCallback(async () => {
+    if (auth.currentUser) {
+        await signOut(auth).catch(e => console.error("Sign out error:", e));
+    }
+    await idb.del('userId');
+    setUser(null);
+    router.push('/admin/login');
+  }, [router]);
+
 
     useEffect(() => {
         const handleAuth = async () => {
@@ -114,10 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
                     setUser({ uid: docSnap.id, ...docSnap.data() } as AppUser);
+                    setIsLoading(false);
                 } else {
+                    // This case handles when the user document is deleted from Firestore.
+                    // The user is immediately logged out.
                     logout();
                 }
-                setIsLoading(false);
             }, (error) => {
                 console.error("Error with user subscription:", error);
                 logout();
@@ -128,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         handleAuth();
-    }, []);
+    }, [logout]);
 
   const logOutAllOtherUsers = async () => {
     if (!user || user.userRole !== 'senior') return;
@@ -226,15 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setDoc(settingsDocRef, { name, phone: '' }, { merge: true });
     setIsRegistrationAllowed(false);
   };
-  
-  const logout = async () => {
-    if (auth.currentUser) {
-        await signOut(auth);
-    }
-    await idb.del('userId');
-    setUser(null);
-    router.push('/admin/login');
-  };
 
   const updateUserProfile = async (data: { name: string, phone: string }) => {
     if (!user || user.userRole !== 'senior') throw new Error("User not authenticated or not a senior.");
@@ -289,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateUser,
     toggleManagementMode,
     translateFirebaseError,
-  }), [user, isLoading, isRegistrationAllowed, translateFirebaseError]);
+  }), [user, isLoading, isRegistrationAllowed, translateFirebaseError, logout]);
 
   return (
     <AuthContext.Provider value={value}>

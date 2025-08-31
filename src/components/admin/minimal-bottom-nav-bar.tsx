@@ -19,6 +19,7 @@ export function MinimalBottomNavBar() {
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Box, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/settings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['senior'] },
+    { href: '/admin/nonSeniorSettings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['junior', 'worker'] },
   ];
 
   const visibleItems = navItems.filter(item => role && item.roles.includes(role));

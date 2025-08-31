@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/auth-context';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
 // import { useViewSwitcher } from '@/hooks/use-view-switcher';
 // import { ViewSwitcher } from '@/components/admin/view-switcher';
 
