@@ -39,8 +39,6 @@ function AdminSkeleton() {
   )
 }
 
-const WALKTHROUGH_ACCEPTANCE_KEY = 'walkthrough-acceptance-seen';
-
 export default function ProtectedAdminLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading, viewMode } = useAuth();
   const router = useRouter();
@@ -91,7 +89,6 @@ export default function ProtectedAdminLayout({ children }: { children: ReactNode
   
   const onExitWalkthrough = () => {
     setWalkthroughEnabled(false);
-    localStorage.setItem(WALKTHROUGH_ACCEPTANCE_KEY, 'true');
   };
   
   const acceptanceSteps = [

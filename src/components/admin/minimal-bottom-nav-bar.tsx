@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
-import { Truck, Archive, Settings, Warehouse } from 'lucide-react';
+import { Truck, Archive, Settings, Warehouse, ArrowUpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 
 export function MinimalBottomNavBar() {
@@ -16,6 +16,7 @@ export function MinimalBottomNavBar() {
 
   const allNavItems = [
     { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'] },
+    { href: '/admin/dispatch', label: t('admin_dispatch_title'), icon: ArrowUpCircle, roles: ['senior', 'junior'] },
     { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/rentals', label: t('admin_rentals_title'), icon: Warehouse, roles: ['senior', 'junior', 'worker'] },
     { href: '/admin/settings', label: t('admin_sidebar_settings'), icon: Settings, roles: ['senior', 'junior'] },

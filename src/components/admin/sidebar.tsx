@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History, ListCollapse, Warehouse, RefreshCw } from 'lucide-react';
+import { Container, Package, LogOut, Box, Menu, Settings, Archive, Truck, History, ListCollapse, Warehouse, RefreshCw, ArrowUpCircle } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -43,6 +43,7 @@ export function Sidebar() {
   
   const mainNavItems = [
       { href: '/admin/acceptance', label: t('admin_sidebar_acceptance'), icon: Truck, roles: ['senior', 'junior'], className: 'hidden md:flex' },
+      { href: '/admin/dispatch', label: t('admin_dispatch_title'), icon: ArrowUpCircle, roles: ['senior', 'junior'], className: 'hidden md:flex' },
       { href: '/admin/stock', label: t('admin_sidebar_stock'), icon: Archive, roles: ['senior', 'junior', 'worker'], className: 'hidden md:flex' },
   ];
 

@@ -179,6 +179,9 @@ function MainSettingsContent({ view }: { view: ViewMode }) {
                 const usersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as AppUser));
                 setAllUsers(usersData);
                 setIsLoadingUsers(false);
+            }, (error) => {
+                console.error("Error fetching users:", error);
+                setIsLoadingUsers(false);
             });
             return () => unsubscribe();
         }
@@ -426,7 +429,7 @@ function MainSettingsContent({ view }: { view: ViewMode }) {
                                             <Label htmlFor="password">{t('admin_settings_new_password')}</Label>
                                             <div className="relative">
                                                 <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} placeholder={t('admin_settings_password_placeholder')} className="pr-10" />
-                                                <button type="button" onClick={() => setShowPassword(!s)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+                                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
                                             </div>
                                             <p className="text-xs text-muted-foreground">{t('admin_settings_password_min_chars')}</p>
                                         </div>
@@ -468,6 +471,7 @@ function MainSettingsContent({ view }: { view: ViewMode }) {
                 </TabsContent>
                 
                 {/* Devices Tab */}
+                {isSenior && (
                 <TabsContent value="devices" className="mt-6 space-y-8">
                     <Card>
                         <CardHeader>
@@ -481,7 +485,7 @@ function MainSettingsContent({ view }: { view: ViewMode }) {
                                         {getDeviceIcon(u.deviceName)}
                                         <div>
                                             <p className="font-semibold">{u.name} {u.uid === user?.uid && `(${t('admin_session_current_text')})`}</p>
-                                            <p className="text-sm text-muted-foreground mt-1">{t('admin_session_login_time')}: {format(u.createdAt.toDate(), 'd MMM, yyyy, HH:mm', { locale: dateLocale })}</p>
+                                            <p className="text-sm text-muted-foreground mt-1">{t('admin_session_login_time')}: {u.createdAt ? format(u.createdAt.toDate(), 'd MMM, yyyy, HH:mm', { locale: dateLocale }) : 'N/A'}</p>
                                         </div>
                                     </div>
                                     <div className="flex w-full sm:w-auto items-center justify-end gap-2 mt-2 sm:mt-0">
@@ -507,6 +511,7 @@ function MainSettingsContent({ view }: { view: ViewMode }) {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                )}
             </Tabs>
             
             {/* Dialogs */}

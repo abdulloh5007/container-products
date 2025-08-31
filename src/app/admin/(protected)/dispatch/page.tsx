@@ -1,15 +1,15 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, writeBatch, serverTimestamp, query, orderBy, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Truck } from 'lucide-react';
+import { Truck, ArrowUpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
@@ -20,10 +20,10 @@ interface IncludedProduct {
   name: string;
   quantity: number;
 }
+
 interface Container {
   id: string;
   name: string;
-  imageUrl?: string;
   products: IncludedProduct[];
 }
 
@@ -34,7 +34,7 @@ interface Product {
 
 const EPSILON = 1e-9;
 
-function PendingAcceptanceCard({ container, onAction, isSubmitting }: { container: Container, onAction: (containerId: string, containerNumber: string) => void, isSubmitting: boolean }) {
+function DispatchCard({ container, onAction, isSubmitting }: { container: Container, onAction: (containerId: string, containerNumber: string) => void, isSubmitting: boolean }) {
     const { t } = useLanguage();
     const [containerNumber, setContainerNumber] = useState('');
     const [isConfirmOpen, setConfirmOpen] = useState(false);
@@ -64,22 +64,22 @@ function PendingAcceptanceCard({ container, onAction, isSubmitting }: { containe
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button onClick={() => setConfirmOpen(true)} disabled={isSubmitting} className="w-full">
-                        {isSubmitting ? t('admin_dispatching_text') : t('admin_acceptance_button')}
+                    <Button variant="destructive" onClick={() => setConfirmOpen(true)} disabled={isSubmitting} className="w-full">
+                        {isSubmitting ? t('admin_dispatching_text') : t('admin_dispatch_button')}
                     </Button>
                 </CardFooter>
             </Card>
             <AlertDialog open={isConfirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t('admin_acceptance_confirm_title')}</AlertDialogTitle>
+                        <AlertDialogTitle>{t('admin_dispatch_confirm_title')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t('admin_acceptance_confirm_desc', { containerName: container.name })}
+                            {t('admin_dispatch_confirm_desc', { containerName: container.name })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t('admin_cancel_button')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirm}>{t('admin_confirm_button')}</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirm} className="bg-destructive hover:bg-destructive/90">{t('admin_confirm_button')}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -87,7 +87,7 @@ function PendingAcceptanceCard({ container, onAction, isSubmitting }: { containe
     )
 }
 
-export default function AdminAcceptancePage() {
+export default function AdminDispatchPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { user, isAuthLoading } = useAuth();
@@ -117,8 +117,8 @@ export default function AdminAcceptancePage() {
   useEffect(() => {
     fetchContainers();
   }, [fetchContainers]);
-  
-  const handleAcceptance = async (containerId: string, containerNumber: string) => {
+
+  const handleDispatch = async (containerId: string, containerNumber: string) => {
     setIsSubmitting(true);
     
     const container = containers.find(c => c.id === containerId);
@@ -129,11 +129,18 @@ export default function AdminAcceptancePage() {
 
     try {
         const batch = writeBatch(db);
-        const productsToUpdate: {ref: any, change: number}[] = [];
+        const productsToUpdate: {ref: any, change: number, name: string}[] = [];
         
+        // Pre-check stock levels
         for (const p of container.products) {
             const productRef = doc(db, 'products', p.id);
-            productsToUpdate.push({ ref: productRef, change: p.quantity });
+            const productDoc = await getDoc(productRef);
+            if (!productDoc.exists() || productDoc.data().quantity < p.quantity - EPSILON) {
+                 toast({ variant: 'destructive', title: t('admin_dispatch_error_title'), description: t('admin_dispatch_error_insufficient_stock', { productName: p.name || 'product' }) });
+                 setIsSubmitting(false);
+                 return;
+            }
+            productsToUpdate.push({ ref: productRef, change: -p.quantity, name: productDoc.data().name });
         }
 
         // Add to history
@@ -143,7 +150,7 @@ export default function AdminAcceptancePage() {
             containerName: container.name,
             containerNumber: containerNumber || '',
             date: serverTimestamp(),
-            type: 'acceptance',
+            type: 'dispatch',
         });
         
         // Update product quantities
@@ -157,14 +164,15 @@ export default function AdminAcceptancePage() {
         
         await batch.commit();
 
-        toast({ title: t('admin_acceptance_success_title'), description: t('admin_acceptance_success_desc', { containerName: container.name }) });
+        toast({ title: t('admin_dispatch_success_title'), description: t('admin_dispatch_success_desc', { containerName: container.name }) });
     } catch (error) {
-        console.error("Error during acceptance: ", error);
-        toast({ variant: 'destructive', title: t('admin_acceptance_error_title'), description: t('admin_acceptance_error_desc') });
+        console.error("Error during dispatch: ", error);
+        toast({ variant: 'destructive', title: t('admin_dispatch_error_title'), description: t('admin_dispatch_error_desc') });
     } finally {
         setIsSubmitting(false);
     }
   };
+
 
   const renderContent = () => {
     if (isLoading || isAuthLoading) {
@@ -182,10 +190,10 @@ export default function AdminAcceptancePage() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {containers.map(container => (
-                <PendingAcceptanceCard
+                <DispatchCard
                     key={container.id}
                     container={container}
-                    onAction={handleAcceptance}
+                    onAction={handleDispatch}
                     isSubmitting={isSubmitting}
                 />
             ))}
@@ -198,8 +206,8 @@ export default function AdminAcceptancePage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Truck className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold tracking-tight">{t('admin_sidebar_acceptance')}</h1>
+        <ArrowUpCircle className="h-8 w-8 text-primary" />
+        <h1 className="text-3xl font-bold tracking-tight">{t('admin_dispatch_title')}</h1>
       </div>
       {renderContent()}
     </div>
