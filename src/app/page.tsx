@@ -10,6 +10,9 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useViewSwitcher } from '@/hooks/use-view-switcher';
+import { ViewSwitcher } from '@/components/admin/view-switcher';
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 
 type ProductType = 'kit' | 'unit' | 'area';
 interface Product {
@@ -33,6 +36,7 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { view, setView } = useViewSwitcher('home', 'grid');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -73,35 +77,53 @@ export default function Home() {
   }, [products, searchQuery]);
   
   const renderProductQuantity = (product: Product) => {
+    const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
     if (product.type === 'kit') {
-      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
       const totalM2Value = quantity * (product.m2PerKit || 0);
       const totalM2 = (Math.abs(totalM2Value) < EPSILON ? 0 : totalM2Value).toFixed(2);
       
       return `${t('admin_product_quantity')}: ${quantity} ${t('admin_kit_unit')} (${totalM2} ${t('admin_m2_unit')})`;
     }
      if (product.type === 'area') {
-      const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
       return `${t('admin_product_quantity')}: ${quantity.toFixed(2)} ${t('admin_m2_unit')}`;
     }
-    const quantity = Math.abs(product.quantity) < EPSILON ? 0 : product.quantity;
     return `${t('admin_product_quantity')}: ${quantity}`;
   }
 
   const renderContent = () => {
     if (isLoading) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Card key={index} className="overflow-hidden shadow-lg">
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      );
+        if (view === 'grid') {
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="overflow-hidden shadow-lg">
+                  <CardHeader>
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          );
+        }
+        return (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>{t('admin_products_table_name')}</TableHead>
+                        <TableHead>{t('admin_product_quantity')}</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={index}>
+                            <TableCell><Skeleton className="h-6 w-40" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        );
     }
 
     if (filteredProducts.length === 0) {
@@ -110,6 +132,31 @@ export default function Home() {
           <p className="text-muted-foreground">{t('admin_product_no_products')}</p>
         </div>
       );
+    }
+
+    if (view === 'table') {
+        return (
+            <Card>
+                <CardContent className="pt-6">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>{t('admin_products_table_name')}</TableHead>
+                                <TableHead>{t('admin_product_quantity')}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredProducts.map((product) => (
+                                <TableRow key={product.id}>
+                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                    <TableCell>{renderProductQuantity(product).replace(`${t('admin_product_quantity')}: `, '')}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        );
     }
 
     return (
@@ -147,8 +194,8 @@ export default function Home() {
         </h1>
       </div>
 
-      <div className="max-w-md mx-auto mb-12">
-        <div className="relative">
+      <div className="max-w-md mx-auto mb-12 flex items-center gap-4">
+        <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t('admin_product_search_placeholder')}
@@ -157,6 +204,7 @@ export default function Home() {
             className="pl-10 w-full"
           />
         </div>
+        <ViewSwitcher view={view} setView={setView} />
       </div>
 
       {renderContent()}

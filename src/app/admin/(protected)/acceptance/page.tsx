@@ -127,7 +127,7 @@ function OperationCard({ container, onAction, isSubmitting, onImageClick }: { co
                 <CardTitle>{container.name}</CardTitle>
                 <CardDescription>{t('admin_acceptance_table_products')}: {container.products?.length || 0}</CardDescription>
             </CardContent>
-            <CardFooter className="grid grid-cols-2 gap-2">
+            <CardFooter className="flex flex-col gap-2">
                 <Button onClick={() => onAction(container.id, 'acceptance')} disabled={isSubmitting} className="w-full">
                     <ArrowDownCircle className="mr-2 h-4 w-4" />
                     {t('admin_acceptance_button')}
@@ -144,7 +144,7 @@ function OperationCard({ container, onAction, isSubmitting, onImageClick }: { co
 export default function AdminAcceptancePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { user, isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
 
   const [containers, setContainers] = useState<Container[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,7 +265,7 @@ export default function AdminAcceptancePage() {
                     <Card key={i}>
                         <CardHeader className="p-0"><Skeleton className="w-full aspect-[3/2] rounded-t-lg" /></CardHeader>
                         <CardContent className="pt-4"><Skeleton className="h-6 w-3/4" /></CardContent>
-                        <CardFooter className="grid grid-cols-2 gap-2">
+                        <CardFooter className="flex flex-col gap-2">
                            <Skeleton className="h-10 w-full" />
                            <Skeleton className="h-10 w-full" />
                         </CardFooter>
